@@ -496,8 +496,12 @@ void Toast::rebuildCache()
         info += QStringLiteral(" · ") + QFileInfo(m_savedPath).fileName();
     const int textRight = buttons().isEmpty() ? card.width() - kButtonPadding
                                               : buttons().first().second.left() - 8;
-    painter.drawText(QRect(kButtonPadding, bar.top(), textRight - kButtonPadding, bar.height()),
-                     Qt::AlignVCenter | Qt::AlignLeft, info);
+    const int textWidth = qMax(0, textRight - kButtonPadding);
+    // 按钮多（导出模式有 4 个）时留给文字的空间会很小，直接画会被硬裁成半截
+    // （实测出现过"已录制：64 帧 / 4.2 秒 · 选导出格"）。这里按宽度做省略号。
+    const QString shown = painter.fontMetrics().elidedText(info, Qt::ElideRight, textWidth);
+    painter.drawText(QRect(kButtonPadding, bar.top(), textWidth, bar.height()),
+                     Qt::AlignVCenter | Qt::AlignLeft, shown);
 
     // 按钮：第一个（编辑/或首个可用）为主按钮；带图标 + hover/pressed 态
     const Button primaryButton = m_editEnabled ? Button::Edit : Button::SaveAs;

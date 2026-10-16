@@ -703,7 +703,9 @@ void Application::onRecordingFinished(const QString &gifPath, int captured, int 
     const QImage thumbnail = m_recorder ? m_recorder->lastFrame() : QImage();
     if (m_toast && !thumbnail.isNull()) {
         m_toast->setEditEnabled(false);
-        const QString info = QStringLiteral("已录制：%1 帧 / %2 秒 · 选导出格式")
+        // 简洁优先：导出模式按钮多，留给文字的空间很小；
+        // "选导出格式"这层意思按钮本身就表达清楚了，不必占宽度。
+        const QString info = QStringLiteral("已录制 %1 帧 / %2 秒")
                                  .arg(captured)
                                  .arg(QString::number(seconds, 'f', 1));
         if (m_recorder->deferExport()) {
