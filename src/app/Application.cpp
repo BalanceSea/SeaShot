@@ -1740,6 +1740,84 @@ int Application::runInplaceDemo(const QString &outPrefix)
         const bool a3ok = shapeHits == shapeCases.size() && penOk && numberOk && textOk && undoOk
             && moveOk && deleteOk && toolbarDragQuiet && previewMismatch == 0;
         out << (a3ok ? "INPLACE_DEMO A3 PASS" : "INPLACE_DEMO A3 FAIL") << "\n";
+
+        // ─────────────────────────────────────────────────
+        // A3.1：颜色 / 粗细（自绘弹出面板）
+        // ─────────────────────────────────────────────────
+        const QRectF colorCell = m_overlay->colorButtonRect();
+        const QRectF widthCell = m_overlay->widthButtonRect();
+        const bool cellsInBar = !colorCell.isEmpty() && !widthCell.isEmpty()
+            && !colorCell.intersects(widthCell) && m_overlay->toolbarRect().contains(colorCell)
+            && m_overlay->toolbarRect().contains(widthCell);
+
+        // 颜色面板：打开 → 面板不压选区 → 选一个色块
+        clickAt(colorCell.center());
+        const bool colorPanelOpened = m_overlay->openPanel() == Overlay::Panel::Color;
+        const QRectF colorPanel = m_overlay->panelRect();
+        const bool panelOutsideSelection =
+            !colorPanel.intersects(localSelection) && surface.contains(colorPanel);
+        const QColor picked = Overlay::palette().at(5);
+        // 留一张开着颜色面板的证据图（贴工具条那一带就够了，但整屏更直白）
+        if (!outPrefix.isEmpty() && colorPanelOpened)
+            m_overlay->grab().save(outPrefix + QStringLiteral("-panel-color.png"));
+        clickAt(m_overlay->swatchRect(5).center());
+        const bool swatchPicked = m_overlay->annotationColor() == picked
+            && m_overlay->openPanel() == Overlay::Panel::None;
+
+        // 用新颜色画一个矩形：颜色要真的落到标注里
+        selectToolByButton(ToolKind::Rectangle);
+        const int beforeColorDraw = m_overlay->document().count();
+        dragLocal(origin + QPointF(120, 250), origin + QPointF(230, 330));
+        const bool drawnColor = m_overlay->document().count() == beforeColorDraw + 1
+            && m_overlay->document().at(beforeColorDraw).color == picked;
+        out << "INPLACE_DEMO A31 cells=" << (cellsInBar ? 1 : 0) << " colorPanel="
+            << (colorPanelOpened ? 1 : 0) << " outsideSelection="
+            << (panelOutsideSelection ? 1 : 0) << " swatchPick=" << (swatchPicked ? 1 : 0)
+            << " color=" << m_overlay->annotationColor().name()
+            << " drawnColor=" << m_overlay->document().at(beforeColorDraw).color.name() << "\n";
+
+        // 粗细面板：拖滑杆 → 新粗细要真的落到标注里
+        clickAt(widthCell.center());
+        const bool widthPanelOpened = m_overlay->openPanel() == Overlay::Panel::Width;
+        const QRectF track = m_overlay->widthTrackRect();
+        const QPointF sliderTarget(track.left() + track.width() * 0.7, track.center().y());
+        const int expectedWidth = m_overlay->widthFromPosition(sliderTarget);
+        if (!outPrefix.isEmpty() && widthPanelOpened)
+            m_overlay->grab().save(outPrefix + QStringLiteral("-panel-width.png"));
+        dragLocal(track.center(), sliderTarget);
+        const bool sliderWorks = m_overlay->annotationWidth() == expectedWidth;
+        selectToolByButton(ToolKind::Pen);
+        const int beforeWidthDraw = m_overlay->document().count();
+        dragLocal(origin + QPointF(300, 352), origin + QPointF(470, 362));
+        const bool drawnWidth = m_overlay->document().count() == beforeWidthDraw + 1
+            && m_overlay->document().at(beforeWidthDraw).width == expectedWidth;
+        out << "INPLACE_DEMO A31 widthPanel=" << (widthPanelOpened ? 1 : 0) << " slider="
+            << (sliderWorks ? 1 : 0) << " width=" << expectedWidth << " (实测 "
+            << m_overlay->annotationWidth() << ") drawnWidth="
+            << m_overlay->document().at(beforeWidthDraw).width << "\n";
+
+        // 面板内的空白点击不产生标注；Esc 关面板而不退出；面板外点击只关面板
+        const int beforeQuiet = m_overlay->document().count();
+        clickAt(colorCell.center());
+        const QPointF gapPoint =
+            (m_overlay->swatchRect(0).bottomRight() + m_overlay->swatchRect(1).topLeft()) / 2.0;
+        postMouse(QEvent::MouseButtonPress, gapPoint, Qt::LeftButton, Qt::LeftButton);
+        postMouse(QEvent::MouseButtonRelease, gapPoint, Qt::LeftButton, Qt::NoButton);
+        const bool panelClickQuiet = m_overlay->document().count() == beforeQuiet;
+        postKey(Qt::Key_Escape, QString());
+        const bool escClosesPanel =
+            m_overlay->openPanel() == Overlay::Panel::None && m_overlay->isAnnotating();
+        clickAt(colorCell.center());
+        clickAt(origin + QPointF(400, 340));
+        const bool outsideQuiet = m_overlay->openPanel() == Overlay::Panel::None
+            && m_overlay->document().count() == beforeQuiet;
+        out << "INPLACE_DEMO A31 panelClickQuiet=" << (panelClickQuiet ? 1 : 0) << " escCloses="
+            << (escClosesPanel ? 1 : 0) << " outsideQuiet=" << (outsideQuiet ? 1 : 0) << "\n";
+
+        const bool a31ok = cellsInBar && colorPanelOpened && panelOutsideSelection && swatchPicked
+            && drawnColor && widthPanelOpened && sliderWorks && drawnWidth && panelClickQuiet
+            && escClosesPanel && outsideQuiet;
+        out << (a31ok ? "INPLACE_DEMO A31 PASS" : "INPLACE_DEMO A31 FAIL") << "\n";
         // 「完成/取消」出口：默认点「取消」；SEASHOT_INPLACE_DEMO_COMMIT=1 时改成合成 Enter，
         // 让“带标注的截图 → 现有截图链路（复制/保存/浮层）”真的跑一遍。
         const bool commitMode = qEnvironmentVariableIsSet("SEASHOT_INPLACE_DEMO_COMMIT");
@@ -1770,7 +1848,7 @@ int Application::runInplaceDemo(const QString &outPrefix)
             && barInsideSurface && toolHits == toolButtons.size() && keyHits == 9 && gapQuiet
             && hoverWorks && cancelWorks && barGoesAbove && barClamped;
         out << (a2ok ? "INPLACE_DEMO A2 PASS" : "INPLACE_DEMO A2 FAIL") << "\n";
-        const bool allOk = a1ok && a2ok && a3ok;
+        const bool allOk = a1ok && a2ok && a3ok && a31ok;
         out << (allOk ? "INPLACE_DEMO ALL PASS" : "INPLACE_DEMO ALL FAIL") << "\n";
         out.flush();
         if (commitMode) {

@@ -98,6 +98,28 @@ public:
     /// A3 验收用的一行状态
     QString annotationStatus() const;
 
+    // ── A3.1 颜色 / 粗细（自绘弹出面板）─────────────────────
+    enum class Panel { None, Color, Width };
+    QColor annotationColor() const { return m_annotationColor; }
+    int annotationWidth() const { return m_annotationWidth; }
+    void setAnnotationColor(const QColor &color);
+    void setAnnotationWidth(int width);
+    Panel openPanel() const { return m_panel; }
+    /// 预设调色板（工具条色块面板用的就是它）
+    static QVector<QColor> palette();
+    static int minWidth() { return 1; }
+    static int maxWidth() { return 24; }
+    /// 面板与面板内元素的位置（绘制/命中/验收共用）
+    QRectF panelRect() const;
+    QRectF colorButtonRect() const;
+    QRectF widthButtonRect() const;
+    int colorIndexAt(const QPointF &position) const; ///< -1 = 不在任何色块上
+    QRectF widthTrackRect() const;
+    QRectF widthHandleRect() const;
+    int widthFromPosition(const QPointF &position) const;
+    QRectF panelAnchorRect(Panel panel) const;
+    QRectF swatchRect(int index) const;
+
     // ── 诊断/验收（--inplace-demo）──────────────────────────
     /// Annotating 阶段的关键量：annotating=0/1 frozen=WxH selection=x,y WxH stage=...
     QString annotationDiagnostics() const;
@@ -127,9 +149,9 @@ protected:
 private:
     enum class Stage { Selecting, Annotating };
 
-    /// 工具条里的一格。尺寸文字与分隔符也当成“格”，这样绘制/命中共用一条列表。
+    /// 工具条里的一格。尺寸文字、颜色/粗细入口、分隔符也当成“格”，这样绘制/命中共用一条列表。
     struct BarCell {
-        enum class Kind { Tool, SizeText, Confirm, Cancel };
+        enum class Kind { Tool, ColorSwatch, WidthPicker, SizeText, Confirm, Cancel };
         Kind kind = Kind::Tool;
         ToolKind tool = ToolKind::Select;
         int keyNumber = 0;
@@ -179,6 +201,9 @@ private:
     void activateCell(int index);
     void drawToolbar(QPainter &painter) const;
     void drawCellBubble(QPainter &painter, const BarCell &cell) const;
+    void drawPanel(QPainter &painter) const;
+    void drawSwatch(QPainter &painter, const QRectF &box, const QColor &color, bool selected,
+                    bool hovered) const;
     static void drawToolIcon(QPainter &painter, ToolKind kind, const QRectF &box, const QColor &color);
     static void drawActionIcon(QPainter &painter, bool confirm, const QRectF &box,
                               const QColor &color);
@@ -210,8 +235,12 @@ private:
     QImage m_frozenSelection;  ///< 冻结屏幕裁到选区（= 导出坐标系源图）
     QImage m_composedSelection; ///< 预览用：m_frozenSelection + 已提交标注
     bool m_composedDirty = true;
-    QColor m_annotationColor{255, 64, 64}; ///< 与编辑器默认一致（颜色/粗细选择器尚未做）
+    QColor m_annotationColor{255, 64, 64}; ///< 与编辑器默认一致
     int m_annotationWidth = 4;
+    Panel m_panel = Panel::None;   ///< 当前打开的弹出面板
+    bool m_widthDragging = false; ///< 正在拖粗细滑杆
+    int m_hoverSwatch = -1;       ///< 色块面板里的悬停格
+    bool m_hoverWidthHandle = false;
     Annotation m_draft;       ///< 正在绘制的临时标注（不进文档）
     bool m_drawing = false;
     bool m_annotDragActive = false; ///< 标注拖动/改尺寸中（与选区拖拽 m_dragging 区分）

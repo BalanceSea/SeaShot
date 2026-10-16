@@ -3,18 +3,20 @@
 > 本文是**自包含**的：明天开新对话时，读这一份即可接上，不依赖上一轮对话上下文。
 >
 > **一句话现状**：截图/编辑/录制/配置/托盘全部可用且验收通过；「就地编辑」大改造已完成
-> **Phase 0 + A1（骨架）+ A2（图标工具条）+ A3（标注绘制/命中/撤销）**
-> （`acceptance-phaseA1.sh` 6/6、`phaseA2.sh` 10/10、`phaseA3.sh` 13/13），
+> **Phase 0 + A1（骨架）+ A2（图标工具条）+ A3（标注绘制/命中/撤销）+ A3.1（颜色/粗细）**
+> （`acceptance-phaseA1.sh` 6/6、`phaseA2.sh` 10/10、`phaseA3.sh` 13/13、`phaseA3-color.sh` 7/7），
 > **下一步是 Phase A4（工具条上的复制/保存按钮）**。
 
 ---
 
 ## 0. 明天下手第一件事
 
-**做 Phase A4**（见第 4 节）：把工具条上的**复制 / 保存**按钮接到现有链路。
+**做 Phase A4**（见第 4 节）：把工具条上的**复制 / 保存**按钮接到现有链路；
+然后就可以开始 Phase B（拖手柄改选区 + 快捷键对齐 QQ/PixPin）。
 
-为什么现在只剩这么点：A3 已经把"画完按完成 → 标注真的进结果图 → 剪贴板/保存/浮层/编辑器
-全部用合成后的图"跑通了（含逐像素验收）。A4 因此是**收尾**：
+为什么现在只剩这么点：A1/A2/A3/A3.1 已经把"选完就地标注 → 画 → 改颜色粗细 → 回车 →
+标注进结果图 → 剪贴板/保存/浮层/编辑器全部用合成后的图"跑通了（含逐像素验收）。
+A4 因此是**收尾**：
 - 工具条尾部的「✓ 完成」旁边加「复制」「保存」两个按钮（QQ 把它们与工具同排）；
 - 未标注时点它们 = 直接完成（与「完成」等价）。
 
@@ -22,6 +24,9 @@
 - `Overlay::renderSelection(source)` 是唯一的"标注 → 图片"出口（预览与导出共用）
 - `Application::finishSelectionPhase()` 已经把标注快照进 `m_pendingAnnotations`，
   `finishCapture()` 负责合成并让下游统一用合成后的 `result`
+
+可以顺便定一下的小事（不阻塞）：颜色/粗细要不要**持久化**（现在只在一次会话内有效，
+默认 `#ff4040` / 4px）？
 
 开始前请先确认一件事（外部依赖，不阻塞 A4，但影响 Phase E）：
 
@@ -123,7 +128,8 @@ QQ/PixPin 是选完区域**直接在屏幕上标注**（不打开新窗口），
 | **A1** | `Overlay` 增加 Annotating 阶段：选完**不退出**，1:1 绘制冻结屏幕 + 选区边框/手柄 | 拖框后**不弹新窗口**，屏幕上出现带手柄的选框 | ✅ **已完成**（2026-10-17，6/6；判据 1–5 含逐像素比对，见 `docs/acceptance/phaseA1.md`） |
 | **A2** | 自绘紧凑**图标**工具条（贴选区下方，下方放不下则上方）+ 工具切换与高亮 | 点工具能切、当前工具高亮 | ✅ **已完成**（2026-10-17，10/10；含 10 按钮全命中、`1`–`9` 切换、hover、自动避让，见 `docs/acceptance/phaseA2.md`） |
 | **A3** | 标注绘制/命中/撤销接到 `AnnotationDocument` | 能画矩形/箭头，`Ctrl+Z` 生效 | ✅ **已完成**（2026-10-17，13/13；含「预览==导出逐像素 0 差异」与「完成→结果图真的有标注」端到端，见 `docs/acceptance/phaseA3.md`） |
-| **A4** | 保存/复制/取消接现有链路 | **`acceptance-phase1.sh` 必须仍全绿** | ⬅ **下一步**（完成/取消与"完成即交付"已在 A2/A3 先接上；剩工具条上的复制/保存按钮） |
+| **A3.1** | 颜色 / 粗细（自绘弹出面板：色板 + 滑杆） | 选色/拖粗细，新画的标注跟着变 | ✅ **已完成**（2026-10-17，7/7；面板不压选区、面板内空白点击不误画，见 `docs/acceptance/phaseA3-color.md`） |
+| **A4** | 工具条上的复制/保存按钮接现有链路 | **`acceptance-phase1.sh` 必须仍全绿** | ⬅ **下一步**（完成/取消与"完成即交付"已在 A2/A3 先接上） |
 
 ### A1/A2/A3 已落地的实现要点（A4 直接接在这些之上）
 
@@ -143,8 +149,8 @@ QQ/PixPin 是选完区域**直接在屏幕上标注**（不打开新窗口），
 - 标注交互（绘制/命中/移动/改尺寸/文字输入/撤销）都是 Overlay 自绘自管，
   **语义对齐 `AnnotationCanvas` 但不用子控件**；文字输入是自己吃键盘画的（含光标）。
 - `setMouseTracking(true)` 是 A2 的必要条件（否则不按键时收不到 `mouseMove`，hover 全失效）。
-- 自检/验收入口：`seashot --inplace-demo <prefix>` —— 程序化拖框 → 跑完 A1/A2/A3 全部判据 →
-  落盘 `<prefix>-overlay.png` / `-frozen.png` / `-annotated.png`；
+- 自检/验收入口：`seashot --inplace-demo <prefix>` —— 程序化拖框 → 跑完 A1/A2/A3/A3.1 全部判据 →
+  落盘 `<prefix>-overlay.png` / `-frozen.png` / `-annotated.png` / `-panel-color.png` / `-panel-width.png`；
   加 `SEASHOT_INPLACE_DEMO_COMMIT=1` 则最后合成 `Enter`（完成），把"标注进结果图"也跑一遍。
 
 ### ⚠️ A4 的关键约束（不做就会被验收打回）
@@ -231,6 +237,9 @@ bash scripts/acceptance-phaseA2.sh
 
 # 就地编辑（Phase A3）验收：9 种工具落成标注 / 撤销 / 预览==导出 / 「完成」把标注带进结果
 bash scripts/acceptance-phaseA3.sh
+
+# 就地编辑（Phase A3.1）验收：颜色/粗细面板（选色、拖滑杆、面板点击语义 + 放大图）
+bash scripts/acceptance-phaseA3-color.sh
 
 # 编辑器验收
 bash scripts/acceptance-phase2.sh

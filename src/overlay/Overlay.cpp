@@ -35,6 +35,15 @@ constexpr int kIconInset = 6; ///< 图标相对按钮的内缩（30 - 2*6 = 18px
 constexpr double kHitTolerance = 5.0;  ///< 标注命中容差（图像像素，1:1 所以 == 屏幕像素）
 constexpr double kHandleRadius = 5.0;  ///< 手柄命中半径（屏幕像素）
 
+// ── A3.1 颜色/粗细弹出面板 ────────────────────────────────
+constexpr int kSwatchSize = 26;
+constexpr int kSwatchGap = 6;
+constexpr int kSwatchPad = 8;
+constexpr int kSwatchColumns = 5;
+constexpr int kPanelColorWidth = 2 * kSwatchPad + kSwatchColumns * kSwatchSize
+    + (kSwatchColumns - 1) * kSwatchGap;
+constexpr int kPanelColorHeight = 2 * kSwatchPad + 2 * kSwatchSize + kSwatchGap;
+
 const QColor kBarBg(26, 28, 33, 238);
 const QColor kBarBorder(255, 255, 255, 30);
 const QColor kBtnHover(255, 255, 255, 30);
@@ -301,6 +310,9 @@ void Overlay::paintAnnotating(QPainter &painter)
 
     // 5) 自绘图标工具条（A2）：贴选区下方，放不下则上方
     drawToolbar(painter);
+
+    // 6) 颜色/粗细弹出面板（A3.1）：画在最上层
+    drawPanel(painter);
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -311,6 +323,138 @@ void Overlay::paintAnnotating(QPainter &painter)
 QPointF Overlay::toImage(const QPointF &local) const
 {
     return local - toLocal(m_selection.logicalRect).topLeft();
+}
+
+// ─────────────────────────────────────────────────────────────
+// A3.1：颜色 / 粗细（自绘弹出面板）
+// ─────────────────────────────────────────────────────────────
+
+QVector<QColor> Overlay::palette()
+{
+    // 常用标注色：前 8 个是彩色（红=默认，与编辑器一致），最后是白/黑
+    return {QColor(255, 64, 64),  QColor(255, 140, 0),  QColor(255, 214, 10),
+            QColor(60, 200, 90),  QColor(0, 200, 220),  QColor(61, 174, 255),
+            QColor(150, 110, 255), QColor(255, 90, 190), QColor(255, 255, 255),
+            QColor(24, 24, 28)};
+}
+
+void Overlay::setAnnotationColor(const QColor &color)
+{
+    if (!color.isValid() || color == m_annotationColor)
+        return;
+    m_annotationColor = color;
+    SS_INFO() << "[overlay] 标注颜色" << color.name();
+    update();
+}
+
+void Overlay::setAnnotationWidth(int width)
+{
+    const int bounded = qBound(minWidth(), width, maxWidth());
+    if (bounded == m_annotationWidth)
+        return;
+    m_annotationWidth = bounded;
+    SS_INFO() << "[overlay] 标注粗细" << m_annotationWidth << "px";
+    update();
+}
+
+QRectF Overlay::panelAnchorRect(Panel panel) const
+{
+    const QVector<BarCell> cells = barCells();
+    const BarCell::Kind kind = (panel == Panel::Color) ? BarCell::Kind::ColorSwatch
+                                                       : BarCell::Kind::WidthPicker;
+    for (const BarCell &cell : cells) {
+        if (cell.kind == kind)
+            return cell.rect;
+    }
+    return toolbarRect();
+}
+
+QRectF Overlay::colorButtonRect() const
+{
+    return panelAnchorRect(Panel::Color);
+}
+
+QRectF Overlay::widthButtonRect() const
+{
+    return panelAnchorRect(Panel::Width);
+}
+
+QRectF Overlay::swatchRect(int index) const
+{
+    if (index < 0)
+        return QRectF();
+    const QRectF panel = panelRect();
+    if (panel.isEmpty())
+        return QRectF();
+    const int column = index % kSwatchColumns;
+    const int row = index / kSwatchColumns;
+    return QRectF(panel.left() + kSwatchPad + column * (kSwatchSize + kSwatchGap),
+                  panel.top() + kSwatchPad + row * (kSwatchSize + kSwatchGap), kSwatchSize,
+                  kSwatchSize);
+}
+
+QRectF Overlay::panelRect() const
+{
+    if (m_panel == Panel::None)
+        return QRectF();
+    const QSizeF size = (m_panel == Panel::Color)
+        ? QSizeF(kPanelColorWidth, kPanelColorHeight)
+        : QSizeF(kPanelColorWidth, 54);
+    const QRectF anchor = panelAnchorRect(m_panel);
+    const QRectF bar = toolbarRect();
+    const QRectF selection = toLocal(m_selection.logicalRect);
+    const bool barBelow = bar.top() >= selection.bottom();
+
+    // 与悬停气泡同一套避让：先放到远离选区、且不压工具条的那一侧
+    double y = barBelow ? bar.bottom() + 6 : bar.top() - size.height() - 6;
+    if (y < 4 || y + size.height() > height() - 4)
+        y = barBelow ? bar.top() - size.height() - 6 : bar.bottom() + 6;
+    if (y < 4 || y + size.height() > height() - 4)
+        y = qBound(4.0, y, qMax(4.0, double(height()) - size.height() - 4));
+
+    double x = anchor.center().x() - size.width() / 2.0;
+    x = qBound(4.0, x, qMax(4.0, double(width()) - size.width() - 4));
+    return QRectF(x, y, size.width(), size.height());
+}
+
+int Overlay::colorIndexAt(const QPointF &position) const
+{
+    if (m_panel != Panel::Color)
+        return -1;
+    const QVector<QColor> colors = palette();
+    for (int i = 0; i < colors.size(); ++i) {
+        if (swatchRect(i).contains(position))
+            return i;
+    }
+    return -1;
+}
+
+QRectF Overlay::widthTrackRect() const
+{
+    const QRectF panel = panelRect();
+    if (m_panel != Panel::Width || panel.isEmpty())
+        return QRectF();
+    return QRectF(panel.left() + 16, panel.top() + 36, panel.width() - 32, 4);
+}
+
+QRectF Overlay::widthHandleRect() const
+{
+    const QRectF track = widthTrackRect();
+    if (track.isEmpty())
+        return QRectF();
+    const double span = qMax(1, maxWidth() - minWidth());
+    const double t = double(m_annotationWidth - minWidth()) / double(span);
+    const double x = track.left() + t * track.width();
+    return QRectF(x - 7.0, track.center().y() - 7.0, 14.0, 14.0);
+}
+
+int Overlay::widthFromPosition(const QPointF &position) const
+{
+    const QRectF track = widthTrackRect();
+    if (track.isEmpty())
+        return m_annotationWidth;
+    const double t = qBound(0.0, (position.x() - track.left()) / qMax(1.0, track.width()), 1.0);
+    return minWidth() + qRound(t * (maxWidth() - minWidth()));
 }
 
 Annotation Overlay::makeAnnotation(ToolKind kind, const QPointF &at) const
@@ -688,14 +832,25 @@ void Overlay::drawTextDraft(QPainter &painter) const
 
 QString Overlay::annotationStatus() const
 {
-    return QStringLiteral("标注=%1 选中=%2 绘制中=%3 拖动中=%4 文字草稿=%5 选区图=%6x%7")
+    static const auto panelName = [](Panel panel) {
+        switch (panel) {
+        case Panel::Color: return QStringLiteral("Color");
+        case Panel::Width: return QStringLiteral("Width");
+        case Panel::None: break;
+        }
+        return QStringLiteral("None");
+    };
+    return QStringLiteral("标注=%1 选中=%2 绘制中=%3 拖动中=%4 文字草稿=%5 选区图=%6x%7 颜色=%8 粗细=%9 面板=%10")
         .arg(m_document.count())
         .arg(m_selectedIndex)
         .arg(m_drawing ? 1 : 0)
         .arg(m_annotDragActive ? 1 : 0)
         .arg(m_textDraftActive ? 1 : 0)
         .arg(m_frozenSelection.width())
-        .arg(m_frozenSelection.height());
+        .arg(m_frozenSelection.height())
+        .arg(m_annotationColor.name())
+        .arg(m_annotationWidth)
+        .arg(panelName(m_panel));
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -736,6 +891,23 @@ QVector<Overlay::BarCell> Overlay::buildBarCells() const
         x += kBtnSize + kBtnGap;
     }
     x += kGroupGap - kBtnGap; // 收掉最后一个按钮间距，换成组间距
+
+    { // 颜色
+        BarCell cell;
+        cell.kind = BarCell::Kind::ColorSwatch;
+        cell.separatorBefore = 1;
+        cell.rect = QRectF(x, top, kBtnSize, kBtnSize);
+        cells.append(cell);
+        x += kBtnSize + kBtnGap;
+    }
+
+    { // 粗细
+        BarCell cell;
+        cell.kind = BarCell::Kind::WidthPicker;
+        cell.rect = QRectF(x, top, kBtnSize, kBtnSize);
+        cells.append(cell);
+        x += kBtnSize + kBtnGap;
+    }
 
     { // 选区尺寸（“540 × 380”贴在工具右侧，和 QQ 一致）
         BarCell cell;
@@ -858,6 +1030,7 @@ void Overlay::activateCell(int index)
             m_currentTool = cell.tool;
             SS_INFO() << "[overlay] 工具切换到" << toolName(cell.tool);
         }
+        m_panel = Panel::None; // 换工具时收起面板
         setCursor(cell.tool == ToolKind::Select ? Qt::ArrowCursor : Qt::CrossCursor);
         update();
         break;
@@ -868,6 +1041,16 @@ void Overlay::activateCell(int index)
         emit annotationCancelled();
         break;
     case BarCell::Kind::SizeText:
+        update();
+        break;
+    case BarCell::Kind::ColorSwatch:
+        m_panel = (m_panel == Panel::Color) ? Panel::None : Panel::Color;
+        m_hoverSwatch = -1;
+        update();
+        break;
+    case BarCell::Kind::WidthPicker:
+        m_panel = (m_panel == Panel::Width) ? Panel::None : Panel::Width;
+        m_hoverWidthHandle = false;
         update();
         break;
     }
@@ -916,6 +1099,35 @@ void Overlay::drawToolbar(QPainter &painter) const
                 drawToolIcon(painter, cell.tool, box, tint);
             break;
         }
+        case BarCell::Kind::ColorSwatch: {
+            if (pressed || m_panel == Panel::Color || hovered) {
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(pressed ? kBtnPress
+                                         : (m_panel == Panel::Color ? kBtnActive : kBtnHover));
+                painter.drawRoundedRect(cell.rect, 6, 6);
+            }
+            const double inset = kIconInset - 1.0;
+            drawSwatch(painter,
+                       cell.rect.adjusted(inset, inset, -inset, -inset), m_annotationColor, false,
+                       false);
+            break;
+        }
+        case BarCell::Kind::WidthPicker: {
+            if (pressed || m_panel == Panel::Width || hovered) {
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(pressed ? kBtnPress
+                                         : (m_panel == Panel::Width ? kBtnActive : kBtnHover));
+                painter.drawRoundedRect(cell.rect, 6, 6);
+            }
+            // 一条按当前粗细画的预览线（粗细上限 24，所以画的时候先夹到图标高度内）
+            const double thickness = qBound(2.0, double(m_annotationWidth), box.height());
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(kIconColor);
+            painter.drawRoundedRect(QRectF(box.left(), box.center().y() - thickness / 2.0,
+                                          box.width(), thickness),
+                                   thickness / 2.0, thickness / 2.0);
+            break;
+        }
         case BarCell::Kind::SizeText:
             painter.setPen(kSizeTextColor);
             painter.drawText(cell.rect, Qt::AlignCenter, selectionSizeText());
@@ -938,7 +1150,9 @@ void Overlay::drawToolbar(QPainter &painter) const
         }
     }
 
-    if (m_hoverCell >= 0 && m_hoverCell < cells.size() && m_pressedCell < 0)
+    // 面板开着时不画悬停气泡：两者会挤在同一位置，而且面板本身已经写明颜色/粗细
+    if (m_hoverCell >= 0 && m_hoverCell < cells.size() && m_pressedCell < 0
+        && m_panel == Panel::None)
         drawCellBubble(painter, cells.at(m_hoverCell));
     painter.restore();
 }
@@ -954,6 +1168,12 @@ void Overlay::drawCellBubble(QPainter &painter, const BarCell &cell) const
         break;
     case BarCell::Kind::Confirm:
         text = QStringLiteral("完成  Enter");
+        break;
+    case BarCell::Kind::ColorSwatch:
+        text = QStringLiteral("颜色  ") + m_annotationColor.name();
+        break;
+    case BarCell::Kind::WidthPicker:
+        text = QStringLiteral("粗细  %1 px").arg(m_annotationWidth);
         break;
     case BarCell::Kind::Cancel:
         text = QStringLiteral("取消  Esc");
@@ -986,6 +1206,62 @@ void Overlay::drawCellBubble(QPainter &painter, const BarCell &cell) const
     painter.setPen(QColor(240, 243, 248));
     painter.drawText(box, Qt::AlignCenter, text);
     painter.setPen(previousPen);
+}
+
+void Overlay::drawSwatch(QPainter &painter, const QRectF &box, const QColor &color, bool selected,
+                        bool hovered) const
+{
+    if (box.isEmpty())
+        return;
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(color);
+    painter.drawRoundedRect(box, 5, 5);
+    if (selected || hovered) {
+        painter.setPen(QPen(selected ? kAccent : QColor(255, 255, 255, 190), selected ? 2.5 : 1.5));
+        painter.setBrush(Qt::NoBrush);
+        painter.drawRoundedRect(box.adjusted(-2.0, -2.0, 2.0, 2.0), 7, 7);
+    }
+}
+
+void Overlay::drawPanel(QPainter &painter) const
+{
+    if (m_panel == Panel::None)
+        return;
+    const QRectF panel = panelRect();
+    if (panel.isEmpty())
+        return;
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setPen(QPen(kBarBorder, 1.0));
+    painter.setBrush(kBarBg);
+    painter.drawRoundedRect(panel, 8, 8);
+
+    if (m_panel == Panel::Color) {
+        const QVector<QColor> colors = palette();
+        for (int i = 0; i < colors.size(); ++i) {
+            drawSwatch(painter, swatchRect(i), colors.at(i),
+                       colors.at(i) == m_annotationColor, i == m_hoverSwatch);
+        }
+    } else {
+        const QRectF track = widthTrackRect();
+        const QRectF handle = widthHandleRect();
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(255, 255, 255, 42));
+        painter.drawRoundedRect(track, 2, 2);
+        QRectF filled = track;
+        filled.setRight(handle.center().x());
+        painter.setBrush(kAccent);
+        painter.drawRoundedRect(filled, 2, 2);
+        painter.setBrush(m_hoverWidthHandle || m_widthDragging ? kAccent : QColor(240, 243, 248));
+        painter.setPen(QPen(QColor(20, 22, 26), 1.0));
+        painter.drawEllipse(handle);
+        painter.setPen(kSizeTextColor);
+        painter.drawText(QRectF(panel.left() + 12, panel.top() + 6, panel.width() - 24, 16),
+                         Qt::AlignLeft | Qt::AlignVCenter,
+                         QStringLiteral("粗细 %1 px").arg(m_annotationWidth));
+    }
+    painter.restore();
 }
 
 void Overlay::drawToolIcon(QPainter &painter, ToolKind kind, const QRectF &box, const QColor &color)
@@ -1242,6 +1518,32 @@ void Overlay::mousePressEvent(QMouseEvent *event)
         }
         if (event->button() != Qt::LeftButton)
             return;
+
+        // 0) 弹出面板优先：面板里的色块/滑杆、面板空白处、面板外点击的语义都不同
+        if (m_panel != Panel::None) {
+            if (m_panel == Panel::Color) {
+                const int swatch = colorIndexAt(pos);
+                if (swatch >= 0) {
+                    setAnnotationColor(palette().at(swatch));
+                    m_panel = Panel::None; // 选完就收起来（QQ/PixPin 的习惯）
+                    update();
+                    return;
+                }
+            } else if (m_panel == Panel::Width
+                       && widthTrackRect().adjusted(-8, -8, 8, 8).contains(pos)) {
+                m_widthDragging = true;
+                setAnnotationWidth(widthFromPosition(pos));
+                return;
+            }
+            if (panelRect().contains(pos))
+                return; // 面板空白处：吞掉，不当作“开始标注”
+            if (!toolbarContains(pos)) {
+                m_panel = Panel::None; // 面板之外点一下 = 关面板，并且这次点击不画东西
+                update();
+                return;
+            }
+        }
+
         // 工具条**优先**于标注逻辑（Phase 0 已验证的判定顺序）
         const int cell = cellIndexAt(pos);
         if (cell >= 0) {
@@ -1270,6 +1572,24 @@ void Overlay::mouseMoveEvent(QMouseEvent *event)
 {
     if (m_stage == Stage::Annotating) {
         const QPointF pos = event->position();
+        if (m_widthDragging) {
+            setAnnotationWidth(widthFromPosition(pos));
+            return;
+        }
+        // 面板内的悬停
+        if (m_panel == Panel::Color) {
+            const int swatch = colorIndexAt(pos);
+            if (swatch != m_hoverSwatch) {
+                m_hoverSwatch = swatch;
+                update();
+            }
+        } else if (m_panel == Panel::Width) {
+            const bool onHandle = widthHandleRect().adjusted(-6, -6, 6, 6).contains(pos);
+            if (onHandle != m_hoverWidthHandle) {
+                m_hoverWidthHandle = onHandle;
+                update();
+            }
+        }
         const int cell = cellIndexAt(pos);
         if (cell != m_hoverCell) {
             m_hoverCell = cell;
@@ -1291,6 +1611,11 @@ void Overlay::mouseReleaseEvent(QMouseEvent *event)
     if (m_stage == Stage::Annotating) {
         if (event->button() != Qt::LeftButton)
             return;
+        if (m_widthDragging) {
+            m_widthDragging = false;
+            update();
+            return;
+        }
         const QPointF pos = event->position();
         const int pressed = m_pressedCell;
         m_pressedCell = -1;
@@ -1410,6 +1735,12 @@ void Overlay::keyPressEvent(QKeyEvent *event)
             }
         }
         if (key == Qt::Key_Escape) {
+            // 先收弹出面板，再谈草稿/选中/退出
+            if (m_panel != Panel::None) {
+                m_panel = Panel::None;
+                update();
+                return;
+            }
             // 有草稿/选中先清它们，什么都清不掉才退出（对齐计划里的 Esc 语义）
             if (!cancelTransient())
                 emit annotationCancelled();
