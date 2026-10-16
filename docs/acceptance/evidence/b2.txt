@@ -1,0 +1,2 @@
+CAPTURE ok size=480x300 scale=1
+SAVED docs/acceptance/evidence/b2-with-overlay.png

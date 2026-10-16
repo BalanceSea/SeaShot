@@ -15,7 +15,14 @@
 2. **窗口截图所见即所得**：虚线框贴合窗口真实外观；截图内容与屏幕所见一致（含标题栏、边框、
    圆角、阴影）——**不允许**用"只有客户区"充数（实测证明无选项的 `CaptureWindow` 正是如此）。
 3. **自由矩形选取纳入本期**，与窗口框选共用同一覆盖层。
-4. **默认全局快捷键 `Ctrl+Alt+A`** —— 但实测该键**已被你的 Spectacle 启动器占用**，见第 7 节待裁决 1。
+4. **默认全局快捷键：不注册任何默认键**（你于 Phase 0 后拍定）。理由：实测 `Ctrl+Alt+A` 已被你的
+   Spectacle 启动器占用。实现方式：用 KGlobalAccel 注册一个**无默认绑定**的 action（用户可在
+   「系统设置 → 快捷键」里自己绑定），同时提供 `seashot --capture` 命令行入口，方便你改成自定义快捷键。
+
+补充（你于 Phase 0 后拍定）：
+5. **虚线框贴 `frameGeometry`**（贴窗口实体边界，不贴含阴影的外沿）。
+6. **窗口图默认保留阴影边距**（含 alpha），并提供配置项可改为裁到 `frameGeometry`。
+7. **接受会话内加载 KWin 助手脚本**，区域截图/录制的自排除走 `excludeFromCapture`。
 
 ## 2. 架构
 
@@ -37,6 +44,12 @@ seashot（单实例常驻，QApplication + 托盘 + 全局快捷键 + 会话内 
 
 单实例：`QDBusConnection` 注册 `org.seashot.SeaShot` + `QLocalServer`；已有实例存在时，
 第二次启动只发"开始截图"请求后退出（这样 KDE 快捷键可以简单地指向 `seashot --capture`）。
+
+> 实现取舍（Phase 1 起生效，可复议）：覆盖层与结果浮层用 **QWidget + QPainter** 绘制，
+> 编辑器与配置界面再上 Quick/QML。理由：Phase 0 已实测 `QWidget + createWinId() +
+> LayerShellQt::Window::get()` 能拿到 layer-shell role（`probes/overlayprobe.cpp`），
+> 而覆盖层只是遮罩+虚框+尺寸提示这类 2D 绘制，用 QPainter 的变量最少、迭代最快、
+> 绘制与命中测试在同一套坐标里。若你希望覆盖层也用 QML，Phase 2 前可改。
 
 ### 2.2 KWin 助手脚本 `seashot-kwin.js`（Phase 1 第一个交付物）
 
@@ -112,7 +125,7 @@ X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2
 | `filenameTemplate` | `seashot_%Y%m%d_%H%M%S` | 同名自动加序号，不覆盖 |
 | `autoSaveAfterCapture` | `false` | 不点任何按钮时是否自动落盘 |
 | `keepShadowMargin` | `true` | 窗口图是否保留阴影边距（含 alpha） |
-| `hotkey` | 待裁决 | 默认键见第 7 节 |
+| `hotkey` | 不绑定 | 默认不注册；KGlobalAccel action 已注册，可在系统设置里自行绑定 |
 | `fps` (GIF) | `15` | 可调；时长/体积不设上限 |
 | `trayPersistent` | `true` | 常驻托盘 |
 
@@ -137,6 +150,12 @@ X11 实现：
 每阶段结束提交一次，并把命令与原始输出写进 `docs/acceptance/phaseN.md`。
 
 ### Phase 1：热键 → 覆盖层 → 框选 → 剪贴板 → 结果浮层
+
+**状态：已交付（2026-10-16）** —— 验收 9/9 通过，记录见 `docs/acceptance/phase1.md`，
+复现命令 `bash scripts/acceptance-phase1.sh`。
+实施中新增的三条硬约束（D-Bus 服务名按 pid、`excludeFromCapture` 必须精确匹配 appId、
+新窗口要自动带标记）与 XWayland 的 MIT-SHM 发现，都记在验收文档里。
+
 任务：单实例与托盘骨架、KWin 助手脚本、ScreenShot2 封装（异步+读满即停）、坐标转换层、
 layer-shell 覆盖层、悬停虚框、单击截窗、拖拽截区、`wl-copy` 剪贴板、结果浮层（「编辑」「另存为」）、
 `--selftest`、`install.sh`。
@@ -183,6 +202,9 @@ layer-shell 覆盖层、悬停虚框、单击截窗、拖拽截区、`wl-copy` �
 | 阴影边距随装饰主题变化 | 实测 Breeze：left65/top53/right65/bottom77 | 不硬编码：用返回图像的 alpha 不透明包围盒运行时推导（±1px），或读主题配置 |
 | portal 录制需用户授权、体验未知 | 未验证 | 首次录制前解释清楚并引导；失败给出可读错误 |
 | 与 NextKde 的 KWin 助手脚本互相干扰 | 两套脚本共用 `/Scripting` | 独立 pluginName（`seashot`）、不做窗口状态修改、退出即卸载 |
+| 多实例同时截图 | Phase 1 验收踩到过：固定 D-Bus 服务名让第二个进程初始化直接失败 | 服务名与脚本文件按 pid 区分（`org.seashot.SeaShot.p<pid>`） |
+| 自排除误伤第三方窗口 | Phase 1 踩到过：子串匹配把 `seashot-probe-window` 也排除了，而 KWin 对已排除窗口会**取消**截图 | 改为精确 appId 匹配（`seashot` / `seashot.*`） |
+| XWayland 下 `GetImage` 返回 BadMatch | Phase 1 实测 code=8 major=73（root 与子窗口均如此），MIT-SHM 正常 | X11 后端优先 MIT-SHM，退回 GetImage；错误信息带 X 错误码 |
 | 快捷键冲突 | 实测 `Ctrl+Alt+A` 属 Spectacle | 见第 7 节待裁决 1 |
 
 ## 6. 明确不做（本期）
@@ -190,19 +212,12 @@ layer-shell 覆盖层、悬停虚框、单击截窗、拖拽截区、`wl-copy` �
 多屏视频拼接、滚动长截图、OCR、云上传、GNOME/其他合成器（非 KDE 的 Wayland）、
 X11 会话真机验收、Wayland 下"窗口被遮挡也截到窗口自身"以外的 X11 增强（XComposite）。
 
-## 7. 待你裁决（PLAN 不替你决定）
+## 7. 待你裁决（已在 Phase 0 后确认，此处仅留档）
 
-1. **全局快捷键**：实测 `Ctrl+Alt+A` 已绑定到你的 `[services][org.kde.spectacle.desktop] _launch`
-   （Spectacle 启动器）。三选一：
-   (a) 仍用 `Ctrl+Alt+A`，由 SeaShot 抢占（**会破坏**你现有的 Spectacle 启动快捷键）；
-   (b) 换默认键（建议 `Ctrl+Alt+S`：与 Spectacle 现有 `Print`/`Meta+Shift+S`/`RecordRegion=Meta+Shift+R` 均不冲突）；
-   (c) 默认不注册任何键，首次运行由你在配置界面自己设。
-2. **虚线框贴合范围**：贴 `frameGeometry`（窗口实体边界，**推荐**、实现简单稳定）
-   还是贴"含阴影的外沿"（需要按主题推导边距，且实测外圈阴影 alpha 均值仅 ~3/255，几乎看不见）。
-3. **窗口图是否保留阴影边距**：保留（默认，含极淡 alpha 阴影，"窗口是什么样就是什么样"）
-   还是裁到 `frameGeometry`（更紧凑）。无论选哪个都做成可配置项。
-4. **区域截图/录制的自排除**：接受"安装并在会话内加载一个 KWin 助手脚本"作为前提吗？
-   （不接受的话，区域截图就只能"隐藏覆盖层 + 等待干净帧"，会引入可见的选区间隙与竞态。）
+1. **全局快捷键** → 选 (c)：**默认不注册任何键**，由 KGlobalAccel action + `seashot --capture` 供你自行绑定。
+2. **虚线框贴合范围** → 贴 `frameGeometry`。
+3. **窗口图阴影边距** → 默认保留（可配置为裁剪）。
+4. **区域截图/录制的自排除** → 接受加载 KWin 助手脚本。
 
 ---
 

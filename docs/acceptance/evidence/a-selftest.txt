@@ -1,0 +1,36 @@
+BACKEND_CHOICE Wayland 会话 + KDE 桌面（WAYLAND_DISPLAY=wayland-0）
+SeaShot 自检（Phase 1）
+========================
+[OK  ] 后端选择
+       Wayland 会话 + KDE 桌面（WAYLAND_DISPLAY=wayland-0）
+[OK  ] desktop 文件授权属性
+       /home/balancesea/.local/share/applications/seashot.desktop
+       属性: 有
+       Exec 指向当前二进制: 是
+[OK  ] 输出与缩放
+       DP-3 1920x1080+0+0 scale=1
+[OK  ] 窗口枚举
+       共 17 个窗口
+       {d43be7d4-87f8-4686-a0d5-3d282620bc21} appId=plasmashell frame=0,0 1920x1080 stack=0
+       {35d77d6e-0ee7-42a0-a2b1-4e5f6636d598} appId=clash-verge frame=536.583,227.62 940x700 stack=4
+       {01d4f58d-92ae-4e3e-b453-983a4abd547e} appId=open-orpheus frame=0,0 1920x1080 stack=2
+       {7f79715c-b972-4716-bd31-1d3ac206842f} appId=cc-switch frame=151.589,448.131 1360x723 stack=3
+       {963dd8a0-78ac-41e1-bd25-4ab68b81b6cb} appId=dsh-tauri-app frame=347.167,800.908 1920x1080 stack=6
+       {1209843e-8ba9-4a1b-8e6b-39b5707ce4bd} appId=org.telegram.desktop frame=258.513,319.895 801x594 stack=5
+[OK  ] 区域截图（32x32 探测）
+       得到 32x32，scale=1
+[OK  ] 剪贴板（wl-copy）
+       找到 wl-copy
+[OK  ] 剪贴板内容往返
+       wl-paste --list-types 见到 image/png
+[OK  ] 后端限制（务必阅读）
+       Wayland 下窗口几何/栈序来自 KWin 助手脚本；窗口截图走 ScreenShot2 的 include-decoration（含标题栏/圆角/阴影），区域截图走 CaptureArea。
+[OK  ] 配置
+       /home/balancesea/.config/seashot/seashot.conf
+       保存目录: /home/balancesea/Pictures/Screenshots
+       截图后复制: 是
+       保留阴影边距: 是
+       快捷键: (未绑定)
+
+
+结果: 9 项检查，0 项致命失败

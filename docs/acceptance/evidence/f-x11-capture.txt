@@ -1,0 +1,2 @@
+CAPTURE ok size=200x150 scale=1
+SAVED docs/acceptance/evidence/f-x11.png

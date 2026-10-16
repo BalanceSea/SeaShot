@@ -1,0 +1,3 @@
+OVERLAY_SHOWN 覆盖层: layer-shell=已应用, 快照窗口数=17, 虚拟几何=1920x1080+0+0
+OVERLAY_WINDOWS 17
+OVERLAY_EXCLUDED 1

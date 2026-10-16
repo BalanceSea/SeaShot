@@ -1,0 +1,2 @@
+CAPTURE ok size=600x428 scale=1
+SAVED docs/acceptance/evidence/c2-area.png

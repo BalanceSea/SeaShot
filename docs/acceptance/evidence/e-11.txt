@@ -1,0 +1,2 @@
+CAPTURE ok size=64x64 scale=1
+SAVED docs/acceptance/evidence/e-11.png

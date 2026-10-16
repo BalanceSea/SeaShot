@@ -1,0 +1,3 @@
+CAPTURE ok size=64x64 scale=1
+COPIED image/png
+SAVED docs/acceptance/evidence/d.png

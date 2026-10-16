@@ -1,0 +1,2 @@
+CAPTURE ok size=730x558 scale=1
+SAVED docs/acceptance/evidence/c1-window.png

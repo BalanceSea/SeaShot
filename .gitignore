@@ -8,3 +8,6 @@ probes/out/*.raw
 probes/out/tmp*.png
 probes/out/diff*.png
 probes/out/33-diff.png
+# 构建日志
+build.log
+build-configure.log
