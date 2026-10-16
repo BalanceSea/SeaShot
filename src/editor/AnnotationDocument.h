@@ -26,6 +26,12 @@ public:
     bool canUndo() const { return !m_undoStack.isEmpty(); }
     bool canRedo() const { return !m_redoStack.isEmpty(); }
 
+    /// 选区被调整（拖手柄改尺寸/移位置）时用：把当前标注**以及撤销/重做栈里的每一个快照**
+    /// 一起平移。标注本身锚定的是**屏幕内容**，选区原点一变就得反向平移；
+    /// 快照不跟着平移的话，之后一撤销标注就会“跳到另一个坐标系”里。
+    /// 这不是一次可撤销的编辑（只是换坐标帧），所以不压栈、只动 revision。
+    void translateAll(const QPointF &delta);
+
     const QVector<Annotation> &items() const { return m_items; }
     int count() const { return m_items.size(); }
     const Annotation &at(int index) const { return m_items.at(index); }

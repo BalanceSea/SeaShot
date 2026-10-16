@@ -40,6 +40,10 @@ public:
     /// 选择模式的用途：截图或录制 GIF（只影响提示文字与上层如何处理结果）
     enum class Intent { Screenshot, Record };
 
+    /// 「完成」时要求上层做哪种交付（对应 QQ/PixPin 的 Enter / Ctrl+C / Ctrl+S）
+    enum class ConfirmAction { Plain, Copy, Save };
+    Q_ENUM(ConfirmAction)
+
     explicit Overlay(QWidget *parent = nullptr);
 
     void setIntent(Intent intent);
@@ -119,6 +123,9 @@ public:
     int widthFromPosition(const QPointF &position) const;
     QRectF panelAnchorRect(Panel panel) const;
     QRectF swatchRect(int index) const;
+    /// 把选区改到（覆盖层局部坐标）这个矩形：夹取到表面内 + 最小 16px，
+    /// 并把标注（含撤销栈）反向平移，使它仍然锚定在同一块**屏幕内容**上。
+    void applySelectionLocal(const QRectF &localRect);
 
     // ── 诊断/验收（--inplace-demo）──────────────────────────
     /// Annotating 阶段的关键量：annotating=0/1 frozen=WxH selection=x,y WxH stage=...
@@ -131,12 +138,14 @@ public:
 signals:
     void selectionFinished(const SelectionResult &result);
     void selectionCancelled();
-    /// Annotating 阶段：用户确认（Enter/双击/✓）
-    void annotationConfirmed(const SelectionResult &result);
+    /// Annotating 阶段：用户确认（Enter/双击/✓/Ctrl+C/Ctrl+S）
+    void annotationConfirmed(const SelectionResult &result, Overlay::ConfirmAction action);
     /// Annotating 阶段：用户取消（Esc/右键/✕）
     void annotationCancelled();
     /// 标注被增/删/改（撤销也算）——诊断/验收用
     void annotationsChanged();
+    /// 选区被调整（拖手柄/方向键/全选）——诊断/验收用
+    void selectionChanged(const QRectF &logicalRect);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -167,6 +176,15 @@ private:
     // ── A3 标注交互（语义对齐 AnnotationCanvas，但自绘、不用子控件）──
     /// 覆盖层局部坐标 → 选区图像坐标
     QPointF toImage(const QPointF &local) const;
+    /// 拖选区：命中哪个手柄/边/内部（Phase B）
+    enum class Grip { None, TopLeft, Top, TopRight, Left, Right, BottomLeft, Bottom, BottomRight, Inside };
+    Grip gripAt(const QPointF &local) const;
+    void selectionPress(const QPointF &local, Grip grip);
+    void selectionMoveTo(const QPointF &local);
+    void selectAllSurface();
+    void nudgeSelection(double dx, double dy);
+    void updateCursorFor(const QPointF &local);
+    static Qt::CursorShape cursorForGrip(Grip grip);
     void annotationPress(const QPointF &local, Qt::MouseButton button);
     void annotationMove(const QPointF &local);
     void annotationRelease(const QPointF &local, Qt::MouseButton button);
@@ -253,6 +271,14 @@ private:
     QString m_textDraft;
     QPointF m_textAnchor;
     int m_textEditIndex = -1;
+
+    // ── Phase B：选区可调整 ──────────────────────────────
+    Grip m_grip = Grip::None;
+    bool m_selectionDrag = false;
+    QRectF m_gripStartRect; ///< 按下时的选区（局部坐标，已对齐整数）
+    QPointF m_gripStartPos;
+    static constexpr double kGripTolerance = 6.0; ///< 手柄/边的命中半宽（屏幕像素）
+    static constexpr double kMinSelection = 16.0; ///< 选区最小宽高
 
     ToolKind m_currentTool = ToolKind::Select;
     int m_hoverCell = -1;   ///< 工具条悬停格（-1 = 无）

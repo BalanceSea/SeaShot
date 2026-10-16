@@ -45,6 +45,8 @@ seashot --overlay-hold 5000          # 显示选择覆盖层 5 秒后退出（�
 seashot --inplace-demo /tmp/a1       # 就地标注（A1/A2/A3）自动验收：拖框→1:1/手柄/工具条/标注判定→落盘 /tmp/a1-*.png
 SEASHOT_INPLACE_DEMO_COMMIT=1 seashot --inplace-demo /tmp/a1 --save /tmp/out.png --no-copy
                                      # 同上，但最后合成 Enter（完成），验“标注真的进结果图”
+SEASHOT_INPLACE_DEMO_ACTION=copy|save seashot --inplace-demo /tmp/a1 [--save /tmp/out.png]
+                                     # 同上，但最后按 Ctrl+C / Ctrl+S（验两个交付动作）
 seashot --open-editor                # 本次截图后直接打开编辑器（覆盖配置）
 seashot --settings                   # 打开配置界面（托盘菜单「设置…」同此）
 seashot --print-config               # 打印生效中的配置（脚本/排查用）
@@ -78,11 +80,16 @@ PLAN 已定：**默认不注册任何键**（实测 `Ctrl+Alt+A` 已被本机 Sp
     「模糊」在最后，点击可达、暂无数字键；鼠标悬停会显示工具名与数字键
   - **直接画**：形状工具拖一下；画笔/高亮按轨迹；序号单击放置；文字点一下后用键盘输入（回车确认、Esc 丢弃）
   - 选择工具（`1`）：点选标注、拖整体移动、拖角点改尺寸、双击文字改字
+  - **选区随时可改**：拖 8 个手柄或 4 条边改尺寸、在选区内部（没点到标注时）拖动整个选区，
+    越界会自动夹到屏幕内、最小 16×16；鼠标形状会变成对应的缩放/移动光标。
+    **标注锚定在画面内容上**：把框拉大/挪动，标注仍压在同一块画面上（不会跟着框跑）
   - **颜色/粗细**：工具条上的色块与短横线各是一个自绘弹出面板 —— 色板（10 个预设色）与滑杆（1–24 px）；
     选完对**之后新画**的标注生效（面板内空白点击不误画，`Esc` 先关面板）
-  - `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` 撤销重做；`Delete` 删除选中
+  - `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` 撤销重做；`Delete` 删除选中；
+    **方向键**微调选区位置 1px（`Shift` = 10px）；**`Ctrl+A`** 全选整屏
+  - **`Ctrl+C`** = 完成并复制（不弹浮层，与 QQ 一致）；**`Ctrl+S`** = 完成并保存到默认目录
   - `Enter` / 双击 / ✓ = 完成（**标注会合成进结果**，之后按设置复制/保存/弹浮层）；
-    `Esc` / 右键 / ✕ = 取消（Esc 会先关面板、再丢草稿、再取消选中，都没有才退出）
+    `Esc` / 右键 / ✕ = 取消（`Esc` 逐级：关面板 → 中断选区拖动 → 丢文字草稿 → 取消选中 → 退出）
   - 颜色/粗细暂时**不持久化**（一次会话内有效，默认 `#ff4040` / 4px）
   - 脚本式调用（`--rect` / `--window` / `--save` / `--capture-screen`）**不走这条路**，行为与以前一致。
     临时退回旧行为：`SEASHOT_INPLACE_ANNOTATE=0`。

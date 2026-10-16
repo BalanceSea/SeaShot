@@ -69,4 +69,20 @@ bool AnnotationDocument::redo()
     return true;
 }
 
+void AnnotationDocument::translateAll(const QPointF &delta)
+{
+    if (delta.isNull())
+        return;
+    const auto translateAll = [&delta](QVector<Annotation> &items) {
+        for (Annotation &annotation : items)
+            annotation.translate(delta);
+    };
+    translateAll(m_items);
+    for (QVector<Annotation> &snapshot : m_undoStack)
+        translateAll(snapshot);
+    for (QVector<Annotation> &snapshot : m_redoStack)
+        translateAll(snapshot);
+    ++m_revision;
+}
+
 } // namespace seashot

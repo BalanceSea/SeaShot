@@ -154,9 +154,13 @@ Application::Application(const Options &options, QObject *parent)
     // Phase A1：就地标注阶段的确认 / 取消。
     // 确认时**不重新选区域**，直接沿用标注阶段里固定的那个选区继续走现有截图链路。
     connect(m_overlay.get(), &Overlay::annotationConfirmed, this,
-            [this](const SelectionResult &result) {
-                SS_INFO() << "[app] 就地标注确认，进入截图" << result.logicalRect;
+            [this](const SelectionResult &result, Overlay::ConfirmAction action) {
+                SS_INFO() << "[app] 就地标注确认，进入截图" << result.logicalRect << "动作="
+                          << (action == Overlay::ConfirmAction::Copy ? "复制"
+                              : action == Overlay::ConfirmAction::Save ? "保存"
+                                                                       : "按设置");
                 m_pendingSelection = result;
+                m_pendingAction = action; // Phase B：Ctrl+C / Ctrl+S / Enter 分别对应不同交付
                 finishSelectionPhase();
             });
     connect(m_overlay.get(), &Overlay::annotationCancelled, this, [this]() {
@@ -899,6 +903,7 @@ void Application::startCapture()
     }
     m_recordIntent = false;
     m_pendingAnnotations.clear();
+    m_pendingAction = Overlay::ConfirmAction::Plain;
     m_overlay->setIntent(Overlay::Intent::Screenshot);
     // Phase A1：交互式截图才开就地标注（脚本式调用压根不走 startCapture）。
     // SEASHOT_INPLACE_ANNOTATE=0 可退回"选完直接截图"的旧行为（A/B 对比/应急）。
@@ -1025,14 +1030,19 @@ void Application::finishCapture(const CaptureImage &image)
     }
     const QImage &result = m_lastImage;
 
+    // Phase B：Ctrl+C / Ctrl+S 是"明确要求"，覆盖设置里的开关；Enter/✓ 走设置
+    const Overlay::ConfirmAction action = m_pendingAction;
+    m_pendingAction = Overlay::ConfirmAction::Plain;
+
     QString copyError;
     bool copied = false;
-    if (!m_options.noCopy && m_settings->copyAfterCapture())
+    if (action == Overlay::ConfirmAction::Copy || (!m_options.noCopy && m_settings->copyAfterCapture()))
         copied = Clipboard::copyImage(result, &copyError);
 
     QString savedPath = m_options.saveTo;
     QString saveError;
-    if (savedPath.isEmpty() && m_settings->autoSaveAfterCapture())
+    if (savedPath.isEmpty()
+        && (action == Overlay::ConfirmAction::Save || m_settings->autoSaveAfterCapture()))
         savedPath = m_settings->defaultSavePath();
     if (!savedPath.isEmpty() && !Settings::saveImage(savedPath, result, &saveError)) {
         SS_WARN() << "[app] 保存失败:" << saveError;
@@ -1048,7 +1058,8 @@ void Application::finishCapture(const CaptureImage &image)
     if (wantsEditor) {
         // 「截图后直接打开编辑器」：浮层就不弹了，编辑器里已有复制/保存/另存为
         openEditor(result, savedPath);
-    } else if (!scripted) {
+    } else if (!scripted && action != Overlay::ConfirmAction::Copy) {
+        // Ctrl+C 是"复制即走"，不弹浮层（QQ/PixPin 也是这样）；Ctrl+S 仍然弹（带保存路径）
         m_toast->showResult(result, savedPath, message, copyError, m_lastAnchorRect);
     }
 
@@ -1818,12 +1829,109 @@ int Application::runInplaceDemo(const QString &outPrefix)
             && drawnColor && widthPanelOpened && sliderWorks && drawnWidth && panelClickQuiet
             && escClosesPanel && outsideQuiet;
         out << (a31ok ? "INPLACE_DEMO A31 PASS" : "INPLACE_DEMO A31 FAIL") << "\n";
+
+        // ─────────────────────────────────────────────────
+        // Phase B：选区可调整（8 手柄 + 4 边 + 内部拖动）与快捷键
+        // ─────────────────────────────────────────────────
+        const QRectF selBeforeB = m_overlay->localSelectionRect();
+        const int countBeforeB = m_overlay->document().count();
+        selectToolByButton(ToolKind::Rectangle);
+        dragLocal(selBeforeB.topLeft() + QPointF(200, 150),
+                  selBeforeB.topLeft() + QPointF(320, 240));
+        const int markerIndex = m_overlay->document().count() - 1;
+        const QRectF markerBefore = m_overlay->document().at(markerIndex).bounds();
+
+        // 拖左上角手柄：往外扩 (-40,-30)，只有左上动、其余三边不动
+        dragLocal(selBeforeB.topLeft(), selBeforeB.topLeft() + QPointF(-40, -30));
+        const QRectF selGrown = m_overlay->localSelectionRect();
+        const bool gripCorner = qAbs(selGrown.left() - (selBeforeB.left() - 40)) <= 1.5
+            && qAbs(selGrown.top() - (selBeforeB.top() - 30)) <= 1.5
+            && qAbs(selGrown.right() - selBeforeB.right()) <= 1.5
+            && qAbs(selGrown.bottom() - selBeforeB.bottom()) <= 1.5;
+
+        // 标注锚定**屏幕内容**：屏幕位置（选区原点 + 标注坐标）必须不变
+        const QRectF markerAfter = m_overlay->document().at(markerIndex).bounds();
+        const QPointF screenBefore = selBeforeB.topLeft() + markerBefore.topLeft();
+        const QPointF screenAfter = selGrown.topLeft() + markerAfter.topLeft();
+        const bool anchored = (screenBefore - screenAfter).manhattanLength() <= 2.0;
+        const bool annotationsKept = m_overlay->document().count() == countBeforeB + 1;
+
+        // 拖右边手柄到越过左边：宽度应被夹到最小 16px，而不是变成 0/负数
+        dragLocal(QPointF(selGrown.right(), selGrown.center().y()),
+                  QPointF(selGrown.left() + 4, selGrown.center().y()));
+        const QRectF selMin = m_overlay->localSelectionRect();
+        const bool minWidth = qAbs(selMin.width() - 16.0) <= 1.5 && selMin.height() > 2;
+        out << "INPLACE_DEMO B gripCorner=" << (gripCorner ? 1 : 0) << " minWidth="
+            << (minWidth ? 1 : 0) << " anchored=" << (anchored ? 1 : 0) << " annotationsKept="
+            << (annotationsKept ? 1 : 0) << " 选区 " << qRound(selBeforeB.x()) << ","
+            << qRound(selBeforeB.y()) << " " << qRound(selBeforeB.width()) << "x"
+            << qRound(selBeforeB.height()) << " -> " << qRound(selGrown.x()) << ","
+            << qRound(selGrown.y()) << " " << qRound(selGrown.width()) << "x"
+            << qRound(selGrown.height()) << "\n";
+
+        // 方向键微调（1px；Shift = 10px）
+        m_overlay->applySelectionLocal(selBeforeB); // 先还原成原始选区
+        const QRectF nudgeBase = m_overlay->localSelectionRect();
+        postKey(Qt::Key_Right, QString());
+        postKey(Qt::Key_Right, QString());
+        postKey(Qt::Key_Down, QString(), Qt::ShiftModifier);
+        const QRectF nudged = m_overlay->localSelectionRect();
+        const bool arrowNudge = qAbs(nudged.left() - (nudgeBase.left() + 2)) <= 0.5
+            && qAbs(nudged.top() - (nudgeBase.top() + 10)) <= 0.5
+            && qAbs(nudged.width() - nudgeBase.width()) <= 0.5
+            && qAbs(nudged.height() - nudgeBase.height()) <= 0.5;
+
+        // Ctrl+A 全选（整屏）
+        postKey(Qt::Key_A, QString(), Qt::ControlModifier);
+        const bool selectAll = m_overlay->localSelectionRect() == surface;
+        m_overlay->applySelectionLocal(selBeforeB); // 还原，便于后续证据/验收
+
+        // 选区改过之后，预览仍然 == 导出（选区内逐像素）。
+        // 先把鼠标移开工具条、并 Esc 取消选中：悬停气泡与选中框都是临时 UI，会画在选区里
+        postMouse(QEvent::MouseMove, QPointF(2, 2), Qt::NoButton, Qt::NoButton);
+        postKey(Qt::Key_Escape, QString());
+        int bMismatch = -1;
+        {
+            const QImage onScreenB = m_overlay->grab().toImage();
+            const QImage exportedB = m_overlay->renderSelection(m_overlay->frozenSelection());
+            const QRect selRectB = m_overlay->localSelectionRect().toAlignedRect();
+            const QRect innerB(6, 6, exportedB.width() - 12, exportedB.height() - 12);
+            if (!exportedB.isNull() && innerB.isValid() && qFuzzyCompare(dpr, 1.0)) {
+                bMismatch = 0;
+                for (int ly = innerB.top(); ly <= innerB.bottom(); ++ly) {
+                    const int sy = ly + selRectB.top();
+                    if (sy < 0 || sy >= onScreenB.height())
+                        continue;
+                    const QRgb *a = reinterpret_cast<const QRgb *>(onScreenB.constScanLine(sy));
+                    const QRgb *b = reinterpret_cast<const QRgb *>(exportedB.constScanLine(ly));
+                    for (int lx = innerB.left(); lx <= innerB.right(); ++lx) {
+                        const int sx = lx + selRectB.left();
+                        if (sx >= 0 && sx < onScreenB.width() && a[sx] != b[lx])
+                            ++bMismatch;
+                    }
+                }
+            }
+        }
+        out << "INPLACE_DEMO B arrowNudge=" << (arrowNudge ? 1 : 0) << " selectAll="
+            << (selectAll ? 1 : 0) << " previewStillMatchesExport="
+            << (bMismatch == 0 ? 1 : 0) << " mismatch=" << bMismatch << "\n";
+
+        const bool bok = gripCorner && minWidth && anchored && annotationsKept && arrowNudge
+            && selectAll && bMismatch == 0;
+        out << (bok ? "INPLACE_DEMO B PASS" : "INPLACE_DEMO B FAIL") << "\n";
         // 「完成/取消」出口：默认点「取消」；SEASHOT_INPLACE_DEMO_COMMIT=1 时改成合成 Enter，
         // 让“带标注的截图 → 现有截图链路（复制/保存/浮层）”真的跑一遍。
-        const bool commitMode = qEnvironmentVariableIsSet("SEASHOT_INPLACE_DEMO_COMMIT");
+        const bool commitMode = qEnvironmentVariableIsSet("SEASHOT_INPLACE_DEMO_COMMIT")
+            || !qEnvironmentVariable("SEASHOT_INPLACE_DEMO_ACTION").isEmpty();
         bool exitWorks = false;
-        if (commitMode) {
-            postKey(Qt::Key_Return, QStringLiteral("\r"));
+        const QString actionMode = qEnvironmentVariable("SEASHOT_INPLACE_DEMO_ACTION");
+        if (commitMode || !actionMode.isEmpty()) {
+            if (actionMode == QLatin1String("copy"))
+                postKey(Qt::Key_C, QString(), Qt::ControlModifier);
+            else if (actionMode == QLatin1String("save"))
+                postKey(Qt::Key_S, QString(), Qt::ControlModifier);
+            else
+                postKey(Qt::Key_Return, QStringLiteral("\r"));
             exitWorks = !m_overlay->isAnnotating();
             out << "INPLACE_DEMO exit=Enter(提交) ok=" << (exitWorks ? 1 : 0) << "\n";
         } else if (actionButtons.size() == 2) {
@@ -1848,7 +1956,7 @@ int Application::runInplaceDemo(const QString &outPrefix)
             && barInsideSurface && toolHits == toolButtons.size() && keyHits == 9 && gapQuiet
             && hoverWorks && cancelWorks && barGoesAbove && barClamped;
         out << (a2ok ? "INPLACE_DEMO A2 PASS" : "INPLACE_DEMO A2 FAIL") << "\n";
-        const bool allOk = a1ok && a2ok && a3ok && a31ok;
+        const bool allOk = a1ok && a2ok && a3ok && a31ok && bok;
         out << (allOk ? "INPLACE_DEMO ALL PASS" : "INPLACE_DEMO ALL FAIL") << "\n";
         out.flush();
         if (commitMode) {

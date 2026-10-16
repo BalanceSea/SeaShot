@@ -4,6 +4,7 @@
 #include "backend/BackendFactory.h"
 #include "core/Types.h"
 #include "editor/Annotation.h"
+#include "overlay/Overlay.h"
 
 #include <QImage>
 #include <QObject>
@@ -168,6 +169,8 @@ private:
     bool m_editorOpened = false; ///< 开过编辑器（一次性 CLI 下要等它关掉再退）
     /// 就地标注快照（A3）：标注坐标 = 选区图坐标，抓图后直接 renderAnnotations 就能合成
     QVector<Annotation> m_pendingAnnotations;
+    /// 「完成」时上层要做的交付动作（Phase B：Enter / Ctrl+C / Ctrl+S）
+    Overlay::ConfirmAction m_pendingAction = Overlay::ConfirmAction::Plain;
     SelectionResult m_pendingSelection;
 };
 

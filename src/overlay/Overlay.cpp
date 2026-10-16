@@ -326,6 +326,190 @@ QPointF Overlay::toImage(const QPointF &local) const
 }
 
 // ─────────────────────────────────────────────────────────────
+// Phase B：选区可调整（8 手柄 + 4 边 + 内部拖动；标注锚定屏幕内容）
+// ─────────────────────────────────────────────────────────────
+
+Overlay::Grip Overlay::gripAt(const QPointF &local) const
+{
+    const QRectF rect = toLocal(m_selection.logicalRect);
+    if (!rect.isValid())
+        return Grip::None;
+    const double t = kGripTolerance;
+    const bool nearLeft = qAbs(local.x() - rect.left()) <= t;
+    const bool nearRight = qAbs(local.x() - rect.right()) <= t;
+    const bool nearTop = qAbs(local.y() - rect.top()) <= t;
+    const bool nearBottom = qAbs(local.y() - rect.bottom()) <= t;
+    const bool insideX = local.x() >= rect.left() - t && local.x() <= rect.right() + t;
+    const bool insideY = local.y() >= rect.top() - t && local.y() <= rect.bottom() + t;
+    if (!insideX || !insideY)
+        return Grip::None;
+
+    // 四个角优先（对角手柄比边更难命中，先判它们）
+    if (nearLeft && nearTop)
+        return Grip::TopLeft;
+    if (nearRight && nearTop)
+        return Grip::TopRight;
+    if (nearLeft && nearBottom)
+        return Grip::BottomLeft;
+    if (nearRight && nearBottom)
+        return Grip::BottomRight;
+    if (nearLeft)
+        return Grip::Left;
+    if (nearRight)
+        return Grip::Right;
+    if (nearTop)
+        return Grip::Top;
+    if (nearBottom)
+        return Grip::Bottom;
+    if (rect.contains(local))
+        return Grip::Inside;
+    return Grip::None;
+}
+
+Qt::CursorShape Overlay::cursorForGrip(Grip grip)
+{
+    switch (grip) {
+    case Grip::TopLeft:
+    case Grip::BottomRight:
+        return Qt::SizeFDiagCursor;
+    case Grip::TopRight:
+    case Grip::BottomLeft:
+        return Qt::SizeBDiagCursor;
+    case Grip::Left:
+    case Grip::Right:
+        return Qt::SizeHorCursor;
+    case Grip::Top:
+    case Grip::Bottom:
+        return Qt::SizeVerCursor;
+    case Grip::Inside:
+        return Qt::SizeAllCursor;
+    case Grip::None:
+        break;
+    }
+    return Qt::CrossCursor;
+}
+
+void Overlay::updateCursorFor(const QPointF &local)
+{
+    const Grip grip = gripAt(local);
+    if (grip == Grip::Inside && m_currentTool != ToolKind::Select)
+        setCursor(Qt::CrossCursor); // 画图工具在选区内部是“画”，不是“搬”
+    else if (grip != Grip::None)
+        setCursor(cursorForGrip(grip));
+    else
+        setCursor(m_currentTool == ToolKind::Select ? Qt::ArrowCursor : Qt::CrossCursor);
+}
+
+void Overlay::selectionPress(const QPointF &local, Grip grip)
+{
+    m_grip = grip;
+    m_selectionDrag = true;
+    m_gripStartRect = toLocal(m_selection.logicalRect).toAlignedRect();
+    m_gripStartPos = local;
+}
+
+void Overlay::selectionMoveTo(const QPointF &local)
+{
+    if (!m_selectionDrag)
+        return;
+    const QPointF delta = local - m_gripStartPos;
+    QRectF next = m_gripStartRect;
+    switch (m_grip) {
+    case Grip::Inside:
+        next.translate(delta);
+        break;
+    case Grip::TopLeft:
+        next.setTopLeft(m_gripStartRect.topLeft() + delta);
+        break;
+    case Grip::Top:
+        next.setTop(m_gripStartRect.top() + delta.y());
+        break;
+    case Grip::TopRight:
+        next.setTopRight(m_gripStartRect.topRight() + delta);
+        break;
+    case Grip::Left:
+        next.setLeft(m_gripStartRect.left() + delta.x());
+        break;
+    case Grip::Right:
+        next.setRight(m_gripStartRect.right() + delta.x());
+        break;
+    case Grip::BottomLeft:
+        next.setBottomLeft(m_gripStartRect.bottomLeft() + delta);
+        break;
+    case Grip::Bottom:
+        next.setBottom(m_gripStartRect.bottom() + delta.y());
+        break;
+    case Grip::BottomRight:
+        next.setBottomRight(m_gripStartRect.bottomRight() + delta);
+        break;
+    case Grip::None:
+        return;
+    }
+    // 越界翻转时 normalized() 会把它转回正矩形；再由 applySelectionLocal 做最小尺寸/夹取
+    applySelectionLocal(next.normalized().toAlignedRect());
+}
+
+void Overlay::applySelectionLocal(const QRectF &localRect)
+{
+    const QRectF full(0, 0, width(), height());
+    const QRectF aligned = localRect.toAlignedRect();
+    const double x = qBound(0.0, aligned.left(), qMax(0.0, full.width() - kMinSelection));
+    const double y = qBound(0.0, aligned.top(), qMax(0.0, full.height() - kMinSelection));
+    const double w = qBound(kMinSelection, aligned.width(), qMax(kMinSelection, full.width() - x));
+    const double h = qBound(kMinSelection, aligned.height(), qMax(kMinSelection, full.height() - y));
+    const QRectF next(x, y, w, h);
+
+    const QRectF oldLocal = toLocal(m_selection.logicalRect).toAlignedRect();
+    if (next == oldLocal)
+        return;
+
+    // 标注锚定的是**屏幕内容**：选区原点一动，标注的相对坐标要反向平移
+    // （撤销/重做栈里的快照也一起平移，否则之后撤销会跳到另一个坐标系）
+    const QPointF delta = oldLocal.topLeft() - next.topLeft();
+    m_document.translateAll(delta);
+
+    m_selection.logicalRect = QRectF(next.topLeft() + QPointF(m_virtualGeometry.x(),
+                                                             m_virtualGeometry.y()),
+                                     next.size());
+
+    // 重裁“导出坐标系”的源图 + 重烘预览
+    m_frozenSelection = m_frozenFrame.isNull()
+        ? QImage()
+        : m_frozenFrame.copy(next.toAlignedRect().intersected(m_frozenFrame.rect()));
+    refreshComposed();
+
+    // 选区变小/变位后，选中项可能已经不在选区里了，但坐标仍然有效 —— 保留选中，不丢数据
+    emit selectionChanged(m_selection.logicalRect);
+    update();
+    SS_INFO() << "[overlay] 选区调整为" << m_selection.logicalRect << "（标注已随屏内容平移"
+              << delta << "）";
+}
+
+void Overlay::selectAllSurface()
+{
+    applySelectionLocal(QRectF(0, 0, width(), height()));
+}
+
+void Overlay::nudgeSelection(double dx, double dy)
+{
+    if (dx == 0.0 && dy == 0.0)
+        return;
+    QRectF next = toLocal(m_selection.logicalRect).toAlignedRect();
+    next.translate(dx, dy);
+    // 微调时保持尺寸：超出边界就停在边界上
+    const QRectF full(0, 0, width(), height());
+    if (next.left() < 0)
+        next.moveLeft(0);
+    if (next.top() < 0)
+        next.moveTop(0);
+    if (next.right() > full.right())
+        next.moveRight(full.right() + 1);
+    if (next.bottom() > full.bottom())
+        next.moveBottom(full.bottom() + 1);
+    applySelectionLocal(next);
+}
+
+// ─────────────────────────────────────────────────────────────
 // A3.1：颜色 / 粗细（自绘弹出面板）
 // ─────────────────────────────────────────────────────────────
 
@@ -634,6 +818,12 @@ void Overlay::commitDraft()
 
 bool Overlay::cancelTransient()
 {
+    if (m_selectionDrag) {
+        m_selectionDrag = false;
+        m_grip = Grip::None;
+        update();
+        return true;
+    }
     if (m_textDraftActive) {
         m_textDraftActive = false;
         m_textDraft.clear();
@@ -1035,7 +1225,7 @@ void Overlay::activateCell(int index)
         update();
         break;
     case BarCell::Kind::Confirm:
-        emit annotationConfirmed(m_selection);
+        emit annotationConfirmed(m_selection, ConfirmAction::Plain);
         break;
     case BarCell::Kind::Cancel:
         emit annotationCancelled();
@@ -1553,6 +1743,23 @@ void Overlay::mousePressEvent(QMouseEvent *event)
         }
         if (toolbarContains(pos))
             return; // 落在工具条矩形内但不在按钮上：也算“点在工具条上”，不开始标注
+
+        // 1) 选区手柄/边：任何工具下都优先（QQ/PixPin 也是这样）
+        const Grip grip = gripAt(pos);
+        if (grip != Grip::None) {
+            if (grip != Grip::Inside) {
+                selectionPress(pos, grip);
+                update();
+                return;
+            }
+            // 选区**内部**：选择工具下先看有没有点到标注 ——
+            // 点到标注就交给标注逻辑（移动标注），什么都没点到才移动整个选区
+            if (m_currentTool == ToolKind::Select && hitAnnotation(toImage(pos)) < 0) {
+                selectionPress(pos, Grip::Inside);
+                update();
+                return;
+            }
+        }
         annotationPress(pos, Qt::LeftButton);
         return;
     }
@@ -1572,6 +1779,10 @@ void Overlay::mouseMoveEvent(QMouseEvent *event)
 {
     if (m_stage == Stage::Annotating) {
         const QPointF pos = event->position();
+        if (m_selectionDrag) {
+            selectionMoveTo(pos);
+            return;
+        }
         if (m_widthDragging) {
             setAnnotationWidth(widthFromPosition(pos));
             return;
@@ -1595,6 +1806,7 @@ void Overlay::mouseMoveEvent(QMouseEvent *event)
             m_hoverCell = cell;
             update();
         }
+        updateCursorFor(pos);
         annotationMove(pos);
         return;
     }
@@ -1613,6 +1825,12 @@ void Overlay::mouseReleaseEvent(QMouseEvent *event)
             return;
         if (m_widthDragging) {
             m_widthDragging = false;
+            update();
+            return;
+        }
+        if (m_selectionDrag) {
+            m_selectionDrag = false;
+            m_grip = Grip::None;
             update();
             return;
         }
@@ -1684,7 +1902,7 @@ void Overlay::mouseDoubleClickEvent(QMouseEvent *event)
                 return;
             }
         }
-        emit annotationConfirmed(m_selection);
+        emit annotationConfirmed(m_selection, ConfirmAction::Plain);
         return;
     }
     QWidget::mouseDoubleClickEvent(event);
@@ -1746,8 +1964,36 @@ void Overlay::keyPressEvent(QKeyEvent *event)
                 emit annotationCancelled();
             return;
         }
+        // 方向键微调选区（Shift 加速 ×10）
+        if (key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up
+            || key == Qt::Key_Down) {
+            const double step = (modifiers & Qt::ShiftModifier) ? 10.0 : 1.0;
+            if (key == Qt::Key_Left)
+                nudgeSelection(-step, 0);
+            else if (key == Qt::Key_Right)
+                nudgeSelection(step, 0);
+            else if (key == Qt::Key_Up)
+                nudgeSelection(0, -step);
+            else
+                nudgeSelection(0, step);
+            return;
+        }
+        if (modifiers & (Qt::ControlModifier | Qt::MetaModifier)) {
+            if (key == Qt::Key_A) {
+                selectAllSurface(); // 全选（整屏）
+                return;
+            }
+            if (key == Qt::Key_C) {
+                emit annotationConfirmed(m_selection, ConfirmAction::Copy);
+                return;
+            }
+            if (key == Qt::Key_S) {
+                emit annotationConfirmed(m_selection, ConfirmAction::Save);
+                return;
+            }
+        }
         if (key == Qt::Key_Return || key == Qt::Key_Enter) {
-            emit annotationConfirmed(m_selection);
+            emit annotationConfirmed(m_selection, ConfirmAction::Plain);
             return;
         }
         if (key == Qt::Key_Delete) {
