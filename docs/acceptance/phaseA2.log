@@ -1,5 +1,5 @@
 == Phase A2 验收（自绘图标工具条）==
-二进制: /home/balancesea/.local/bin/seashot (2026-10-17 07:05:35)
+二进制: /home/balancesea/.local/bin/seashot (2026-10-17 07:18:33)
 
 PASS  A2. 工具按钮与快捷键表        10 个：选择/矩形/椭圆/箭头/画笔/高亮/文字/序号/马赛克/模糊（顺序与 QQ/PixPin 一致，模糊无数字键）； 主题图标=10/10 缺=(none)
 PASS  A2. 10 个按钮全部可命中        逐个合成点击 → 工具依次切到 选择/矩形/椭圆/箭头/画笔/高亮/文字/序号/马赛克/模糊
@@ -14,4 +14,4 @@ PASS  A2. 视觉证据落盘                 docs/acceptance/evidence/a2-inplace
 
 == 汇总: 10 通过 / 0 失败 ==
 证据: docs/acceptance/evidence/a2-inplace.txt 与 docs/acceptance/evidence/a2-inplace-*.png
-INPLACE_DEMO annotating=1 stage=Annotating 冻结图=1920x1080 表面=1920x1080 选区本地=220,180 540x380 选区逻辑=220,180 540x380 工具条=220,568 502x40 当前工具=选择
+INPLACE_DEMO annotating=1 stage=Annotating 冻结图=1920x1080 表面=1920x1080 选区本地=220,180 540x380 选区逻辑=220,180 540x380 工具条=220,568 502x40 当前工具=选择 标注=0 选中=-1 绘制中=0 拖动中=0 文字草稿=0 选区图=540x380

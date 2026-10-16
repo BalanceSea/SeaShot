@@ -42,7 +42,9 @@ seashot --capture-screen --save /tmp/full.png
 seashot --rect 100,200,400,300 --save /tmp/rect.png [--no-copy]
 seashot --window '{uuid}' --save /tmp/window.png
 seashot --overlay-hold 5000          # 显示选择覆盖层 5 秒后退出（调试/验收）
-seashot --inplace-demo /tmp/a1       # 就地标注（Phase A1/A2）自动验收：拖框→1:1/手柄/工具条判定→落盘 /tmp/a1-*.png
+seashot --inplace-demo /tmp/a1       # 就地标注（A1/A2/A3）自动验收：拖框→1:1/手柄/工具条/标注判定→落盘 /tmp/a1-*.png
+SEASHOT_INPLACE_DEMO_COMMIT=1 seashot --inplace-demo /tmp/a1 --save /tmp/out.png --no-copy
+                                     # 同上，但最后合成 Enter（完成），验“标注真的进结果图”
 seashot --open-editor                # 本次截图后直接打开编辑器（覆盖配置）
 seashot --settings                   # 打开配置界面（托盘菜单「设置…」同此）
 seashot --print-config               # 打印生效中的配置（脚本/排查用）
@@ -74,8 +76,12 @@ PLAN 已定：**默认不注册任何键**（实测 `Ctrl+Alt+A` 已被本机 Sp
   （下方放不下则自动跑到上方）：10 个工具 + 选区尺寸 + **✓ 完成** / **✕ 取消**。
   - 工具切换：鼠标点，或数字键 `1`–`9`（选择/矩形/椭圆/箭头/画笔/高亮/文字/序号/马赛克）；
     「模糊」在最后，点击可达、暂无数字键；鼠标悬停会显示工具名与数字键
-  - `Enter` / 双击 / ✓ = 完成；`Esc` / 右键 / ✕ = 取消
-  - ⚠️ A3 尚未开始：**工具按钮目前只切换当前工具，还不会在图上画东西**
+  - **直接画**：形状工具拖一下；画笔/高亮按轨迹；序号单击放置；文字点一下后用键盘输入（回车确认、Esc 丢弃）
+  - 选择工具（`1`）：点选标注、拖整体移动、拖角点改尺寸、双击文字改字
+  - `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` 撤销重做；`Delete` 删除选中
+  - `Enter` / 双击 / ✓ = 完成（**标注会合成进结果**，之后按设置复制/保存/弹浮层）；
+    `Esc` / 右键 / ✕ = 取消（Esc 会先丢草稿、再取消选中，都没有才退出）
+  - 标注颜色/粗细暂时固定为编辑器默认值（`#ff4040` / 4px），工具条上的色板/粗细还没做
   - 脚本式调用（`--rect` / `--window` / `--save` / `--capture-screen`）**不走这条路**，行为与以前一致。
     临时退回旧行为：`SEASHOT_INPLACE_ANNOTATE=0`。
 - 左键单击：截取该窗口（Wayland 走 `CaptureWindow(include-decoration=true)`，即所见即所得：
@@ -155,6 +161,8 @@ seashot --settings     # 或常驻后点托盘图标 → 「设置…」
   调试浮层/覆盖层外观时用（默认它们不会被任何截图拍到）。
 - `SEASHOT_INPLACE_ANNOTATE=0 seashot --capture`：本次交互式截图退回
   「选完直接截图」的旧行为（不走就地标注阶段）。
+- `SEASHOT_INPLACE_DEMO_COMMIT=1 seashot --inplace-demo <prefix>`：演示最后不发「取消」
+  而是合成 `Enter`（完成），用来验收「标注 → 结果图」这条链路。
 - 日志走 stderr（`[app]`/`[kwin]`/`[shot2]`/`[toast]` 前缀）；Qt 默认会吞掉 `qInfo`，
   所以 SeaShot 显式写 stderr。
 - KWin 助手脚本残留在 `~/.cache/seashot/seashot/*.js`；若上次是被 kill 的，

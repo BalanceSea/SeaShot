@@ -1,6 +1,7 @@
 #include "overlay/Overlay.h"
 
 #include "core/SelectionModel.h"
+#include "editor/AnnotationRenderer.h"
 #include "geometry/ScreenMapper.h"
 #include "ui/Theme.h"
 #include "util/Log.h"
@@ -8,6 +9,7 @@
 #include <QFontMetrics>
 #include <QGuiApplication>
 #include <QKeyEvent>
+#include <QLineF>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
@@ -30,6 +32,8 @@ constexpr int kBtnSize = 30;
 constexpr int kBtnGap = 2;
 constexpr int kGroupGap = 10; ///< 分隔区宽度（含那条竖线两侧的留白）
 constexpr int kIconInset = 6; ///< 图标相对按钮的内缩（30 - 2*6 = 18px 图标）
+constexpr double kHitTolerance = 5.0;  ///< 标注命中容差（图像像素，1:1 所以 == 屏幕像素）
+constexpr double kHandleRadius = 5.0;  ///< 手柄命中半径（屏幕像素）
 
 const QColor kBarBg(26, 28, 33, 238);
 const QColor kBarBorder(255, 255, 255, 30);
@@ -151,6 +155,17 @@ void Overlay::startSelection()
     m_currentTool = ToolKind::Select;
     m_hoverCell = -1;
     m_pressedCell = -1;
+    m_document.reset({});
+    m_frozenSelection = QImage();
+    m_composedSelection = QImage();
+    m_draft = Annotation();
+    m_drawing = false;
+    m_annotDragActive = false;
+    m_selectedIndex = -1;
+    m_handleIndex = -1;
+    m_textDraftActive = false;
+    m_textDraft.clear();
+    m_textEditIndex = -1;
     applyLayerShell();
     if (!m_virtualGeometry.isEmpty())
         setGeometry(m_virtualGeometry);
@@ -181,6 +196,16 @@ void Overlay::beginAnnotating(const SelectionResult &selection, const QImage &fr
     m_stage = Stage::Annotating;
     m_hoverCell = -1;
     m_pressedCell = -1;
+    m_document.reset({});
+    m_selectedIndex = -1;
+    m_draft = Annotation();
+    m_drawing = false;
+    m_annotDragActive = false;
+    m_handleIndex = -1;
+    m_textDraftActive = false;
+    m_textDraft.clear();
+    m_textEditIndex = -1;
+    m_composedDirty = true;
 
     // 冻结屏幕归一到**逻辑像素**：这样绘制就是严格的 1:1，不需要在 paint 里做任何缩放。
     // 本机实测 scale=1（单输出），此时这一步是零成本的直通。
@@ -204,12 +229,20 @@ void Overlay::beginAnnotating(const SelectionResult &selection, const QImage &fr
         setFocus(Qt::OtherFocusReason);
         grabKeyboard();
     }
-    setCursor(Qt::ArrowCursor);
+    setCursor(Qt::CrossCursor);
+
+    // A3：裁出导出坐标系的那块源图（标注坐标就活在它里面）
+    const QRectF selectionLocal = toLocal(m_selection.logicalRect);
+    m_frozenSelection = m_frozenFrame.isNull()
+        ? QImage()
+        : m_frozenFrame.copy(selectionLocal.toAlignedRect().intersected(m_frozenFrame.rect()));
+    refreshComposed();
     update();
 
     SS_INFO() << "[overlay] 进入就地标注阶段：选区" << m_selection.logicalRect << "冻结图"
               << m_frozenFrame.width() << "x" << m_frozenFrame.height() << "(scale=" << scale
-              << ") 表面" << width() << "x" << height();
+              << ") 表面" << width() << "x" << height() << "选区图" << m_frozenSelection.width()
+              << "x" << m_frozenSelection.height();
 }
 
 QVector<QPointF> Overlay::handlePoints() const
@@ -252,7 +285,10 @@ void Overlay::paintAnnotating(QPainter &painter)
                             full.right() - selection.right(), selection.height()),
                      dim);
 
-    // 3) 选区边框 + 8 手柄
+    // 3) 标注（A3）：合成图 + 正在画的草稿/选中框，都裁在选区内
+    drawAnnotations(painter, selection);
+
+    // 4) 选区边框 + 8 手柄
     painter.setRenderHint(QPainter::Antialiasing, false);
     painter.setPen(QPen(kAccent, 2.0));
     painter.setBrush(Qt::NoBrush);
@@ -263,8 +299,403 @@ void Overlay::paintAnnotating(QPainter &painter)
     for (const QPointF &point : handlePoints())
         painter.drawRect(QRectF(point.x() - 3.5, point.y() - 3.5, 7.0, 7.0));
 
-    // 4) 自绘图标工具条（A2）：贴选区下方，放不下则上方
+    // 5) 自绘图标工具条（A2）：贴选区下方，放不下则上方
     drawToolbar(painter);
+}
+
+// ─────────────────────────────────────────────────────────────
+// A3：标注绘制 / 命中 / 撤销（语义对齐 src/editor/AnnotationCanvas，
+//     但自绘、不用子控件；坐标 = 选区图像坐标）
+// ─────────────────────────────────────────────────────────────
+
+QPointF Overlay::toImage(const QPointF &local) const
+{
+    return local - toLocal(m_selection.logicalRect).topLeft();
+}
+
+Annotation Overlay::makeAnnotation(ToolKind kind, const QPointF &at) const
+{
+    Annotation annotation;
+    annotation.kind = kind;
+    annotation.color = m_annotationColor;
+    annotation.width = m_annotationWidth;
+    annotation.points = {at, at};
+    return annotation;
+}
+
+int Overlay::nextNumber() const
+{
+    int next = 1;
+    for (int i = 0; i < m_document.count(); ++i) {
+        if (m_document.at(i).kind == ToolKind::Number)
+            ++next;
+    }
+    return next;
+}
+
+int Overlay::hitAnnotation(const QPointF &imagePos) const
+{
+    // 后画的在上层 → 从后往前找
+    for (int i = m_document.count() - 1; i >= 0; --i) {
+        if (m_document.at(i).hitTest(imagePos, kHitTolerance))
+            return i;
+    }
+    return -1;
+}
+
+int Overlay::hitHandle(int index, const QPointF &imagePos) const
+{
+    if (index < 0 || index >= m_document.count())
+        return -1;
+    const QVector<QPointF> handles = m_document.at(index).handles();
+    for (int i = 0; i < handles.size(); ++i) {
+        if (QLineF(handles.at(i), imagePos).length() <= kHandleRadius)
+            return i;
+    }
+    return -1;
+}
+
+void Overlay::annotationPress(const QPointF &local, Qt::MouseButton button)
+{
+    const QPointF imagePos = toImage(local);
+    m_pressImagePos = imagePos;
+
+    if (button == Qt::RightButton) {
+        // 右键：先取消正在做的事情，实在没东西可取消才退出（与 Esc 同语义）
+        if (!cancelTransient())
+            emit annotationCancelled();
+        return;
+    }
+    if (button != Qt::LeftButton)
+        return;
+
+    if (m_textDraftActive)
+        commitTextDraft(); // 在别处点一下 = 先把文字落下来
+
+    if (m_currentTool == ToolKind::Select) {
+        m_handleIndex = hitHandle(m_selectedIndex, imagePos);
+        if (m_handleIndex >= 0) {
+            m_annotDragActive = true;
+            m_dragOriginal = m_document.at(m_selectedIndex);
+            m_draft = m_dragOriginal;
+            refreshComposed(m_selectedIndex); // 拖动时先把原件从合成图里拿掉，免得重影
+            update();
+            return;
+        }
+        const int index = hitAnnotation(imagePos);
+        m_selectedIndex = index;
+        if (index >= 0) {
+            m_annotDragActive = true;
+            m_handleIndex = -1;
+            m_dragOriginal = m_document.at(index);
+            m_draft = m_dragOriginal;
+            refreshComposed(index);
+        }
+        update();
+        return;
+    }
+
+    if (m_currentTool == ToolKind::Text) {
+        m_textDraftActive = true;
+        m_textDraft.clear();
+        m_textAnchor = imagePos;
+        m_textEditIndex = -1;
+        SS_INFO() << "[overlay] 开始输入文字（回车确认 / Esc 取消）";
+        update();
+        return;
+    }
+
+    if (m_currentTool == ToolKind::Number) {
+        Annotation badge = makeAnnotation(ToolKind::Number, imagePos);
+        badge.points = {imagePos};
+        badge.text = QString::number(nextNumber());
+        m_document.add(badge);
+        m_selectedIndex = m_document.count() - 1;
+        refreshComposed();
+        SS_INFO() << "[overlay] 新增标注" << toolName(badge.kind) << "共" << m_document.count();
+        update();
+        return;
+    }
+
+    m_draft = makeAnnotation(m_currentTool, imagePos);
+    m_drawing = true;
+    update();
+}
+
+void Overlay::annotationMove(const QPointF &local)
+{
+    if (!m_drawing && !m_annotDragActive)
+        return;
+    const QPointF imagePos = toImage(local);
+    if (m_drawing) {
+        if (m_draft.kind == ToolKind::Pen || m_draft.kind == ToolKind::Highlight) {
+            if (QLineF(m_draft.points.last(), imagePos).length() >= 1.5)
+                m_draft.points.append(imagePos);
+        } else if (m_draft.points.size() >= 2) {
+            m_draft.points[1] = imagePos;
+        }
+        update();
+        return;
+    }
+
+    m_draft = m_dragOriginal;
+    if (m_handleIndex >= 0)
+        m_draft.moveHandle(m_handleIndex, imagePos);
+    else
+        m_draft.translate(imagePos - m_pressImagePos);
+    update();
+}
+
+void Overlay::annotationRelease(const QPointF &local, Qt::MouseButton button)
+{
+    if (button != Qt::LeftButton)
+        return;
+    const QPointF imagePos = toImage(local);
+
+    if (m_drawing) {
+        if (m_draft.kind == ToolKind::Pen || m_draft.kind == ToolKind::Highlight)
+            m_draft.points.append(imagePos);
+        else if (m_draft.points.size() >= 2)
+            m_draft.points[1] = imagePos;
+        m_drawing = false;
+        commitDraft();
+        return;
+    }
+
+    if (m_annotDragActive) {
+        m_annotDragActive = false;
+        const int index = m_selectedIndex;
+        m_handleIndex = -1;
+        if (index >= 0 && m_draft.isValid()) {
+            m_document.update(index, m_draft);
+            SS_INFO() << "[overlay] 移动/缩放标注" << toolName(m_draft.kind);
+        }
+        m_draft = Annotation();
+        refreshComposed();
+        update();
+    }
+}
+
+void Overlay::commitDraft()
+{
+    if (m_draft.isValid()) {
+        m_document.add(m_draft);
+        m_selectedIndex = m_document.count() - 1;
+        refreshComposed();
+        SS_INFO() << "[overlay] 新增标注" << toolName(m_draft.kind) << "共" << m_document.count();
+    }
+    m_draft = Annotation();
+    update();
+}
+
+bool Overlay::cancelTransient()
+{
+    if (m_textDraftActive) {
+        m_textDraftActive = false;
+        m_textDraft.clear();
+        m_textEditIndex = -1;
+        update();
+        return true;
+    }
+    if (m_drawing || m_annotDragActive) {
+        m_drawing = false;
+        m_annotDragActive = false;
+        m_draft = Annotation();
+        m_handleIndex = -1;
+        refreshComposed();
+        update();
+        return true;
+    }
+    if (m_selectedIndex >= 0) {
+        m_selectedIndex = -1;
+        update();
+        return true;
+    }
+    return false;
+}
+
+void Overlay::commitTextDraft()
+{
+    if (!m_textDraftActive)
+        return;
+    const QString text = m_textDraft;
+    const int editIndex = m_textEditIndex;
+    m_textDraftActive = false;
+    m_textDraft.clear();
+    m_textEditIndex = -1;
+
+    if (!text.trimmed().isEmpty()) {
+        Annotation annotation;
+        annotation.kind = ToolKind::Text;
+        annotation.text = text;
+        annotation.color = m_annotationColor;
+        annotation.width = m_annotationWidth;
+        if (editIndex >= 0 && editIndex < m_document.count()) {
+            annotation.points = {m_document.at(editIndex).points.value(0)};
+            m_document.update(editIndex, annotation);
+            m_selectedIndex = editIndex;
+        } else {
+            annotation.points = {m_textAnchor};
+            m_document.add(annotation);
+            m_selectedIndex = m_document.count() - 1;
+        }
+        refreshComposed();
+        SS_INFO() << "[overlay] 文字标注已提交" << text << "共" << m_document.count();
+    }
+    update();
+}
+
+void Overlay::undoAnnotation()
+{
+    if (m_drawing || m_annotDragActive || m_textDraftActive) {
+        cancelTransient(); // 先取消进行中的操作，避免状态错位
+        return;
+    }
+    if (!m_document.undo()) {
+        SS_INFO() << "[overlay] 没有可撤销的标注";
+        return;
+    }
+    if (m_selectedIndex >= m_document.count())
+        m_selectedIndex = -1;
+    refreshComposed();
+    update();
+    emit annotationsChanged();
+    SS_INFO() << "[overlay] 撤销，剩余标注" << m_document.count();
+}
+
+void Overlay::redoAnnotation()
+{
+    if (m_drawing || m_annotDragActive || m_textDraftActive) {
+        cancelTransient();
+        return;
+    }
+    if (!m_document.redo()) {
+        SS_INFO() << "[overlay] 没有可重做的标注";
+        return;
+    }
+    if (m_selectedIndex >= m_document.count())
+        m_selectedIndex = -1;
+    refreshComposed();
+    update();
+    emit annotationsChanged();
+    SS_INFO() << "[overlay] 重做，标注" << m_document.count();
+}
+
+void Overlay::deleteSelectedAnnotation()
+{
+    if (m_selectedIndex < 0 || m_selectedIndex >= m_document.count())
+        return;
+    const QString name = toolName(m_document.at(m_selectedIndex).kind);
+    m_document.removeAt(m_selectedIndex);
+    m_selectedIndex = -1;
+    refreshComposed();
+    update();
+    emit annotationsChanged();
+    SS_INFO() << "[overlay] 删除标注" << name << "剩余" << m_document.count();
+}
+
+QImage Overlay::renderSelection(const QImage &source) const
+{
+    // 导出/复制与预览共用这一条出路（renderAnnotations），不另写一套画法
+    return renderAnnotations(source, m_document.items());
+}
+
+void Overlay::refreshComposed(int skipIndex)
+{
+    m_composedDirty = false;
+    if (m_frozenSelection.isNull()) {
+        m_composedSelection = QImage();
+        return;
+    }
+    if (skipIndex < 0) {
+        // 预览直接就是「导出」那条路的输出（renderAnnotations），不做任何第二套画法
+        m_composedSelection = renderAnnotations(m_frozenSelection, m_document.items());
+        return;
+    }
+    QVector<Annotation> items = m_document.items();
+    if (skipIndex < items.size())
+        items.removeAt(skipIndex);
+    m_composedSelection = renderAnnotations(m_frozenSelection, items);
+}
+
+void Overlay::drawAnnotations(QPainter &painter, const QRectF &selection) const
+{
+    painter.save();
+    painter.setClipRect(selection);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    if (!m_composedSelection.isNull())
+        painter.drawImage(selection.topLeft(), m_composedSelection);
+
+    // 草稿：区域特效给虚线提示框（拖动中不做实时模糊，免得卡）
+    if (m_draft.isValid()) {
+        if (isRegionEffect(m_draft.kind)) {
+            painter.setBrush(Qt::NoBrush);
+            painter.setPen(QPen(QColor(255, 255, 255, 180), 1.0, Qt::DashLine));
+            painter.drawRect(m_draft.bounds().translated(selection.topLeft()));
+        } else {
+            painter.save();
+            painter.translate(selection.topLeft());
+            m_draft.draw(painter);
+            painter.restore();
+        }
+    }
+
+    if (m_textDraftActive) {
+        painter.save();
+        painter.translate(selection.topLeft());
+        drawTextDraft(painter);
+        painter.restore();
+    }
+
+    if (m_selectedIndex >= 0 && !m_annotDragActive && !m_drawing
+        && m_selectedIndex < m_document.count())
+        drawAnnotationSelection(painter, m_document.at(m_selectedIndex));
+
+    painter.restore();
+}
+
+void Overlay::drawAnnotationSelection(QPainter &painter, const Annotation &annotation) const
+{
+    const QRectF bounds = annotation.bounds();
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(kAccent, 1.0, Qt::DashLine));
+    painter.drawRect(bounds);
+
+    painter.setPen(QPen(QColor(255, 255, 255), 1.0));
+    painter.setBrush(kAccent);
+    for (const QPointF &handle : annotation.handles())
+        painter.drawEllipse(handle, kHandleRadius, kHandleRadius);
+}
+
+void Overlay::drawTextDraft(QPainter &painter) const
+{
+    Annotation preview;
+    preview.kind = ToolKind::Text;
+    preview.points = {m_textAnchor};
+    preview.text = m_textDraft;
+    preview.color = m_annotationColor;
+    preview.width = m_annotationWidth;
+    preview.draw(painter); // 与最终渲染同一套画法（所见即所得）
+
+    const QFontMetricsF metrics(preview.textFont());
+    const double width = metrics.horizontalAdvance(m_textDraft);
+    painter.setPen(QPen(m_annotationColor, 1.5));
+    painter.drawLine(QPointF(m_textAnchor.x() + width + 1.0, m_textAnchor.y()),
+                     QPointF(m_textAnchor.x() + width + 1.0,
+                             m_textAnchor.y() + metrics.height()));
+}
+
+QString Overlay::annotationStatus() const
+{
+    return QStringLiteral("标注=%1 选中=%2 绘制中=%3 拖动中=%4 文字草稿=%5 选区图=%6x%7")
+        .arg(m_document.count())
+        .arg(m_selectedIndex)
+        .arg(m_drawing ? 1 : 0)
+        .arg(m_annotDragActive ? 1 : 0)
+        .arg(m_textDraftActive ? 1 : 0)
+        .arg(m_frozenSelection.width())
+        .arg(m_frozenSelection.height());
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -421,10 +852,13 @@ void Overlay::activateCell(int index)
     const BarCell &cell = cells.at(index);
     switch (cell.kind) {
     case BarCell::Kind::Tool:
+        if (m_textDraftActive)
+            commitTextDraft(); // 切工具 = 先把已输入的文字落下来，不丢用户输入
         if (m_currentTool != cell.tool) {
             m_currentTool = cell.tool;
             SS_INFO() << "[overlay] 工具切换到" << toolName(cell.tool);
         }
+        setCursor(cell.tool == ToolKind::Select ? Qt::ArrowCursor : Qt::CrossCursor);
         update();
         break;
     case BarCell::Kind::Confirm:
@@ -531,9 +965,18 @@ void Overlay::drawCellBubble(QPainter &painter, const BarCell &cell) const
     const QFontMetricsF metrics(font());
     const double w = metrics.horizontalAdvance(text) + 18;
     const double h = metrics.height() + 9;
-    QRectF box(cell.rect.center().x() - w / 2.0, toolbarRect().top() - h - 6, w, h);
-    if (box.top() < 4)
-        box.moveTop(toolbarRect().bottom() + 6);
+
+    // 气泡放到**远离选区**的那一侧，免得盖住正在标注的内容
+    const QRectF bar = toolbarRect();
+    const QRectF selection = toLocal(m_selection.logicalRect);
+    const bool barBelowSelection = bar.top() >= selection.bottom();
+    double y = barBelowSelection ? bar.bottom() + 6 : bar.top() - h - 6;
+    if (y < 4 || y + h > height() - 4)
+        y = barBelowSelection ? bar.top() - h - 6 : bar.bottom() + 6; // 兜底：另一边
+    if (y < 4 || y + h > height() - 4)
+        y = qBound(4.0, y, qMax(4.0, double(height()) - h - 4));
+
+    QRectF box(cell.rect.center().x() - w / 2.0, y, w, h);
     box.moveLeft(qBound(4.0, box.left(), qMax(4.0, double(width()) - w - 4)));
 
     const QColor previousPen = painter.pen().color();
@@ -792,22 +1235,23 @@ void Overlay::paintEvent(QPaintEvent *)
 void Overlay::mousePressEvent(QMouseEvent *event)
 {
     if (m_stage == Stage::Annotating) {
+        const QPointF pos = event->position();
         if (event->button() == Qt::RightButton) {
-            emit annotationCancelled();
+            annotationPress(pos, Qt::RightButton);
             return;
         }
         if (event->button() != Qt::LeftButton)
             return;
         // 工具条**优先**于标注逻辑（Phase 0 已验证的判定顺序）
-        const int cell = cellIndexAt(event->position());
+        const int cell = cellIndexAt(pos);
         if (cell >= 0) {
             m_pressedCell = cell;
             update();
             return;
         }
-        if (toolbarContains(event->position()))
+        if (toolbarContains(pos))
             return; // 落在工具条矩形内但不在按钮上：也算“点在工具条上”，不开始标注
-        // A3 起：这里开始画标注。A2 只负责工具切换与完成/取消。
+        annotationPress(pos, Qt::LeftButton);
         return;
     }
     if (event->button() == Qt::RightButton) {
@@ -825,11 +1269,13 @@ void Overlay::mousePressEvent(QMouseEvent *event)
 void Overlay::mouseMoveEvent(QMouseEvent *event)
 {
     if (m_stage == Stage::Annotating) {
-        const int cell = cellIndexAt(event->position());
+        const QPointF pos = event->position();
+        const int cell = cellIndexAt(pos);
         if (cell != m_hoverCell) {
             m_hoverCell = cell;
             update();
         }
+        annotationMove(pos);
         return;
     }
     if (m_dragging) {
@@ -845,13 +1291,18 @@ void Overlay::mouseReleaseEvent(QMouseEvent *event)
     if (m_stage == Stage::Annotating) {
         if (event->button() != Qt::LeftButton)
             return;
+        const QPointF pos = event->position();
         const int pressed = m_pressedCell;
         m_pressedCell = -1;
-        // 只有“按在同一格上、也在同一格上松开”才算点击（和普通按钮一致）
-        if (pressed >= 0 && pressed == cellIndexAt(event->position()))
-            activateCell(pressed);
-        else
-            update();
+        if (pressed >= 0) {
+            // 只有“按在同一格上、也在同一格上松开”才算点击（和普通按钮一致）
+            if (pressed == cellIndexAt(pos))
+                activateCell(pressed);
+            else
+                update();
+            return;
+        }
+        annotationRelease(pos, Qt::LeftButton);
         return;
     }
     if (event->button() != Qt::LeftButton || !m_dragging)
@@ -890,8 +1341,25 @@ void Overlay::mouseReleaseEvent(QMouseEvent *event)
 void Overlay::mouseDoubleClickEvent(QMouseEvent *event)
 {
     if (m_stage == Stage::Annotating) {
-        if (event->button() == Qt::LeftButton)
-            emit annotationConfirmed(m_selection);
+        if (event->button() != Qt::LeftButton)
+            return;
+        const QPointF pos = event->position();
+        if (toolbarContains(pos))
+            return;
+        // 选择工具下双击**文字**标注 = 改字；其余地方双击 = 完成（对齐 QQ）
+        if (m_currentTool == ToolKind::Select) {
+            const int index = hitAnnotation(toImage(pos));
+            if (index >= 0 && m_document.at(index).kind == ToolKind::Text) {
+                m_selectedIndex = index;
+                m_textDraftActive = true;
+                m_textDraft = m_document.at(index).text;
+                m_textAnchor = m_document.at(index).points.value(0);
+                m_textEditIndex = index;
+                update();
+                return;
+            }
+        }
+        emit annotationConfirmed(m_selection);
         return;
     }
     QWidget::mouseDoubleClickEvent(event);
@@ -901,12 +1369,58 @@ void Overlay::keyPressEvent(QKeyEvent *event)
 {
     if (m_stage == Stage::Annotating) {
         const int key = event->key();
+        const Qt::KeyboardModifiers modifiers = event->modifiers();
+
+        // 文字草稿优先吃键：打字、退格、回车、Esc
+        if (m_textDraftActive) {
+            if (key == Qt::Key_Escape) {
+                cancelTransient();
+                return;
+            }
+            if (key == Qt::Key_Return || key == Qt::Key_Enter) {
+                commitTextDraft();
+                return;
+            }
+            if (key == Qt::Key_Backspace) {
+                if (!m_textDraft.isEmpty()) {
+                    m_textDraft.chop(1);
+                    update();
+                }
+                return;
+            }
+            const QString text = event->text();
+            if (!text.isEmpty() && text.at(0).isPrint()) {
+                m_textDraft += text;
+                update();
+            }
+            return;
+        }
+
+        if (modifiers & (Qt::ControlModifier | Qt::MetaModifier)) {
+            if (key == Qt::Key_Z) {
+                if (modifiers & Qt::ShiftModifier)
+                    redoAnnotation();
+                else
+                    undoAnnotation();
+                return;
+            }
+            if (key == Qt::Key_Y) {
+                redoAnnotation();
+                return;
+            }
+        }
         if (key == Qt::Key_Escape) {
-            emit annotationCancelled();
+            // 有草稿/选中先清它们，什么都清不掉才退出（对齐计划里的 Esc 语义）
+            if (!cancelTransient())
+                emit annotationCancelled();
             return;
         }
         if (key == Qt::Key_Return || key == Qt::Key_Enter) {
             emit annotationConfirmed(m_selection);
+            return;
+        }
+        if (key == Qt::Key_Delete) {
+            deleteSelectedAnnotation();
             return;
         }
         // 1–9：依次切换工具
@@ -914,13 +1428,15 @@ void Overlay::keyPressEvent(QKeyEvent *event)
             const QVector<ToolKind> tools = toolOrder();
             const int index = key - Qt::Key_1;
             if (index < tools.size() && tools.at(index) != m_currentTool) {
+                if (m_textDraftActive)
+                    commitTextDraft();
                 m_currentTool = tools.at(index);
                 SS_INFO() << "[overlay] 快捷键切换工具" << (index + 1) << toolName(m_currentTool);
                 update();
             }
             return;
         }
-        return; // 其余键先不接（撤销/复制等在 A3/A4）
+        return;
     }
     if (event->key() == Qt::Key_Escape) {
         emit selectionCancelled();
@@ -960,7 +1476,7 @@ QString Overlay::annotationDiagnostics() const
 {
     const QRectF local = toLocal(m_selection.logicalRect);
     const QRectF bar = toolbarRect();
-    return QStringLiteral("annotating=%1 stage=%2 冻结图=%3x%4 表面=%5x%6 选区本地=%7,%8 %9x%10 选区逻辑=%11,%12 %13x%14 工具条=%15,%16 %17x%18 当前工具=%19")
+    return QStringLiteral("annotating=%1 stage=%2 冻结图=%3x%4 表面=%5x%6 选区本地=%7,%8 %9x%10 选区逻辑=%11,%12 %13x%14 工具条=%15,%16 %17x%18 当前工具=%19 %20")
         .arg(m_stage == Stage::Annotating ? 1 : 0)
         .arg(m_stage == Stage::Annotating ? QStringLiteral("Annotating") : QStringLiteral("Selecting"))
         .arg(m_frozenFrame.width())
@@ -979,7 +1495,8 @@ QString Overlay::annotationDiagnostics() const
         .arg(qRound(bar.y()))
         .arg(qRound(bar.width()))
         .arg(qRound(bar.height()))
-        .arg(toolName(m_currentTool));
+        .arg(toolName(m_currentTool))
+        .arg(annotationStatus());
 }
 
 } // namespace seashot

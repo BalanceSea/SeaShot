@@ -146,6 +146,7 @@ Application::Application(const Options &options, QObject *parent)
     connect(m_overlay.get(), &Overlay::selectionFinished, this, &Application::handleSelection);
     connect(m_overlay.get(), &Overlay::selectionCancelled, this, [this]() {
         m_overlay->stopSelection();
+        m_pendingAnnotations.clear();
         SS_INFO() << "[app] 已取消截图";
         if (isOneShot())
             QCoreApplication::exit(0);
@@ -160,6 +161,7 @@ Application::Application(const Options &options, QObject *parent)
             });
     connect(m_overlay.get(), &Overlay::annotationCancelled, this, [this]() {
         m_overlay->stopSelection();
+        m_pendingAnnotations.clear();
         SS_INFO() << "[app] 已取消截图（标注阶段）";
         if (isOneShot())
             QCoreApplication::exit(0);
@@ -896,6 +898,7 @@ void Application::startCapture()
         return;
     }
     m_recordIntent = false;
+    m_pendingAnnotations.clear();
     m_overlay->setIntent(Overlay::Intent::Screenshot);
     // Phase A1：交互式截图才开就地标注（脚本式调用压根不走 startCapture）。
     // SEASHOT_INPLACE_ANNOTATE=0 可退回"选完直接截图"的旧行为（A/B 对比/应急）。
@@ -965,6 +968,9 @@ void Application::enterAnnotationPhase()
 
 void Application::finishSelectionPhase()
 {
+    // A3：先把就地标注快照下来再隐藏覆盖层（stopSelection 会清掉文档状态）。
+    // 标注存的就是「选区图像坐标」，所以之后对抓到的选区图直接 renderAnnotations 即可。
+    m_pendingAnnotations = m_overlay->document().items();
     m_overlay->stopSelection();
 
     // 支持自排除时可以直接截图（覆盖层不会入镜）；否则先隐藏覆盖层再等一帧。
@@ -1005,32 +1011,45 @@ void Application::finishCapture(const CaptureImage &image)
 
     m_lastImage = image.image;
 
+    // A3：把就地标注合成进结果（与预览同一实现 renderAnnotations，不另写一套画法）。
+    // 只有交互式就地标注阶段才会有 m_pendingAnnotations；脚本式调用永远是空的。
+    // ⚠️ 合成之后，下游（剪贴板/保存/浮层/编辑器）一律必须用 result，
+    //    用 image.image 就会“画了但结果里没有”（验收里踩到过）。
+    if (!m_pendingAnnotations.isEmpty()) {
+        m_lastImage = renderAnnotations(image.image, m_pendingAnnotations);
+        out << "ANNOTATED count=" << m_pendingAnnotations.size() << " size="
+            << m_lastImage.width() << "x" << m_lastImage.height() << "\n";
+        SS_INFO() << "[app] 已把" << m_pendingAnnotations.size() << "个就地标注合成进结果"
+                  << image.image.size() << "->" << m_lastImage.size();
+        m_pendingAnnotations.clear();
+    }
+    const QImage &result = m_lastImage;
+
     QString copyError;
     bool copied = false;
     if (!m_options.noCopy && m_settings->copyAfterCapture())
-        copied = Clipboard::copyImage(image.image, &copyError);
+        copied = Clipboard::copyImage(result, &copyError);
 
     QString savedPath = m_options.saveTo;
     QString saveError;
     if (savedPath.isEmpty() && m_settings->autoSaveAfterCapture())
         savedPath = m_settings->defaultSavePath();
-    if (!savedPath.isEmpty() && !Settings::saveImage(savedPath, image.image, &saveError)) {
+    if (!savedPath.isEmpty() && !Settings::saveImage(savedPath, result, &saveError)) {
         SS_WARN() << "[app] 保存失败:" << saveError;
         savedPath.clear();
     }
     m_lastSavedPath = savedPath;
 
-    const QString message = QStringLiteral("已截图 %1").arg(sizeText(image.image));
+    const QString message = QStringLiteral("已截图 %1").arg(sizeText(result));
     const bool wantsEditor = m_options.openEditor || m_settings->openEditorAfterCapture();
     // 带 --save 视为脚本化调用：不弹浮层、交付完就退出（验收/自动化靠它保持快）
     const bool scripted = !m_options.saveTo.isEmpty();
 
     if (wantsEditor) {
         // 「截图后直接打开编辑器」：浮层就不弹了，编辑器里已有复制/保存/另存为
-    // 「截图后直接打开编辑器」：浮层就不弹了，编辑器里已有复制/保存/另存为
-        openEditor(image.image, savedPath);
+        openEditor(result, savedPath);
     } else if (!scripted) {
-        m_toast->showResult(image.image, savedPath, message, copyError, m_lastAnchorRect);
+        m_toast->showResult(result, savedPath, message, copyError, m_lastAnchorRect);
     }
 
     out << "CAPTURE ok size=" << image.image.width() << "x" << image.image.height()
@@ -1509,14 +1528,233 @@ int Application::runInplaceDemo(const QString &outPrefix)
         // 回到原来的选区，便于证据与日志保持一致
         m_overlay->beginAnnotating(m_pendingSelection, frozen, 1.0);
 
-        // 「取消」按钮真的接上了（点它之后应该退出标注阶段）
-        bool cancelWorks = false;
-        if (actionButtons.size() == 2) {
+        // ─────────────────────────────────────────────────
+        // A3：标注的绘制 / 命中 / 撤销（合成鼠标+键盘，与用户同一条路径）
+        // ─────────────────────────────────────────────────
+        auto postKey = [this](int key, const QString &text,
+                              Qt::KeyboardModifiers modifiers = Qt::NoModifier) {
+            QKeyEvent event(QEvent::KeyPress, key, modifiers, text);
+            QCoreApplication::sendEvent(m_overlay.get(), &event);
+        };
+        auto selectToolByButton = [&](ToolKind kind) {
+            for (const Overlay::ToolButton &button : m_overlay->toolButtons()) {
+                if (button.kind == kind) {
+                    clickAt(button.rect.center());
+                    return;
+                }
+            }
+        };
+        auto dragLocal = [&](const QPointF &from, const QPointF &to) {
+            postMouse(QEvent::MouseButtonPress, from, Qt::LeftButton, Qt::LeftButton);
+            constexpr int kDragSteps = 6;
+            for (int i = 1; i <= kDragSteps; ++i) {
+                const double t = double(i) / kDragSteps;
+                postMouse(QEvent::MouseMove, from + (to - from) * t, Qt::NoButton,
+                          Qt::LeftButton);
+            }
+            postMouse(QEvent::MouseButtonRelease, to, Qt::LeftButton, Qt::NoButton);
+        };
+
+        const QPointF origin = localSelection.topLeft();
+        struct ShapeCase {
+            ToolKind kind;
+            QPointF from;
+            QPointF to;
+        };
+        const QVector<ShapeCase> shapeCases{
+            {ToolKind::Rectangle, {30, 30}, {200, 120}},
+            {ToolKind::Ellipse, {250, 40}, {400, 140}},
+            {ToolKind::Arrow, {60, 160}, {240, 260}},
+            {ToolKind::Highlight, {300, 180}, {470, 215}},
+            {ToolKind::Mosaic, {260, 250}, {420, 340}},
+            {ToolKind::Blur, {60, 290}, {200, 360}},
+        };
+        int shapeHits = 0;
+        QStringList drawnKinds;
+        for (const ShapeCase &shapeCase : shapeCases) {
+            selectToolByButton(shapeCase.kind);
+            const int before = m_overlay->document().count();
+            dragLocal(origin + shapeCase.from, origin + shapeCase.to);
+            const int after = m_overlay->document().count();
+            if (after == before + 1
+                && m_overlay->document().at(after - 1).kind == shapeCase.kind) {
+                ++shapeHits;
+                drawnKinds << toolName(shapeCase.kind);
+            }
+        }
+        out << "INPLACE_DEMO A3 shapes=" << shapeHits << "/" << shapeCases.size()
+            << " drawn=" << drawnKinds.join(QLatin1Char('/')) << "\n";
+
+        // 画笔（多点折线）
+        bool penOk = false;
+        {
+            selectToolByButton(ToolKind::Pen);
+            const int before = m_overlay->document().count();
+            const QPointF start = origin + QPointF(430, 60);
+            postMouse(QEvent::MouseButtonPress, start, Qt::LeftButton, Qt::LeftButton);
+            for (int i = 1; i <= 8; ++i) {
+                postMouse(QEvent::MouseMove,
+                          origin + QPointF(430 + i * 8.0, 60 + (i % 2 ? 16.0 : 0.0)),
+                          Qt::NoButton, Qt::LeftButton);
+            }
+            postMouse(QEvent::MouseButtonRelease, origin + QPointF(500, 76), Qt::LeftButton,
+                      Qt::NoButton);
+            penOk = m_overlay->document().count() == before + 1
+                && m_overlay->document().at(before).kind == ToolKind::Pen
+                && m_overlay->document().at(before).points.size() >= 5;
+        }
+
+        // 序号（单击即得 1）
+        bool numberOk = false;
+        {
+            selectToolByButton(ToolKind::Number);
+            const int before = m_overlay->document().count();
+            clickAt(origin + QPointF(490, 300));
+            numberOk = m_overlay->document().count() == before + 1
+                && m_overlay->document().at(before).kind == ToolKind::Number
+                && m_overlay->document().at(before).text == QLatin1String("1");
+        }
+
+        // 文字（自绘输入：点击 + 合成按键 + 回车）
+        bool textOk = false;
+        {
+            selectToolByButton(ToolKind::Text);
+            const int before = m_overlay->document().count();
+            clickAt(origin + QPointF(452, 348));
+            postKey(Qt::Key_H, QStringLiteral("H"));
+            postKey(Qt::Key_I, QStringLiteral("i"));
+            postKey(Qt::Key_Space, QStringLiteral(" "));
+            postKey(Qt::Key_3, QStringLiteral("3"));
+            postKey(Qt::Key_Return, QStringLiteral("\r"));
+            textOk = m_overlay->document().count() == before + 1
+                && m_overlay->document().at(before).kind == ToolKind::Text
+                && m_overlay->document().at(before).text == QLatin1String("Hi 3");
+        }
+        out << "INPLACE_DEMO A3 pen=" << (penOk ? 1 : 0) << " number=" << (numberOk ? 1 : 0)
+            << " text=" << (textOk ? 1 : 0) << " textValue=\""
+            << m_overlay->document().at(m_overlay->document().count() - 1).text << "\""
+            << " total=" << m_overlay->document().count() << "\n";
+
+        // Ctrl+Z / Ctrl+Shift+Z
+        const int countBeforeUndo = m_overlay->document().count();
+        postKey(Qt::Key_Z, QString(), Qt::ControlModifier);
+        const int afterUndo = m_overlay->document().count();
+        postKey(Qt::Key_Z, QString(), Qt::ControlModifier | Qt::ShiftModifier);
+        const int afterRedo = m_overlay->document().count();
+        const bool undoOk = afterUndo == countBeforeUndo - 1 && afterRedo == countBeforeUndo;
+        out << "INPLACE_DEMO A3 undo=" << (undoOk ? 1 : 0) << " 计数 " << countBeforeUndo
+            << "->" << afterUndo << "->" << afterRedo << "\n";
+
+        // 选择工具：命中 + 拖动移动（矩形上边中点，不是手柄）
+        bool moveOk = false;
+        QRectF movedBounds;
+        {
+            selectToolByButton(ToolKind::Select);
+            const QRectF beforeMove = m_overlay->document().at(0).bounds();
+            const QPointF grip = origin + QPointF(115, 30);
+            dragLocal(grip, grip + QPointF(45, 28));
+            movedBounds = m_overlay->document().at(0).bounds();
+            const QPointF delta = movedBounds.center() - beforeMove.center();
+            moveOk = qAbs(delta.x() - 45.0) <= 2.0 && qAbs(delta.y() - 28.0) <= 2.0
+                && m_overlay->selectedIndex() == 0;
+        }
+        out << "INPLACE_DEMO A3 move=" << (moveOk ? 1 : 0) << " bounds="
+            << qRound(movedBounds.x()) << "," << qRound(movedBounds.y()) << " "
+            << qRound(movedBounds.width()) << "x" << qRound(movedBounds.height()) << "\n";
+
+        // Delete 删除选中的标注
+        const int countBeforeDelete = m_overlay->document().count();
+        postKey(Qt::Key_Delete, QString());
+        const bool deleteOk = m_overlay->document().count() == countBeforeDelete - 1;
+        out << "INPLACE_DEMO A3 delete=" << (deleteOk ? 1 : 0) << " 计数 " << countBeforeDelete
+            << "->" << m_overlay->document().count() << "\n";
+
+        // 工具条上拖拽不应产生标注（Phase 0 的判定策略在 A3 仍然成立）
+        bool toolbarDragQuiet = false;
+        {
+            const int before = m_overlay->document().count();
+            const QPointF center = m_overlay->toolbarRect().center();
+            dragLocal(center - QPointF(40, 0), center + QPointF(40, 0));
+            toolbarDragQuiet = m_overlay->document().count() == before;
+        }
+
+        // 预览 == 导出：屏幕上选区内的像素必须就是 renderAnnotations() 的输出
+        // （先把鼠标移开工具条：悬停气泡是临时 UI，会在选区里画东西）
+        postMouse(QEvent::MouseMove, QPointF(2, 2), Qt::NoButton, Qt::NoButton);
+        int previewMismatch = -1;
+        QImage onScreenImage;
+        {
+            const QImage onScreen = m_overlay->grab().toImage(); // 会重绘，顺带刷新合成缓存
+            onScreenImage = onScreen;
+            const QImage exported = m_overlay->renderSelection(m_overlay->frozenSelection());
+            // 逐像素比：屏幕用全局坐标，导出图用选区局部坐标（两边都是“选区内容”）
+            const QRect selectionRect = localSelection.toAlignedRect();
+            const QRect inner(6, 6, exported.width() - 12, exported.height() - 12);
+            if (!exported.isNull() && inner.isValid() && qFuzzyCompare(dpr, 1.0)) {
+                previewMismatch = 0;
+                int firstBadX = -1;
+                int firstBadY = -1;
+                for (int ly = inner.top(); ly <= inner.bottom(); ++ly) {
+                    const int sy = ly + selectionRect.top();
+                    if (sy < 0 || sy >= onScreen.height())
+                        continue;
+                    const QRgb *a = reinterpret_cast<const QRgb *>(onScreen.constScanLine(sy));
+                    const QRgb *b = reinterpret_cast<const QRgb *>(exported.constScanLine(ly));
+                    for (int lx = inner.left(); lx <= inner.right(); ++lx) {
+                        const int sx = lx + selectionRect.left();
+                        if (sx < 0 || sx >= onScreen.width())
+                            continue;
+                        if (a[sx] != b[lx]) {
+                            ++previewMismatch;
+                            if (firstBadX < 0) {
+                                firstBadX = sx;
+                                firstBadY = sy;
+                            }
+                        }
+                    }
+                }
+                if (previewMismatch > 0 && !outPrefix.isEmpty()) {
+                    // 留着现场：屏幕上的选区 vs 导出实现输出
+                    onScreen.copy(selectionRect).save(outPrefix + QStringLiteral("-preview.png"));
+                    exported.save(outPrefix + QStringLiteral("-export.png"));
+                    const QRgb sa = reinterpret_cast<const QRgb *>(
+                        onScreen.constScanLine(firstBadY))[firstBadX];
+                    const QRgb sb = reinterpret_cast<const QRgb *>(exported.constScanLine(
+                        firstBadY - selectionRect.top()))[firstBadX - selectionRect.left()];
+                    out << "INPLACE_DEMO A3 firstBad=" << firstBadX << "," << firstBadY
+                        << " screen=#" << QString::number(sa, 16) << " export=#"
+                        << QString::number(sb, 16) << "\n";
+                }
+            }
+        }
+        out << "INPLACE_DEMO A3 previewMatchesExport=" << (previewMismatch == 0 ? 1 : 0)
+            << " mismatch=" << previewMismatch << " toolbarDragQuiet=" << (toolbarDragQuiet ? 1 : 0)
+            << "\n";
+        out << "INPLACE_DEMO A3 status " << m_overlay->annotationStatus() << "\n";
+        if (!outPrefix.isEmpty() && !onScreenImage.isNull()) {
+            onScreenImage.copy(localSelection.toAlignedRect())
+                .save(outPrefix + QStringLiteral("-annotated.png"));
+            onScreenImage.save(outPrefix + QStringLiteral("-annotated-overlay.png"));
+        }
+
+        const bool a3ok = shapeHits == shapeCases.size() && penOk && numberOk && textOk && undoOk
+            && moveOk && deleteOk && toolbarDragQuiet && previewMismatch == 0;
+        out << (a3ok ? "INPLACE_DEMO A3 PASS" : "INPLACE_DEMO A3 FAIL") << "\n";
+        // 「完成/取消」出口：默认点「取消」；SEASHOT_INPLACE_DEMO_COMMIT=1 时改成合成 Enter，
+        // 让“带标注的截图 → 现有截图链路（复制/保存/浮层）”真的跑一遍。
+        const bool commitMode = qEnvironmentVariableIsSet("SEASHOT_INPLACE_DEMO_COMMIT");
+        bool exitWorks = false;
+        if (commitMode) {
+            postKey(Qt::Key_Return, QStringLiteral("\r"));
+            exitWorks = !m_overlay->isAnnotating();
+            out << "INPLACE_DEMO exit=Enter(提交) ok=" << (exitWorks ? 1 : 0) << "\n";
+        } else if (actionButtons.size() == 2) {
             const Overlay::ActionButton &cancel =
                 actionButtons.at(0).confirm ? actionButtons.at(1) : actionButtons.at(0);
             clickAt(cancel.rect.center());
-            cancelWorks = !m_overlay->isAnnotating();
+            exitWorks = !m_overlay->isAnnotating();
         }
+        const bool cancelWorks = exitWorks;
 
         out << "INPLACE_DEMO barOutsideSelection=" << (barOutsideSelection ? 1 : 0)
             << " barInsideSurface=" << (barInsideSurface ? 1 : 0)
@@ -1532,8 +1770,15 @@ int Application::runInplaceDemo(const QString &outPrefix)
             && barInsideSurface && toolHits == toolButtons.size() && keyHits == 9 && gapQuiet
             && hoverWorks && cancelWorks && barGoesAbove && barClamped;
         out << (a2ok ? "INPLACE_DEMO A2 PASS" : "INPLACE_DEMO A2 FAIL") << "\n";
+        const bool allOk = a1ok && a2ok && a3ok;
+        out << (allOk ? "INPLACE_DEMO ALL PASS" : "INPLACE_DEMO ALL FAIL") << "\n";
         out.flush();
-        QCoreApplication::exit((a1ok && a2ok) ? 0 : 1);
+        if (commitMode) {
+            // 合成 Enter 之后截图是异步的 + 要落盘：给它几秒再退，退出码仍是上面的判定
+            QTimer::singleShot(4000, this, [allOk]() { QCoreApplication::exit(allOk ? 0 : 1); });
+        } else {
+            QCoreApplication::exit(allOk ? 0 : 1);
+        }
     });
 
     return QCoreApplication::exec();

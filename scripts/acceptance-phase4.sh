@@ -92,29 +92,47 @@ else
 fi
 
 ### F) 停止路径：常驻实例 + 实例间转发（托盘/快捷键走同一条 stopRecording） --------
+# 注意：交互式录制（没给 --save）现在是**延迟导出** —— 先只收尾无损中间文件，
+# 再由结果浮层上的「导出 GIF / 导出 MP4 / 复制 GIF」按钮决定格式（ISSUE-010 那一轮的行为）。
+# 所以这里不能再用 "RECORD ok path= 非空" 当判据：
+#   1) 转发=1、停止=1、`RECORD ok` 出现；
+#   2) 确实是延迟导出（`path=` 为空 + 日志里有"等用户选导出格式"）；
+#   3) 浮层按钮真能把格式定下来 —— 用 SEASHOT_TOAST_AUTOCLICK=gif 让它自动点「导出 GIF」
+#      （走 Toast::activate()，与真实鼠标点击同一条路径），最后验 GIF 落盘。
 pkill -x seashot 2>/dev/null; sleep 0.5
-( "$SEASHOT" > "$OUT/p4-resident.txt" 2>&1 ) &
+SEASHOT_TOAST_AUTOCLICK=gif "$SEASHOT" > "$OUT/p4-resident.txt" 2>&1 &
 sleep 2.5
 FWD=$("$SEASHOT" --record --rect 300,200,256,192 2>&1 | grep -c '^RECORD_FORWARDED' || true)
 sleep 2
 STOP=$(timeout 20 "$SEASHOT" --record-stop 2>&1 | grep -c '^RECORD_STOP_FORWARDED' || true)
-sleep 3
-pkill -x seashot 2>/dev/null
+# 等自动点导出 + ffmpeg 转码（同步阻塞，30 帧量级几秒）
+for _ in $(seq 1 20); do
+    grep -q '^RECORD_EXPORT' "$OUT/p4-resident.txt" && break
+    sleep 1
+done
+pkill -x seashot 2>/dev/null; sleep 0.5
 RESIDENT_OK=$(grep -c '^RECORD ok' "$OUT/p4-resident.txt" || true)
-GIF_PATH=$(sed -nE 's/^RECORD ok path=([^ ]+).*/\1/p' "$OUT/p4-resident.txt" | tail -1)
-if [ "$FWD" = 1 ] && [ "$STOP" = 1 ] && [ "$RESIDENT_OK" = 1 ] && [ -f "$GIF_PATH" ]; then
-    report "F. 常驻实例录制 + 转发停止" 1 "转发=$FWD 停止=$STOP → $(grep '^RECORD ok' "$OUT/p4-resident.txt" | tail -1)"
+DEFERRED_PATH=$(sed -nE 's/^RECORD ok path=([^ ]*).*/\1/p' "$OUT/p4-resident.txt" | tail -1)
+DEFER_MARK=$(grep -c '等用户选导出格式' "$OUT/p4-resident.txt" || true)
+EXPORT_OK=$(grep -c '^RECORD_EXPORT ok format=gif' "$OUT/p4-resident.txt" || true)
+GIF_PATH=$(sed -nE 's/^RECORD_EXPORT ok .*path=([^ ]+).*/\1/p' "$OUT/p4-resident.txt" | tail -1)
+if [ "$FWD" = 1 ] && [ "$STOP" = 1 ] && [ "$RESIDENT_OK" = 1 ] && [ -z "${DEFERRED_PATH:-}" ] \
+    && [ "$DEFER_MARK" = 1 ] && [ "$EXPORT_OK" = 1 ] && [ -f "$GIF_PATH" ]; then
+    report "F. 常驻实例录制 + 转发停止" 1 \
+        "转发=$FWD 停止=$STOP → 延迟导出（浮层选格式）+ 自动点「导出 GIF」→ $(grep '^RECORD_EXPORT ok' "$OUT/p4-resident.txt" | tail -1 | sed 's|path=.*/|path=…/|')  $(ffprobe -v error -select_streams v:0 -show_entries stream=nb_frames -of default=noprint_wrappers=1:nokey=1 "$GIF_PATH" 2>/dev/null) 帧"
     rm -f "$GIF_PATH"
 else
-    report "F. 常驻实例录制 + 转发停止" 0 "转发=$FWD 停止=$STOP RECORD_ok=$RESIDENT_OK path='${GIF_PATH:-}'；见 $OUT/p4-resident.txt"
+    report "F. 常驻实例录制 + 转发停止" 0 \
+        "转发=$FWD 停止=$STOP RECORD_ok=$RESIDENT_OK 延迟导出标记=$DEFER_MARK path='${DEFERRED_PATH:-}' 导出=$EXPORT_OK gif='${GIF_PATH:-}'；见 $OUT/p4-resident.txt"
 fi
 
-### G) 中间文件必须清理 ---------------------------------------------------------
-LEFT=$(find /tmp -maxdepth 1 -name 'seashot-record-*.mkv' 2>/dev/null | wc -l)
-if [ "$LEFT" = 0 ]; then
-    report "G. FFV1 中间文件已清理" 1 "/tmp 下没有 seashot-record-*.mkv"
+### G) 中间文件必须清理（位置见 ISSUE-011：~/.cache/seashot/recording；旧路径 /tmp 一并查）
+LEFT_TMP=$(find /tmp -maxdepth 1 -name 'seashot-record-*.mkv' 2>/dev/null | wc -l)
+LEFT_CACHE=$(find "$HOME/.cache/seashot/recording" -maxdepth 1 -name 'seashot-record-*' 2>/dev/null | wc -l)
+if [ "$LEFT_TMP" = 0 ] && [ "$LEFT_CACHE" = 0 ]; then
+    report "G. FFV1 中间文件已清理" 1 "/tmp 与 ~/.cache/seashot/recording 都没有残留"
 else
-    report "G. FFV1 中间文件已清理" 0 "残留 $LEFT 个中间文件"
+    report "G. FFV1 中间文件已清理" 0 "/tmp 残留 $LEFT_TMP 个，~/.cache/seashot/recording 残留 $LEFT_CACHE 个"
 fi
 
 echo

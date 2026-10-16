@@ -3,6 +3,7 @@
 
 #include "backend/BackendFactory.h"
 #include "core/Types.h"
+#include "editor/Annotation.h"
 
 #include <QImage>
 #include <QObject>
@@ -165,6 +166,8 @@ private:
     int m_recordingPipeWireFd = -1;
     bool m_keepAliveForToast = false; ///< 一次性 CLI 下：等浮层消失再退出进程
     bool m_editorOpened = false; ///< 开过编辑器（一次性 CLI 下要等它关掉再退）
+    /// 就地标注快照（A3）：标注坐标 = 选区图坐标，抓图后直接 renderAnnotations 就能合成
+    QVector<Annotation> m_pendingAnnotations;
     SelectionResult m_pendingSelection;
 };
 

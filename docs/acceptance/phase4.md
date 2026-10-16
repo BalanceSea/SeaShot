@@ -5,6 +5,14 @@
 - 复现：`bash scripts/acceptance-phase4.sh`（原始输出 `docs/acceptance/phase4.log`）
 - 结果：**7 项自动化判据全部通过**
 
+> **2026-10-17 更新（ISSUE-012）：F 段判据已重写。**
+> 常驻实例的交互式录制现在走「延迟导出」（`setDeferExport`，弹 GIF/MP4 格式选择浮层），
+> `RECORD ok path=` 本就是空的，而 F 段当时还要求它非空 → 必失败（**行为变更没同步判据**）。
+> 现改为验「转发=1 + 停止=1 + 延迟导出标记 + `SEASHOT_TOAST_AUTOCLICK=gif` 让浮层自动点
+> 「导出 GIF」→ `RECORD_EXPORT ok format=gif` + GIF 真的落盘」，仍是端到端判据而不是放宽。
+> 顺带修了 G 段：中间文件已从 `/tmp` 改到 `~/.cache/seashot/recording`（ISSUE-011），
+> 旧判据等于空跑 —— 现在两个目录都查。详见 `docs/known-issues.md` 的 ISSUE-012。
+
 ## 交付内容（对照 PLAN 第 4 节 Phase 4）
 
 | 需求 | 状态 | 实现 |

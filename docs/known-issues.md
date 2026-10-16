@@ -182,20 +182,28 @@ seashot --record --rect X,Y,W,H --seconds 3 --save /tmp/x.mp4
 
 **另外提供规避手段**：配置界面「录制格式」选 MP4，中间文件小得多（见 ISSUE-010）。
 
-### ISSUE-012 `acceptance-phase4.sh` 的 F 段判据已过期（验收脚本与行为不同步）
-
-- **状态**：**待修**（等你定要不要改判据语义）。
-- **现象**：`bash scripts/acceptance-phase4.sh` →
-  `FAIL  F. 常驻实例录制 + 转发停止  转发=1 停止=1 RECORD_ok=1 path=''`。
-- **根因**：录制**成功**了（`RECORD ok frames=31 dropped=0 failed=0 elapsedMs=2034 fps=15.24`），
-  但常驻实例（没带 `--save`）现在走延迟导出：`Application::beginRecording()` 里的
-  `m_recorder->setDeferExport(m_options.saveTo.isEmpty())` → 保留无损中间文件 + 弹一个
-  「导出 GIF / 导出 MP4 / 复制 GIF / 关闭」的四按钮浮层让用户选格式（ISSUE-010 那一轮的
-  故意行为，上一轮的 commit 加的），所以 `RECORD ok path=` 为空，而 F 段还在要求它非空 + 文件存在。
-- **结论**：**上一轮的行为变更没有同步 F 段判据**，与 A1/A2（就地编辑）无关；
-  修不修、怎么修（改判据 vs 给转发加 `--save` 语义）等你拍板。
-
 ## 已修（留档，避免回归）
+
+### ISSUE-012 `acceptance-phase4.sh` 的 F 段判据与延迟导出行为不同步
+
+- **状态**：**已完成**（2026-10-17）。
+- **现象**：`FAIL  F. 常驻实例录制 + 转发停止  转发=1 停止=1 RECORD_ok=1 path=''`。
+- **根因**：录制**成功**了（`RECORD ok frames=31 dropped=0 failed=0`），
+  但常驻实例（没带 `--save`）会延迟导出：`Application::beginRecording()` 里的
+  `m_recorder->setDeferExport(m_options.saveTo.isEmpty())` → 先只收尾无损中间文件 +
+  弹一个「导出 GIF / 导出 MP4 / 复制 GIF / 关闭」的四按钮浮层让用户选格式
+  （ISSUE-010 那一轮的故意行为），所以 `RECORD ok path=` 为空，
+  而 F 段还在要求它非空并且文件存在 —— **行为变更没有同步判据**。
+- **修法**（`scripts/acceptance-phase4.sh` F 段重写，仍是一条端到端判据而不是放宽）：
+  1. 转发=1、停止=1、`RECORD ok` 出现；
+  2. 确实是延迟导出（`path=` 为空 + 日志里有"等用户选导出格式"）；
+  3. 用 `SEASHOT_TOAST_AUTOCLICK=gif` 让浮层自动点「导出 GIF」
+     （走 `Toast::activate()`，与真实鼠标点击同一条路径）→ 要求 `RECORD_EXPORT ok format=gif`
+     且 GIF 真的落盘（顺带报帧数），验完删掉，不往 `~/Pictures/Screenshots` 留测试文件。
+- **顺带**：G 段（中间文件清理）原先只看 `/tmp`，而 ISSUE-011 之后中间文件在
+  `~/.cache/seashot/recording` —— 原判据等于空跑。现改为**两个目录都查**。
+- **实测**：`bash scripts/acceptance-phase4.sh` → **7 通过 / 0 失败**，
+  F 段输出 `转发=1 停止=1 → 延迟导出（浮层选格式）+ 自动点「导出 GIF」→ RECORD_EXPORT ok format=gif … 31 帧`。
 
 ### ISSUE-004 整体 UI 美化
 

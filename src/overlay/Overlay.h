@@ -4,8 +4,14 @@
 //   Selecting ：整屏压暗 + 悬停窗口虚线框 + 拖拽选区 + 尺寸提示
 //               左键单击=截该窗口；按下拖动=矩形选区；Esc/右键=取消
 //   Annotating：选区已定，**不打开独立窗口**，就地 1:1 绘制冻结屏幕 + 选区边框/8 手柄
-//               + 自绘图标工具条（A2，贴选区下方，放不下则上方）
-//               Enter/双击=完成；Esc/右键=取消；1–9 切工具
+//               + 自绘图标工具条（A2）+ 在选区上画标注 / 撤销（A3）
+//               Enter/双击=完成；Esc/右键=取消；1–9 切工具；Ctrl+Z/Y=撤销重做
+//
+// 坐标约定（A3 起很关键）：
+//   * 标注存**选区图像坐标**（原点 = 选区左上角），与即将导出的那张图同一个像素空间，
+//     所以「预览 == 导出」不需要任何换算：预览用的就是 renderAnnotations() 的输出
+//     （m_composedSelection），导出时对抓到的选区图再调一次同一个函数。
+//   * m_frozenSelection 是冻结屏幕裁到选区的那一块（= 导出坐标系的源图）。
 //
 // Annotating 只在**交互式**截图里启用（见 setAnnotationEnabled）：
 // `--rect` / `--window` / `--save` 这些脚本式调用必须保持原有行为不变，
@@ -18,7 +24,7 @@
 #pragma once
 
 #include "core/Types.h"
-#include "editor/Annotation.h"
+#include "editor/AnnotationDocument.h"
 
 #include <QPointF>
 #include <QSizeF>
@@ -79,6 +85,19 @@ public:
     /// 工具条图标来源：主题语义图标命中几个、缺哪些（缺的走自绘回退）
     static QString toolIconDiagnostics();
 
+    // ── A3 标注（绘制 / 命中 / 撤销）─────────────────────
+    /// 已提交的标注（图像坐标 = 选区坐标）
+    const AnnotationDocument &document() const { return m_document; }
+    /// 冻结屏幕裁到选区的那一块（= 导出坐标系的源图，未带标注）
+    const QImage &frozenSelection() const { return m_frozenSelection; }
+    /// 预览用的合成图：frozenSelection + 已提交标注（由 renderAnnotations 产出）
+    const QImage &composedSelection() const { return m_composedSelection; }
+    /// 把标注渲染进任意一张选区图（导出/复制调它；与预览同一实现，不允许绕过）
+    QImage renderSelection(const QImage &source) const;
+    int selectedIndex() const { return m_selectedIndex; }
+    /// A3 验收用的一行状态
+    QString annotationStatus() const;
+
     // ── 诊断/验收（--inplace-demo）──────────────────────────
     /// Annotating 阶段的关键量：annotating=0/1 frozen=WxH selection=x,y WxH stage=...
     QString annotationDiagnostics() const;
@@ -90,10 +109,12 @@ public:
 signals:
     void selectionFinished(const SelectionResult &result);
     void selectionCancelled();
-    /// Annotating 阶段：用户确认（Enter/双击）
+    /// Annotating 阶段：用户确认（Enter/双击/✓）
     void annotationConfirmed(const SelectionResult &result);
-    /// Annotating 阶段：用户取消（Esc/右键）
+    /// Annotating 阶段：用户取消（Esc/右键/✕）
     void annotationCancelled();
+    /// 标注被增/删/改（撤销也算）——诊断/验收用
+    void annotationsChanged();
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -120,6 +141,29 @@ private:
     void paintAnnotating(QPainter &painter);
     /// 选区装饰（边框 + 8 手柄）的 8 个点（覆盖层本地坐标）
     QVector<QPointF> handlePoints() const;
+
+    // ── A3 标注交互（语义对齐 AnnotationCanvas，但自绘、不用子控件）──
+    /// 覆盖层局部坐标 → 选区图像坐标
+    QPointF toImage(const QPointF &local) const;
+    void annotationPress(const QPointF &local, Qt::MouseButton button);
+    void annotationMove(const QPointF &local);
+    void annotationRelease(const QPointF &local, Qt::MouseButton button);
+    int hitAnnotation(const QPointF &imagePos) const;
+    int hitHandle(int index, const QPointF &imagePos) const;
+    /// 取消当前“进行中”的东西（草稿/拖动/选中），返回 true 表示消化掉了这次 Esc
+    bool cancelTransient();
+    void commitTextDraft();
+    void commitDraft();
+    void undoAnnotation();
+    void redoAnnotation();
+    void deleteSelectedAnnotation();
+    Annotation makeAnnotation(ToolKind kind, const QPointF &at) const;
+    void refreshComposed(int skipIndex = -1);
+    void drawAnnotations(QPainter &painter, const QRectF &selection) const;
+    void drawAnnotationSelection(QPainter &painter, const Annotation &annotation) const;
+    void drawTextDraft(QPainter &painter) const;
+    /// 选区内第一个序号标注要用的下一个编号
+    int nextNumber() const;
 
     // ── 工具条：尺寸约定、布局、绘制、命中 ────────────────
     /// 工具条的按钮顺序（前 9 个对应快捷键 1–9，「模糊」无快捷键）
@@ -160,6 +204,27 @@ private:
     bool m_annotationEnabled = false;
     QImage m_frozenFrame;        ///< 整屏冻结图（已归一到逻辑像素，1:1 可画）
     SelectionResult m_selection; ///< Annotating 阶段固定的选区
+
+    // ── A3 标注状态 ───────────────────────────────────────
+    AnnotationDocument m_document;
+    QImage m_frozenSelection;  ///< 冻结屏幕裁到选区（= 导出坐标系源图）
+    QImage m_composedSelection; ///< 预览用：m_frozenSelection + 已提交标注
+    bool m_composedDirty = true;
+    QColor m_annotationColor{255, 64, 64}; ///< 与编辑器默认一致（颜色/粗细选择器尚未做）
+    int m_annotationWidth = 4;
+    Annotation m_draft;       ///< 正在绘制的临时标注（不进文档）
+    bool m_drawing = false;
+    bool m_annotDragActive = false; ///< 标注拖动/改尺寸中（与选区拖拽 m_dragging 区分）
+    int m_selectedIndex = -1;
+    int m_handleIndex = -1;
+    QPointF m_pressImagePos;
+    Annotation m_dragOriginal;
+    /// 文字草稿（自绘输入，不用 QLineEdit 子控件：layer-shell 上子控件的输入区反复咬人）
+    bool m_textDraftActive = false;
+    QString m_textDraft;
+    QPointF m_textAnchor;
+    int m_textEditIndex = -1;
+
     ToolKind m_currentTool = ToolKind::Select;
     int m_hoverCell = -1;   ///< 工具条悬停格（-1 = 无）
     int m_pressedCell = -1; ///< 工具条按下格（-1 = 无）
