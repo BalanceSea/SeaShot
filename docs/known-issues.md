@@ -91,6 +91,33 @@ seashot --probe-portal-screencast            # 完整流程（首次会弹窗，
 seashot --probe-portal-screencast --probe-portal-no-start   # dry-run：只建会话，不弹窗
 ```
 
+### ISSUE-009 录制帧源：PipeWire vs ScreenShot2 轮询（实测对比）
+
+- **状态**：**已完成**。录制默认走 PipeWire（`libpipewire` 直连），不可用时自动回退轮询。
+  强制回退对比：`SEASHOT_RECORD_POLLING=1`。
+
+**实测（全屏 1920x1080，同机同时段）**
+
+| 请求帧率 | PipeWire | 轮询 |
+| --- | --- | --- |
+| 15fps（默认）3s | 48 帧 / 丢 0 / 15.24fps | 47 帧 / 丢 0 / 15.28fps |
+| 30fps 3s | 87 帧 / 丢 0 / 30.54fps | 94 帧 / 丢 0 / 30.34fps |
+| **60fps 4s** | **248 帧 / 丢 0 / 62.63fps** | 175 帧 / **丢 87（≈33%）** / 41.68fps |
+
+CPU（60fps 4s）：PipeWire user 30.2s / sys 2.3s；轮询 user 22.0s / sys 2.9s。
+**折算到每帧几乎相同**（≈122ms vs ≈126ms）——因为瓶颈是 **GIF 编码（调色板量化）**，不是取帧。
+轮询的 user 更低只是因为它少取了 73 帧。
+
+GIF 体积（60fps 4s）：PipeWire **2.87MB** vs 轮询 **5.43MB**（帧更少反而更大，
+推测与丢帧造成的帧序列不匀有关，未深究）。
+
+**结论**
+- 15/30fps：两条路径等价 —— GIF 15fps 这个场景下切 PipeWire **没有收益**（如实记录，不粉饰）。
+- **60fps：PipeWire 明显胜出**（轮询会丢 1/3 的帧，产物还更大）。
+- 因此保持 PipeWire 为默认、轮询为回退是合理的：**不该它上场时不吃亏，该它上场时只有它行**。
+
+**尚未做**：把 GIF 换成 MP4/WebM（编码走硬件/GPU）——那才会真正绕开现在的编码瓶颈。
+
 ## 已修（留档，避免回归）
 
 ### ISSUE-004 整体 UI 美化
