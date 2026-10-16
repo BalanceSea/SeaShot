@@ -13,6 +13,8 @@
 
 set -u
 
+START_TS=$(date '+%Y-%m-%d %H:%M:%S')
+
 PROBE="$HOME/.local/bin/seashot"
 MON_LOG=/tmp/n1-permission-store.log
 RUN_LOG=/tmp/n1-run.log
@@ -75,6 +77,14 @@ if [ -f "$DB" ]; then
 else
     echo "  (权限库文件不存在)"
 fi
+
+echo
+echo "=== 6) portal 日志（判定关键）==="
+journalctl --user --since "$START_TS" --no-pager 2>/dev/null \
+    | grep -iE 'restore|persist|permission store|ScreenCast|screencast' \
+    | grep -viE 'restoreWindowSize|RestoreData\(' \
+    | tail -30 \
+    || echo "  (没有相关日志；如果看不到 'Replacing restore data' 说明后端没给 restore_data)"
 
 echo
 echo "原始文件：$RUN_LOG   $MON_LOG"
