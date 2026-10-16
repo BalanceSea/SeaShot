@@ -61,6 +61,15 @@ public:
     void closeSession();
     QString sessionPath() const { return m_sessionPath; }
 
+    /// 本次进程自报的 app id（= desktop 文件名去后缀）。
+    /// ⚠️ 不注册的话，portal 眼里的调用者是个"无名进程"，KDE 会因此**拒绝持久化**：
+    ///    既不给 restore_token，也不写 ~/.local/share/flatpak/db/screencast
+    ///    （本机实测：OBS 有记录，seashot 没有 —— 差别就在这里）。
+    static QString hostAppId();
+
+    /// 向 org.freedesktop.host.portal.Registry 注册 app id（必须在其它 portal 调用之前）。
+    static bool registerHostAppId(const QString &appId, QString *error = nullptr);
+
     /// ScreenCast portal 的接口版本（探测/自检用）
     static int portalVersion();
 

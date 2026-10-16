@@ -168,9 +168,43 @@ void PortalScreencast::callWithResponse(
     });
 }
 
+QString PortalScreencast::hostAppId()
+{
+    // 与桌面文件名保持一致：~/.local/share/applications/seashot.desktop → "seashot"
+    return QStringLiteral("seashot");
+}
+
+bool PortalScreencast::registerHostAppId(const QString &appId, QString *error)
+{
+    QDBusMessage msg = QDBusMessage::createMethodCall(
+        QString::fromLatin1(kPortalService), QString::fromLatin1(kPortalPath),
+        QStringLiteral("org.freedesktop.host.portal.Registry"), QStringLiteral("Register"));
+    msg << appId << QVariantMap {};
+    // 用同步调用 + 超时，避免又出现"挂死"（这个接口在旧版 portal 上不存在）
+    const QDBusMessage reply = QDBusConnection::sessionBus().call(msg, QDBus::Block, 5000);
+    if (reply.type() == QDBusMessage::ErrorMessage) {
+        if (error)
+            *error = reply.errorMessage();
+        return false;
+    }
+    return true;
+}
+
 void PortalScreencast::start(const QString &restoreToken, uint persistMode, Callback callback,
                              bool stopBeforeStart)
 {
+    {
+        QString registerError;
+        const bool registered = registerHostAppId(hostAppId(), &registerError);
+        QTextStream out(stdout);
+        out << "PORTAL_SCREENCAST_REGISTER appId=" << hostAppId()
+            << " ok=" << (registered ? 1 : 0);
+        if (!registered)
+            out << " error=" << registerError;
+        out << "\n";
+        out.flush();
+    }
+
     m_callback = std::move(callback);
     m_finished = false;
     const bool usingToken = !restoreToken.isEmpty();
