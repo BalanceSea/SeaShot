@@ -43,6 +43,10 @@ public:
     bool trayPersistent() const;
     void setTrayPersistent(bool value);
 
+    /// 结果浮层的兼容超时（0 = 不自动消失，默认）
+    int toastAutoHideMs() const;
+    void setToastAutoHideMs(int value);
+
     QString configFilePath() const;
 
     /// 按模板生成默认保存路径（应用 saveDir + filenameTemplate；不覆盖同名文件）

@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPalette>
@@ -17,15 +18,16 @@ namespace seashot {
 
 namespace {
 constexpr int kBarHeight = 34;
-constexpr int kAutoHideMs = 8000;
 constexpr int kScreenMargin = 16;
-constexpr int kAnchorGap = 4;
+constexpr int kAnchorGap = 3;
 constexpr int kButtonHeight = 24;
 constexpr int kButtonPadding = 12;
+constexpr int kPositionFlushMs = 8; ///< 拖动时合并提交间隔
+constexpr int kDismissDelayMs = 1200; ///< 保存完成后再展示多久
 
 QString buttonLabel(int id)
 {
-    // 注意：Button 枚举里 None 是 0，所以这里用 1..4
+    // Button 枚举里 None 是 0，所以这里用 1..4
     switch (id) {
     case 1: return QStringLiteral("编辑");
     case 2: return QStringLiteral("另存为");
@@ -39,23 +41,45 @@ QString buttonLabel(int id)
 Toast::Toast(QWidget *parent)
     : QWidget(parent)
 {
-    // 不用 Qt::Tool：layer-shell 需要普通 toplevel（Phase 2 实测：Tool 窗口既拿不到
-    // layer-shell role，也不会上浮到全屏窗口之上）
+    // 不用 Qt::Tool：layer-shell 需要普通 toplevel（实测 Tool 窗口在全屏应用前面显示不出来）
     setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
     setAttribute(Qt::WA_TranslucentBackground, true);
     setMouseTracking(true);
+    setFocusPolicy(Qt::StrongFocus);
     setWindowTitle(QStringLiteral("seashot-toast"));
 
-    m_hideTimer.setSingleShot(true);
-    connect(&m_hideTimer, &QTimer::timeout, this, [this]() {
-        hide();
-        emit dismissed();
+    m_autoHide.setSingleShot(true);
+    connect(&m_autoHide, &QTimer::timeout, this, &Toast::closeAndNotify);
+
+    m_positionFlush.setSingleShot(true);
+    connect(&m_positionFlush, &QTimer::timeout, this, [this]() {
+        m_positionPending = false;
+        applyPosition(m_pendingTopLeft);
     });
 }
 
 int Toast::barHeight() const
 {
     return kBarHeight;
+}
+
+void Toast::setEditEnabled(bool enabled)
+{
+    if (m_editEnabled == enabled)
+        return;
+    m_editEnabled = enabled;
+    invalidateCache();
+}
+
+void Toast::setAutoHideMs(int milliseconds)
+{
+    m_autoHideMs = qMax(0, milliseconds);
+}
+
+void Toast::invalidateCache()
+{
+    m_cacheDirty = true;
+    update();
 }
 
 void Toast::showResult(const QImage &image, const QString &savedPath, const QString &message,
@@ -66,6 +90,7 @@ void Toast::showResult(const QImage &image, const QString &savedPath, const QStr
     m_message = message;
     m_copyError = copyError;
     m_lastAnchor = anchorGlobalRect;
+    m_cacheDirty = true;
 
     // 1) 原尺寸优先；屏幕可用区放不下才等比缩小（并标明）
     QScreen *screen = QGuiApplication::screenAt(anchorGlobalRect.center());
@@ -85,7 +110,7 @@ void Toast::showResult(const QImage &image, const QString &savedPath, const QStr
         ? image
         : image.scaled(display, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-    // 2) 卡片尺寸 == 图片尺寸（按钮条浮在图片底部）；但要留够按钮宽度
+    // 2) 卡片 == 图片尺寸（按钮条浮在图片上），但至少留够按钮宽度
     const int buttonsWidth = buttons().isEmpty() ? 0 : (buttons().last().second.right() + 1);
     const int cardWidth = qMax(m_display.width(), buttonsWidth + kButtonPadding);
     const int cardHeight = m_display.height() + barHeight();
@@ -94,21 +119,49 @@ void Toast::showResult(const QImage &image, const QString &savedPath, const QStr
     reposition(anchorGlobalRect);
     show();
     raise();
-    m_hideTimer.start(kAutoHideMs);
+    activateWindow();
+    setFocus(Qt::OtherFocusReason);
 
-    // 便于自动验收：把尺寸/位置/锚点打进 stdout
     QTextStream out(stdout);
     out << "TOAST image=" << image.width() << "x" << image.height()
         << " display=" << m_display.width() << "x" << m_display.height()
         << " scaled=" << (m_scaledToFit ? 1 : 0)
         << " anchor=" << anchorGlobalRect.x() << "," << anchorGlobalRect.y() << " "
         << anchorGlobalRect.width() << "x" << anchorGlobalRect.height()
-        << " geometry=" << x() << "," << y() << " " << width() << "x" << height() << "\n";
+        << " geometry=" << x() << "," << y() << " " << width() << "x" << height()
+        << " autoHide=" << m_autoHideMs << "\n";
     out.flush();
-    // 诊断：layer-shell 下 move() 无效，真实位置由边距决定，所以把两者都打出来
-    SS_INFO() << "[toast] visible=" << isVisible() << "winId=" << winId()
-              << "layerShell=" << m_layerShellApplied << "geometry=" << geometry()
-              << "windowHandle=" << (windowHandle() != nullptr);
+    SS_INFO() << "[toast] visible=" << isVisible() << "layerShell=" << m_layerShellApplied
+              << "geometry=" << geometry() << "autoHideMs=" << m_autoHideMs;
+
+    maybeStartAutoHide();
+}
+
+void Toast::updateStatus(const QString &message, const QString &savedPath, const QString &copyError)
+{
+    m_message = message;
+    m_savedPath = savedPath;
+    m_copyError = copyError;
+    invalidateCache();
+}
+
+void Toast::dismissAfter(int milliseconds)
+{
+    m_autoHide.stop();
+    m_autoHide.start(qMax(0, milliseconds));
+}
+
+void Toast::maybeStartAutoHide()
+{
+    m_autoHide.stop();
+    if (m_autoHideMs > 0)
+        m_autoHide.start(m_autoHideMs);
+}
+
+void Toast::closeAndNotify()
+{
+    hide();
+    emit dismissed();
 }
 
 QRect Toast::barRect() const
@@ -136,15 +189,6 @@ QVector<QPair<Toast::Button, QRect>> Toast::buttons() const
     return result;
 }
 
-QRect Toast::buttonRect(Button button) const
-{
-    for (const auto &entry : buttons()) {
-        if (entry.first == button)
-            return entry.second;
-    }
-    return {};
-}
-
 Toast::Button Toast::buttonAt(const QPoint &position) const
 {
     for (const auto &entry : buttons()) {
@@ -161,12 +205,10 @@ void Toast::reposition(const QRect &anchorGlobalRect)
         screen = QGuiApplication::primaryScreen();
     const QRect available = screen ? screen->availableGeometry() : QRect(0, 0, 1920, 1080);
 
-    // 首选：挂在截图框下方（卡片左上角 = 选区左下角）
     int px = anchorGlobalRect.left();
     int py = anchorGlobalRect.bottom() + kAnchorGap;
-    // 下方放不下 → 卡片左下角与选区左下角对齐（往上盖）
     if (py + height() > available.bottom() - kScreenMargin / 2)
-        py = anchorGlobalRect.bottom() - height();
+        py = anchorGlobalRect.bottom() - height(); // 下方放不下 → 左下角对齐，往上盖
     if (py < available.top() + kScreenMargin / 2)
         py = available.top() + kScreenMargin / 2;
     px = qBound(available.left() + kScreenMargin / 2, px,
@@ -174,8 +216,6 @@ void Toast::reposition(const QRect &anchorGlobalRect)
     applyPosition(QPoint(px, py));
 }
 
-// 覆盖层用 layer-shell 才能保证「永远在最上一层」（全屏窗口之上）
-// —— Phase 2 后实测：普通 Qt::Tool 窗口在全屏应用前面根本显示不出来。
 void Toast::ensureLayerShell()
 {
     if (m_layerShellApplied)
@@ -196,7 +236,7 @@ void Toast::ensureLayerShell()
         m_layerShellApplied = true;
         SS_INFO() << "[toast] layer-shell role 已应用（LayerOverlay）";
     } else {
-        SS_WARN() << "[toast] LayerShellQt 不可用，退化为普通置顶窗口（X11 路径）";
+        SS_WARN() << "[toast] LayerShellQt 不可用，退化为普通窗口（X11 路径）";
     }
 }
 
@@ -204,8 +244,8 @@ void Toast::applyPosition(const QPoint &globalTopLeft)
 {
     ensureLayerShell();
     if (m_layerShellApplied) {
-        // layer-shell 下用「锚 top|left + 边距」定位（边距相对输出左上角）
-        QScreen *screen = QGuiApplication::screenAt(globalTopLeft + QPoint(width() / 2, height() / 2));
+        QScreen *screen =
+            QGuiApplication::screenAt(globalTopLeft + QPoint(width() / 2, height() / 2));
         if (!screen)
             screen = QGuiApplication::primaryScreen();
         const QRect output = screen ? screen->geometry() : QRect(0, 0, 1920, 1080);
@@ -216,16 +256,19 @@ void Toast::applyPosition(const QPoint &globalTopLeft)
             }
         }
     }
-    // 非 layer-shell（X11）下 move() 才是有效的
-    move(globalTopLeft);
+    move(globalTopLeft); // 非 layer-shell（X11）下才有效
 }
 
-void Toast::paintEvent(QPaintEvent *)
+void Toast::rebuildCache()
 {
-    QPainter painter(this);
+    const qreal dpr = devicePixelRatioF();
+    m_cache = QPixmap(size() * dpr);
+    m_cache.setDevicePixelRatio(dpr);
+    m_cache.fill(Qt::transparent);
+
+    QPainter painter(&m_cache);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    // 取系统调色板 → 跟随 Breeze 亮/暗主题
     const QPalette pal = palette();
     const QColor window = pal.color(QPalette::Window);
     const QColor text = pal.color(QPalette::WindowText);
@@ -234,27 +277,28 @@ void Toast::paintEvent(QPaintEvent *)
     const QColor highlight = pal.color(QPalette::Highlight);
     const QColor highlightedText = pal.color(QPalette::HighlightedText);
     const QColor border = pal.color(QPalette::Mid);
+    const QColor shadow = pal.color(QPalette::Shadow);
 
     const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
-    painter.setPen(QPen(border, 1));
+    painter.setPen(Qt::NoPen);
     painter.setBrush(window);
     painter.drawRoundedRect(card, 8, 8);
 
     // 图片（原尺寸或等比缩小）
     if (!m_display.isNull()) {
-        const QRect imageRect(0, 0, width(), height() - barHeight());
+        const QRect imageArea(0, 0, width(), height() - barHeight());
         const QPoint imagePos((width() - m_display.width()) / 2,
-                              qMax(0, (imageRect.height() - m_display.height()) / 2));
+                              qMax(0, (imageArea.height() - m_display.height()) / 2));
         painter.drawImage(imagePos, m_display);
     }
 
-    // 底部按钮条（浮在图片上，半透明）
+    // 底部按钮条（浮在图片上）
     QColor barColor = window;
     barColor.setAlpha(235);
     painter.setPen(Qt::NoPen);
     painter.setBrush(barColor);
     const QRect bar = barRect();
-    painter.drawRect(bar.adjusted(1, 0, -1, 0));
+    painter.drawRect(bar.adjusted(2, 0, -2, 0));
     painter.setPen(QPen(border, 1));
     painter.drawLine(bar.topLeft() + QPoint(1, 0), bar.topRight() - QPoint(1, 0));
 
@@ -270,10 +314,12 @@ void Toast::paintEvent(QPaintEvent *)
         info += QStringLiteral(" · ") + m_copyError;
     else if (!m_savedPath.isEmpty())
         info += QStringLiteral(" · ") + QFileInfo(m_savedPath).fileName();
-    painter.drawText(bar.adjusted(kButtonPadding, 0, -buttons().value(0).second.left() - 6, 0),
+    const int textRight = buttons().isEmpty() ? width() - kButtonPadding
+                                              : buttons().first().second.left() - 8;
+    painter.drawText(bar.adjusted(kButtonPadding, 0, -(width() - textRight), 0),
                      Qt::AlignVCenter | Qt::AlignLeft, info);
 
-    // 按钮：第一个（编辑）为主按钮，用高亮色
+    // 按钮：第一个（编辑/或首个可用）为主按钮
     bool first = true;
     for (const auto &entry : buttons()) {
         const QRect &rect = entry.second;
@@ -285,20 +331,50 @@ void Toast::paintEvent(QPaintEvent *)
         painter.drawText(rect, Qt::AlignCenter, buttonLabel(int(entry.first)));
         first = false;
     }
+
+    // 边框（你的要求：截图内容容易"溶进"背景）
+    // 外圈 3px 深色 + 内圈 2px 主题高亮色：浅色与深色桌面上都能一眼找到
+    painter.setBrush(Qt::NoBrush);
+    QColor darkRing(0, 0, 0);
+    darkRing.setAlpha(115);
+    painter.setPen(QPen(darkRing, 3));
+    painter.drawRoundedRect(QRectF(rect()).adjusted(1.5, 1.5, -1.5, -1.5), 8, 8);
+    painter.setPen(QPen(highlight.darker(105), 2));
+    painter.drawRoundedRect(QRectF(rect()).adjusted(4.0, 4.0, -4.0, -4.0), 6, 6);
+
+    painter.end();
+    m_cacheDirty = false;
+}
+
+void Toast::paintEvent(QPaintEvent *)
+{
+    if (m_cacheDirty || m_cache.size() != size() * devicePixelRatioF())
+        rebuildCache();
+    QPainter painter(this);
+    painter.drawPixmap(0, 0, m_cache);
+}
+
+void Toast::resizeEvent(QResizeEvent *event)
+{
+    QWidget::resizeEvent(event);
+    invalidateCache();
 }
 
 void Toast::mousePressEvent(QMouseEvent *event)
 {
+    setFocus(Qt::MouseFocusReason);
     const Button hit = buttonAt(event->position().toPoint());
     if (hit == Button::None && event->button() == Qt::LeftButton) {
-        // 按住图片区域 = 拖动浮层
         m_dragging = true;
         m_dragOrigin = event->globalPosition().toPoint() - frameGeometry().topLeft();
+        m_pendingTopLeft = frameGeometry().topLeft();
         return;
     }
     switch (hit) {
     case Button::Edit:
+        hide();
         emit editRequested();
+        emit dismissed();
         break;
     case Button::SaveAs:
         emit saveAsRequested();
@@ -307,8 +383,7 @@ void Toast::mousePressEvent(QMouseEvent *event)
         emit copyRequested();
         break;
     case Button::Close:
-        hide();
-        emit dismissed();
+        closeAndNotify();
         break;
     case Button::None:
         break;
@@ -317,31 +392,55 @@ void Toast::mousePressEvent(QMouseEvent *event)
 
 void Toast::mouseMoveEvent(QMouseEvent *event)
 {
-    m_hideTimer.stop();
-    if (m_dragging && (event->buttons() & Qt::LeftButton))
-        applyPosition(event->globalPosition().toPoint() - m_dragOrigin);
+    if (!m_dragging || !(event->buttons() & Qt::LeftButton))
+        return;
+    // 合并提交：layer-shell 每次 setMargins 都是一次 commit，逐事件提交会明显卡顿
+    m_pendingTopLeft = event->globalPosition().toPoint() - m_dragOrigin;
+    if (!m_positionPending) {
+        m_positionPending = true;
+        m_positionFlush.start(kPositionFlushMs);
+    }
 }
 
 void Toast::mouseReleaseEvent(QMouseEvent *)
 {
+    if (m_dragging && m_positionPending) {
+        m_positionFlush.stop();
+        m_positionPending = false;
+        applyPosition(m_pendingTopLeft);
+    }
     m_dragging = false;
-    m_hideTimer.start(kAutoHideMs);
+}
+
+void Toast::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key()) {
+    case Qt::Key_Return:
+    case Qt::Key_Enter:
+    case Qt::Key_Escape:
+        closeAndNotify();
+        event->accept();
+        return;
+    default:
+        break;
+    }
+    QWidget::keyPressEvent(event);
 }
 
 void Toast::enterEvent(QEnterEvent *)
 {
-    m_hideTimer.stop();
+    m_autoHide.stop();
 }
 
 void Toast::leaveEvent(QEvent *)
 {
-    m_hideTimer.start(kAutoHideMs);
+    maybeStartAutoHide();
 }
 
 void Toast::changeEvent(QEvent *event)
 {
     if (event->type() == QEvent::PaletteChange || event->type() == QEvent::ApplicationPaletteChange)
-        update();
+        invalidateCache();
     QWidget::changeEvent(event);
 }
 

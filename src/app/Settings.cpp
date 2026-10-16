@@ -20,6 +20,7 @@ constexpr const char *kKeepShadow = "capture/keepShadowMargin";
 constexpr const char *kHotkey = "shortcut/hotkey";
 constexpr const char *kGifFps = "record/fps";
 constexpr const char *kTrayPersistent = "ui/trayPersistent";
+constexpr const char *kToastAutoHideMs = "ui/toastAutoHideMs";
 } // namespace
 
 Settings::Settings(QObject *parent)
@@ -131,6 +132,17 @@ bool Settings::trayPersistent() const
 void Settings::setTrayPersistent(bool value)
 {
     QSettings().setValue(QLatin1String(kTrayPersistent), value);
+    emit changed();
+}
+
+int Settings::toastAutoHideMs() const
+{
+    return QSettings().value(QLatin1String(kToastAutoHideMs), 0).toInt();
+}
+
+void Settings::setToastAutoHideMs(int value)
+{
+    QSettings().setValue(QLatin1String(kToastAutoHideMs), qMax(0, value));
     emit changed();
 }
 

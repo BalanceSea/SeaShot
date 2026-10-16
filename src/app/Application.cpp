@@ -19,6 +19,7 @@
 
 #include <QCoreApplication>
 #include <QEventLoop>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QLocalServer>
@@ -110,7 +111,8 @@ Application::Application(const Options &options, QObject *parent)
             QCoreApplication::exit(0);
     });
 
-    m_toast = std::make_unique<Toast>();    m_toast->setEditEnabled(true);
+    m_toast = std::make_unique<Toast>();
+    m_toast->setAutoHideMs(m_settings->toastAutoHideMs());    m_toast->setEditEnabled(true);
     connect(m_toast.get(), &Toast::saveAsRequested, this, &Application::saveAs);
     connect(m_toast.get(), &Toast::copyRequested, this, &Application::copyLast);
     connect(m_toast.get(), &Toast::editRequested, this,
@@ -400,6 +402,7 @@ void Application::finishCapture(const CaptureImage &image)
 
     if (wantsEditor) {
         // 「截图后直接打开编辑器」：浮层就不弹了，编辑器里已有复制/保存/另存为
+    // 「截图后直接打开编辑器」：浮层就不弹了，编辑器里已有复制/保存/另存为
         openEditor(image.image, savedPath);
     } else if (!scripted) {
         m_toast->showResult(image.image, savedPath, message, copyError, m_lastAnchorRect);
@@ -431,21 +434,42 @@ void Application::finishCapture(const CaptureImage &image)
 
 void Application::saveAs()
 {
-    QTextStream(stdout) << "SAVE_AS_REQUESTED suggested="
-                        << QFileInfo(m_settings->defaultSavePath()).absoluteFilePath() << "\n";
+    QTextStream out(stdout);
     if (m_lastImage.isNull())
         return;
-    const QString path = m_settings->defaultSavePath();
+
+    // 你的要求：另存为要弹对话框（不再默默落到默认目录）
+    const QString suggested = m_lastSavedPath.isEmpty() ? m_settings->defaultSavePath()
+                                                        : m_lastSavedPath;
+    const QString path = QFileDialog::getSaveFileName(m_toast.get(), QStringLiteral("另存为"),
+                                                      suggested,
+                                                      QStringLiteral("PNG 图片 (*.png)"));
+    out << "SAVE_AS_DIALOG suggested=" << suggested << " chosen="
+        << (path.isEmpty() ? QStringLiteral("(cancelled)") : path) << "\n";
+    out.flush();
+    if (path.isEmpty())
+        return;
+
     QString error;
     if (Settings::saveImage(path, m_lastImage, &error)) {
         m_lastSavedPath = path;
-        m_toast->showResult(m_lastImage, path,
-                            QStringLiteral("已保存 %1").arg(sizeText(m_lastImage)), QString(),
-                            m_lastAnchorRect);
-        QTextStream(stdout) << "SAVED " << path << "\n";
+        const QString message = QStringLiteral("已保存 %1").arg(sizeText(m_lastImage));
+        if (m_toast->isVisible())
+            m_toast->updateStatus(message, path, QString());
+        else
+            m_toast->showResult(m_lastImage, path, message, QString(), m_lastAnchorRect);
+        // 保存完就让它退场：短价展示后消失（你的要求：操作后消失）
+        m_toast->dismissAfter(1200);
+        out << "SAVED " << path << "\n";
     } else {
-        m_toast->showResult(m_lastImage, {}, QStringLiteral("保存失败"), error, m_lastAnchorRect);
+        const QString message = QStringLiteral("保存失败");
+        if (m_toast->isVisible())
+            m_toast->updateStatus(message, QString(), error);
+        else
+            m_toast->showResult(m_lastImage, QString(), message, error, m_lastAnchorRect);
+        out << "SAVE_ERROR " << error << "\n";
     }
+    out.flush();
 }
 
 void Application::copyLast()
@@ -454,9 +478,11 @@ void Application::copyLast()
         return;
     QString error;
     const bool ok = Clipboard::copyImage(m_lastImage, &error);
-    m_toast->showResult(m_lastImage, m_lastSavedPath,
-                        ok ? QStringLiteral("已复制到剪贴板") : QStringLiteral("复制失败"), error,
-                        m_lastAnchorRect);
+    const QString message = ok ? QStringLiteral("已复制到剪贴板") : QStringLiteral("复制失败");
+    if (m_toast->isVisible())
+        m_toast->updateStatus(message, m_lastSavedPath, error);
+    else
+        m_toast->showResult(m_lastImage, m_lastSavedPath, message, error, m_lastAnchorRect);
     QTextStream(stdout) << (ok ? "COPIED image/png\n" : "COPY_ERROR " + error + "\n");
 }
 
