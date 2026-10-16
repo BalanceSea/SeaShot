@@ -91,6 +91,24 @@ PLAN 已定：**默认不注册任何键**（实测 `Ctrl+Alt+A` 已被本机 Sp
 - 浮层用 layer-shell（`LayerOverlay`）实现，所以**全屏应用前面也能看见**
 - 带 `--save` 的脚本化调用（验收/自动化）不弹浮层，交付完就退出
 
+## 录制 GIF
+
+```fish
+seashot --record                          # 交互选区域（拖动选区，或单击窗口录其外框）
+seashot --record --rect 300,200,320,240   # 直接录指定矩形
+seashot --record --seconds 10             # 录 10 秒后自动停
+seashot --record-stop                     # 让常驻实例停止录制
+```
+
+- 托盘菜单「录制 GIF…」（录制中会变成「停止录制」）；录制中按全局快捷键 = 停止
+- 录制时区域左上方出现指示器：闪烁红点 + 计时 + 已录帧数（丢帧会显示）+「停止」按钮
+  （放区域**外面**，所以不会被录进 GIF）
+- 帧率用设置里的 `record/fps`（默认 15）；**不设时长与体积上限**，帧直接流进 ffmpeg
+- 编码是两遍：FFV1 无损中间文件 → `palettegen`/`paletteuse` 出调色板优化的 GIF，
+  中间文件收尾后自动删除
+- 采帧方式：定时调用截图后端（Wayland=ScreenShot2 / X11=MIT-SHM）。实测 15fps 时
+  有效帧率 15.19、丢帧 0；如需更高帧率/更大区域，见 `docs/known-issues.md` ISSUE-006
+
 ## 配置界面与托盘
 
 ```fish

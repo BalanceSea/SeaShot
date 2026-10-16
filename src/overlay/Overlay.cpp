@@ -59,6 +59,13 @@ void Overlay::applyLayerShell()
     }
 }
 
+void Overlay::setIntent(Intent intent)
+{
+    m_intent = intent;
+    if (isVisible())
+        update();
+}
+
 void Overlay::setWindows(const QVector<WindowInfo> &windows)
 {
     m_windows = windows;
@@ -153,10 +160,13 @@ void Overlay::paintEvent(QPaintEvent *)
         painter.setBrush(Qt::NoBrush);
         painter.drawRect(selection);
         drawInfoBox(painter, QPoint(int(selection.left()), int(selection.bottom()) + 6),
-                    QStringLiteral("区域 %1 × %2")
+                    QStringLiteral("%1 %2 × %3")
+                        .arg(m_intent == Intent::Record ? QStringLiteral("录制区域")
+                                                        : QStringLiteral("区域"))
                         .arg(ScreenMapper::roundCoord(selection.width()))
                         .arg(ScreenMapper::roundCoord(selection.height())),
-                    QStringLiteral("松开左键截图"));
+                    m_intent == Intent::Record ? QStringLiteral("松开左键开始录制")
+                                               : QStringLiteral("松开左键截图"));
         return;
     }
 
@@ -171,15 +181,19 @@ void Overlay::paintEvent(QPaintEvent *)
         const QString title = m_hover.title.isEmpty() ? m_hover.appId : m_hover.title;
         drawInfoBox(painter, QPoint(int(frame.left()), int(frame.top()) - 48),
                     title.isEmpty() ? QStringLiteral("(无标题窗口)") : title,
-                    QStringLiteral("%1 × %2 · 左键单击截取该窗口")
+                    QStringLiteral("%1 × %2 · %3")
                         .arg(ScreenMapper::roundCoord(m_hover.frameGeometry.width()))
-                        .arg(ScreenMapper::roundCoord(m_hover.frameGeometry.height())));
+                        .arg(ScreenMapper::roundCoord(m_hover.frameGeometry.height()))
+                        .arg(m_intent == Intent::Record ? QStringLiteral("左键录制该窗口区域")
+                                                        : QStringLiteral("左键单击截取该窗口")));
         return;
     }
 
     // 没有命中窗口时的提示（居中偏上）
     painter.setPen(QColor(255, 255, 255));
-    const QString hint = QStringLiteral("左键单击窗口截图 · 按住拖动选择区域 · Esc 或右键取消");
+    const QString hint = m_intent == Intent::Record
+        ? QStringLiteral("拖动选择录制区域 · 单击窗口录制该窗口 · Esc 或右键取消")
+        : QStringLiteral("左键单击窗口截图 · 按住拖动选择区域 · Esc 或右键取消");
     const QFontMetrics metrics(painter.font());
     const QRect box((width() - metrics.horizontalAdvance(hint)) / 2 - 16, 28,
                     metrics.horizontalAdvance(hint) + 32, metrics.height() + 16);

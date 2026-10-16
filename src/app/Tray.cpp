@@ -23,6 +23,8 @@ Tray::Tray(QObject *parent)
     m_menu = new QMenu();
     QAction *captureAction = m_menu->addAction(QStringLiteral("截图"));
     connect(captureAction, &QAction::triggered, this, &Tray::captureRequested);
+    m_recordAction = m_menu->addAction(QStringLiteral("录制 GIF…"));
+    connect(m_recordAction, &QAction::triggered, this, &Tray::recordToggleRequested);
     m_menu->addSeparator();
     QAction *settingsAction = m_menu->addAction(QStringLiteral("设置…"));
     connect(settingsAction, &QAction::triggered, this, &Tray::settingsRequested);
@@ -54,6 +56,13 @@ void Tray::setHotkeyLabel(const QString &label){
     m_item->setToolTip(QStringLiteral("camera-photo"), QStringLiteral("SeaShot"),
                        label.isEmpty() ? QStringLiteral("快捷键：未绑定（可在系统设置里绑定）")
                                        : QStringLiteral("快捷键：%1").arg(label));
+}
+
+void Tray::setRecording(bool recording)
+{
+    if (!m_recordAction)
+        return;
+    m_recordAction->setText(recording ? QStringLiteral("停止录制") : QStringLiteral("录制 GIF…"));
 }
 
 QStringList Tray::menuActionTexts() const

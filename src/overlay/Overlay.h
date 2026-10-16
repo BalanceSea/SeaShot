@@ -16,7 +16,13 @@ class Overlay : public QWidget
     Q_OBJECT
 
 public:
+    /// 选择模式的用途：截图或录制 GIF（只影响提示文字与上层如何处理结果）
+    enum class Intent { Screenshot, Record };
+
     explicit Overlay(QWidget *parent = nullptr);
+
+    void setIntent(Intent intent);
+    Intent intent() const { return m_intent; }
 
     void setWindows(const QVector<WindowInfo> &windows);
     void setVirtualGeometry(const QRect &logicalGeometry);
@@ -49,6 +55,7 @@ private:
                      const QString &detail) const;
 
     QVector<WindowInfo> m_windows;
+    Intent m_intent = Intent::Screenshot;
     QRect m_virtualGeometry;
     WindowInfo m_hover;
     bool m_hasHover = false;

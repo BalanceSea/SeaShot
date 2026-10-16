@@ -76,6 +76,14 @@ int main(int argc, char **argv)
                                           QStringLiteral("打印当前实际生效的快捷键"));
     QCommandLineOption printConfigOption(QStringLiteral("print-config"),
                                          QStringLiteral("打印生效中的配置"));
+    QCommandLineOption recordOption(
+        QStringLiteral("record"),
+        QStringLiteral("录制 GIF：交互选区域（配合 --rect 可直接用矩形，配合 --seconds 自动停）"));
+    QCommandLineOption recordStopOption(QStringLiteral("record-stop"),
+                                        QStringLiteral("让常驻实例停止正在进行的录制"));
+    QCommandLineOption secondsOption(QStringLiteral("seconds"),
+                                     QStringLiteral("录制 N 秒后自动停止（0 = 手动停）"),
+                                     QStringLiteral("N"), QStringLiteral("0"));
 
     parser.addOption(selftestOption);
     parser.addOption(listOption);
@@ -95,6 +103,9 @@ int main(int argc, char **argv)
     parser.addOption(setHotkeyOption);
     parser.addOption(hotkeyStatusOption);
     parser.addOption(printConfigOption);
+    parser.addOption(recordOption);
+    parser.addOption(recordStopOption);
+    parser.addOption(secondsOption);
     parser.process(app);
 
     seashot::Options options;
@@ -115,6 +126,9 @@ int main(int argc, char **argv)
     options.setHotkey = parser.value(setHotkeyOption);
     options.hotkeyStatus = parser.isSet(hotkeyStatusOption);
     options.printConfig = parser.isSet(printConfigOption);
+    options.record = parser.isSet(recordOption);
+    options.recordStop = parser.isSet(recordStopOption);
+    options.seconds = parser.value(secondsOption).toInt();
 
     if (parser.isSet(rectOption)) {
         const QStringList parts = parser.value(rectOption).split(QLatin1Char(','));

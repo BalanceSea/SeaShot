@@ -13,6 +13,9 @@ set(SEASHOT_CORE_SOURCES
     editor/AnnotationRenderer.cpp
     editor/AnnotationCanvas.cpp
     editor/EditorWindow.cpp
+    record/GifEncoder.cpp
+    record/GifRecorder.cpp
+    record/RecordingIndicator.cpp
     app/Settings.cpp
     app/SettingsDialog.cpp
     app/SelfTest.cpp
@@ -38,6 +41,9 @@ set(SEASHOT_HEADERS
     editor/AnnotationRenderer.h
     editor/AnnotationCanvas.h
     editor/EditorWindow.h
+    record/GifEncoder.h
+    record/GifRecorder.h
+    record/RecordingIndicator.h
     app/Settings.h
     app/SettingsDialog.h
     app/SelfTest.h

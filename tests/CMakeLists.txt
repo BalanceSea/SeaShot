@@ -1,6 +1,7 @@
 find_package(Qt6 REQUIRED COMPONENTS Test)
 
-set(SEASHOT_TESTS tst_screenmapper tst_selection tst_settings tst_annotation tst_settingsdialog tst_tray)
+set(SEASHOT_TESTS tst_screenmapper tst_selection tst_settings tst_annotation tst_settingsdialog tst_tray
+                 tst_gifencoder tst_gifrecorder)
 if(XCB_FOUND)
     list(APPEND SEASHOT_TESTS tst_ewmh)
 endif()

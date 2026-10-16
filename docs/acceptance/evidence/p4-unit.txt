@@ -1,0 +1,23 @@
+Test project /home/balancesea/Vibe Code/SeaShot/build
+    Start 1: tst_screenmapper
+1/9 Test #1: tst_screenmapper .................   Passed    0.08 sec
+    Start 2: tst_selection
+2/9 Test #2: tst_selection ....................   Passed    0.07 sec
+    Start 3: tst_settings
+3/9 Test #3: tst_settings .....................   Passed    0.78 sec
+    Start 4: tst_annotation
+4/9 Test #4: tst_annotation ...................   Passed    0.05 sec
+    Start 5: tst_settingsdialog
+5/9 Test #5: tst_settingsdialog ...............   Passed    0.69 sec
+    Start 6: tst_tray
+6/9 Test #6: tst_tray .........................   Passed    0.03 sec
+    Start 7: tst_gifencoder
+7/9 Test #7: tst_gifencoder ...................   Passed    0.21 sec
+    Start 8: tst_gifrecorder
+8/9 Test #8: tst_gifrecorder ..................   Passed    0.97 sec
+    Start 9: tst_ewmh
+9/9 Test #9: tst_ewmh .........................   Passed    0.07 sec
+
+100% tests passed out of 9
+
+Total Test time (real) =   2.95 sec

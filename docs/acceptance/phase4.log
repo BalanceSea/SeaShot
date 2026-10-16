@@ -1,0 +1,13 @@
+== Phase 4 验收 ==
+二进制: /home/balancesea/.local/bin/seashot (2026-10-16 11:42:30)
+
+PASS  A. 单测（编码器 + 录制器） 100% tests passed out of 9
+PASS  B. 3 秒录制（尺寸/帧率/帧数） RECORD ok path=docs/acceptance/evidence/p4-basic.gif frames=46 dropped=0 failed=0 elapsedMs=3029 fps=15.19 · GIF 320x240 15/1 46 帧
+PASS  C. 录制指示器在区域之外    RECORDING_INDICATOR_GEOMETRY x=300 y=154 w=300 h=40 regionTop=200 regionBottom=440
+PASS  D. 帧率可调（10fps）           RECORD ok path=docs/acceptance/evidence/p4-fps10.gif frames=21 dropped=0 failed=0 elapsedMs=2041 fps=10.29
+PASS  E. 无时长/体积上限（8 秒） RECORD ok path=docs/acceptance/evidence/p4-long.gif frames=126 dropped=0 failed=0 elapsedMs=8271 fps=15.23 · 847111 字节 vs 3 秒的 382094 字节
+PASS  F. 常驻实例录制 + 转发停止 转发=1 停止=1 → RECORD ok path=/home/balancesea/Pictures/Screenshots/seashot_20261016_114424.gif frames=32 dropped=0 failed=0 elapsedMs=2083 fps=15.36
+PASS  G. FFV1 中间文件已清理        /tmp 下没有 seashot-record-*.mkv
+
+== 汇总: 7 通过 / 0 失败 / 0 跳过 ==
+证据目录: docs/acceptance/evidence

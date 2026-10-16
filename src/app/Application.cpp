@@ -12,6 +12,8 @@
 #include "editor/AnnotationRenderer.h"
 #include "editor/EditorWindow.h"
 #include "overlay/Overlay.h"
+#include "record/GifRecorder.h"
+#include "record/RecordingIndicator.h"
 #include "util/Clipboard.h"
 #include "util/Log.h"
 #ifdef SEASHOT_WITH_X11
@@ -121,6 +123,23 @@ Application::Application(const Options &options, QObject *parent)
     connect(m_toast.get(), &Toast::editRequested, this,
             [this]() { openEditor(m_lastImage, m_lastSavedPath); });
 
+    // 录制（Phase 4）
+    m_recorder = std::make_unique<GifRecorder>();
+    m_recordingIndicator = std::make_unique<RecordingIndicator>();
+    connect(m_recorder.get(), &GifRecorder::progress, this, [this]() {
+        if (!m_recordingIndicator || !m_recorder)
+            return;
+        const GifRecorder::Stats stats = m_recorder->stats();
+        m_recordingIndicator->updateStats(stats.captured, stats.dropped, stats.elapsedMs);
+    });
+    connect(m_recorder.get(), &GifRecorder::finished, this,
+            [this](const QString &path, const GifRecorder::Stats &stats, const QString &error) {
+                onRecordingFinished(path, stats.captured, stats.dropped, stats.failed,
+                                    stats.elapsedMs, error);
+            });
+    connect(m_recordingIndicator.get(), &RecordingIndicator::stopRequested, this,
+            &Application::stopRecording);
+
     // 配置变化即时生效（配置界面每次改动都会发这个信号）
     connect(m_settings.get(), &Settings::changed, this, &Application::applySettings);
 
@@ -183,6 +202,21 @@ bool Application::startServer()
             SS_INFO() << "[app] 收到实例间命令:" << command;
             if (command == QLatin1String("capture"))
                 startCapture();
+            else if (command == QLatin1String("record"))
+                startRecordFlow();
+            else if (command.startsWith(QLatin1String("record-rect "))) {
+                const QStringList parts = command.mid(12).split(QLatin1Char(','));
+                if (parts.size() == 4) {
+                    SelectionResult selection;
+                    selection.mode = SelectionMode::Rect;
+                    selection.logicalRect = QRectF(parts.at(0).toDouble(), parts.at(1).toDouble(),
+                                                  parts.at(2).toDouble(), parts.at(3).toDouble());
+                    beginRecording(selection);
+                } else {
+                    SS_WARN() << "[app] record-rect 参数不对:" << command;
+                }
+            } else if (command == QLatin1String("stop-record"))
+                stopRecording();
             else if (command == QLatin1String("quit"))
                 QCoreApplication::quit();
             socket->disconnectFromServer();
@@ -195,7 +229,8 @@ bool Application::isOneShot() const
 {
     return m_options.selftest || m_options.listWindows || m_options.captureScreen
         || m_options.hasRect || !m_options.windowHandle.isEmpty() || m_options.overlayHoldMs > 0
-        || !m_options.editPath.isEmpty() || !m_options.annotateOut.isEmpty();
+        || !m_options.editPath.isEmpty() || !m_options.annotateOut.isEmpty()
+        || m_options.hotkeyStatus || m_options.printConfig || m_options.record;
 }
 
 void Application::openEditor(const QImage &image, const QString &sourcePath)
@@ -300,12 +335,141 @@ QRect Application::virtualGeometry() const
     return geometry;
 }
 
+void Application::startRecordFlow()
+{
+    if (!m_backend || !m_backendError.isEmpty()) {
+        SS_WARN() << "[app] 无法开始录制:" << m_backendError;
+        QTextStream(stdout) << "RECORD_ERROR " << m_backendError << "\n";
+        return;
+    }
+    if (m_recorder->isRecording()) {
+        stopRecording();
+        return;
+    }
+    m_recordIntent = true;
+    m_overlay->setIntent(Overlay::Intent::Record);
+    m_backend->refresh();
+    m_overlay->setWindows(m_backend->windows());
+    m_overlay->setVirtualGeometry(virtualGeometry());
+    m_overlay->startSelection();
+    QString excludeError;
+    m_selfExclusion = m_backend->excludeOwnWindows(true, &excludeError);
+    SS_INFO() << "[app] 录制选择模式已启动";
+}
+
+QString Application::defaultGifPath() const
+{
+    return m_settings->defaultSavePath(QStringLiteral("gif"));
+}
+
+void Application::beginRecording(const SelectionResult &selection)
+{
+    m_recordIntent = false;
+    if (!m_backend)
+        return;
+
+    const QRectF wanted = selection.mode == SelectionMode::Window ? selection.window.frameGeometry
+                                                                  : selection.logicalRect;
+    const QRectF region = wanted.intersected(QRectF(virtualGeometry()));
+    if (region.width() < 2 || region.height() < 2) {
+        QTextStream(stdout) << "RECORD_ERROR 录制区域无效\n";
+        return;
+    }
+
+    const QString path = m_options.saveTo.isEmpty() ? defaultGifPath() : m_options.saveTo;
+    m_recorder->setOutputPath(path);
+
+    QString error;
+    if (!m_recorder->start(m_backend.get(), region, m_settings->gifFps(), &error)) {
+        SS_WARN() << "[app] 录制启动失败:" << error;
+        QTextStream(stdout) << "RECORD_ERROR " << error << "\n";
+        return;
+    }
+    m_recordingIndicator->showFor(region, m_recorder->fps(), path);
+    if (m_tray)
+        m_tray->setRecording(true);
+    m_keepAliveForRecording = true;
+
+    if (m_options.seconds > 0) {
+        SS_INFO() << "[app] 将在" << m_options.seconds << "秒后自动停止录制";
+        QTimer::singleShot(m_options.seconds * 1000, this, &Application::stopRecording);
+    }
+}
+
+void Application::stopRecording()
+{
+    if (!m_recorder || !m_recorder->isRecording()) {
+        SS_INFO() << "[app] 当前没有在录制";
+        return;
+    }
+    QTextStream(stdout) << "RECORD_STOP requested\n";
+    QTextStream(stdout).flush();
+    m_recorder->stop();
+    m_recordingIndicator->hideIndicator();
+    if (m_tray)
+        m_tray->setRecording(false);
+}
+
+void Application::onRecordingFinished(const QString &gifPath, int captured, int dropped,
+                                      int failed, qint64 elapsedMs, const QString &error)
+{
+    QTextStream out(stdout);
+    if (m_recordingIndicator)
+        m_recordingIndicator->hideIndicator();
+    if (m_tray)
+        m_tray->setRecording(false);
+
+    if (!error.isEmpty()) {
+        out << "RECORD_ERROR " << error << "\n";
+        out.flush();
+        if (isOneShot())
+            QCoreApplication::exit(3);
+        return;
+    }
+
+    const double seconds = elapsedMs > 0 ? double(elapsedMs) / 1000.0 : 0.0;
+    const double effectiveFps = seconds > 0 ? double(captured) / seconds : 0.0;
+    out << "RECORD ok path=" << gifPath << " frames=" << captured << " dropped=" << dropped
+        << " failed=" << failed << " elapsedMs=" << elapsedMs
+        << " fps=" << QString::number(effectiveFps, 'f', 2) << "\n";
+    out.flush();
+
+    // 结果用既有的浮层展示（缩略图 = 最后一帧，按钮里「另存为」对 GIF 不适用）
+    const QImage thumbnail = m_recorder ? m_recorder->lastFrame() : QImage();
+    if (m_toast && !thumbnail.isNull()) {
+        m_toast->setEditEnabled(false);
+        m_toast->showResult(thumbnail, gifPath,
+                            QStringLiteral("已录制 GIF：%1 帧 / %2 秒")
+                                .arg(captured)
+                                .arg(QString::number(seconds, 'f', 1)),
+                            QString(), QRectF(m_recorder->region()).toAlignedRect());
+        m_keepAliveForToast = true;
+    }
+
+    if (isOneShot()) {
+        if (m_options.saveTo.isEmpty()) {
+            // 手动收尾的一次性录制：等浮层关掉再退
+            if (m_toast)
+                connect(m_toast.get(), &Toast::dismissed, qApp, &QCoreApplication::quit,
+                        Qt::UniqueConnection);
+        } else {
+            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        }
+    }
+}
+
 void Application::startResident()
 {
     // 托盘 / 浮层超时 / 阴影边距 / 快捷键 均由 applySettings() 按当前配置建立，
     // 之后任何配置改动（配置界面里点一下）也会走同一条路径即时生效。
     if (m_backend) {
         m_backend->setHotkeyCallback([this]() {
+            // 录制中：同一个快捷键 = 停止录制；否则开始截图
+            if (m_recorder && m_recorder->isRecording()) {
+                SS_INFO() << "[app] 全局快捷键：停止录制";
+                stopRecording();
+                return;
+            }
             SS_INFO() << "[app] 全局快捷键触发截图";
             startCapture();
         });
@@ -325,6 +489,12 @@ void Application::applySettings()
     if (m_settings->trayPersistent() && !m_tray) {
         m_tray = std::make_unique<Tray>();
         connect(m_tray.get(), &Tray::captureRequested, this, &Application::startCapture);
+        connect(m_tray.get(), &Tray::recordToggleRequested, this, [this]() {
+            if (m_recorder && m_recorder->isRecording())
+                stopRecording();
+            else
+                startRecordFlow();
+        });
         connect(m_tray.get(), &Tray::settingsRequested, this, &Application::openSettings);
         connect(m_tray.get(), &Tray::shortcutSettingsRequested, this, [this]() {
             const QString program = QStandardPaths::findExecutable(QStringLiteral("systemsettings"));
@@ -414,6 +584,8 @@ void Application::startCapture()
         QTextStream(stdout) << "CAPTURE_ERROR " << m_backendError << "\n";
         return;
     }
+    m_recordIntent = false;
+    m_overlay->setIntent(Overlay::Intent::Screenshot);
     m_backend->refresh();
     const QVector<WindowInfo> windows = m_backend->windows();
     m_overlay->setWindows(windows);
@@ -429,6 +601,12 @@ void Application::startCapture()
 
 void Application::handleSelection(const SelectionResult &result)
 {
+    if (m_recordIntent) {
+        // 录制：直接用选中的区域/窗口外框开录
+        m_overlay->stopSelection();
+        beginRecording(result);
+        return;
+    }
     m_pendingSelection = result;
     m_overlay->stopSelection();
 
@@ -719,6 +897,47 @@ int Application::run()
     if (m_options.settings) {
         // 配置界面独立进程：已有常驻实例时也允许（它只读写配置，不动截图链路）
         openSettings();
+        return QCoreApplication::exec();
+    }
+    if (m_options.recordStop) {
+        if (sendToExistingInstance(QStringLiteral("stop-record"))) {
+            out << "RECORD_STOP_FORWARDED\n";
+            out.flush();
+            return 0;
+        }
+        out << "RECORD_STOP no-running-instance\n";
+        out.flush();
+        return 1;
+    }
+    if (m_options.record) {
+        // 有常驻实例 → 把录制请求转给它（这样托盘/快捷键的停止路径完全一致）
+        if (m_options.hasRect) {
+            const QString command = QStringLiteral("record-rect %1,%2,%3,%4")
+                                        .arg(m_options.rect.x())
+                                        .arg(m_options.rect.y())
+                                        .arg(m_options.rect.width())
+                                        .arg(m_options.rect.height());
+            if (sendToExistingInstance(command)) {
+                out << "RECORD_FORWARDED rect=" << m_options.rect.x() << "," << m_options.rect.y()
+                    << " " << m_options.rect.width() << "x" << m_options.rect.height() << "\n";
+                out.flush();
+                return 0;
+            }
+        } else if (sendToExistingInstance(QStringLiteral("record"))) {
+            out << "RECORD_FORWARDED interactive\n";
+            out.flush();
+            return 0;
+        }
+
+        startServer();
+        if (m_options.hasRect) {
+            SelectionResult selection;
+            selection.mode = SelectionMode::Rect;
+            selection.logicalRect = m_options.rect;
+            beginRecording(selection);
+        } else {
+            startRecordFlow();
+        }
         return QCoreApplication::exec();
     }
     if (m_options.listWindows)

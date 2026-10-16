@@ -22,6 +22,8 @@ class Overlay;
 class Toast;
 class Tray;
 class CaptureBackend;
+class GifRecorder;
+class RecordingIndicator;
 
 struct Options {
     QString backend = QStringLiteral("auto"); ///< auto|wayland|x11
@@ -43,6 +45,9 @@ struct Options {
     QString setHotkey; ///< --set-hotkey <seq>：写入并注册快捷键后退出
     bool hotkeyStatus = false; ///< --hotkey-status：打印当前绑定的快捷键
     bool printConfig = false; ///< --print-config：打印生效中的配置
+    bool record = false; ///< --record：进入录制流程（交互选区域，或配合 --rect 直接用矩形）
+    bool recordStop = false; ///< --record-stop：让常驻实例停止录制
+    int seconds = 0; ///< --seconds N：录制 N 秒后自动停（0 = 手动停）
 };
 
 class Application : public QObject
@@ -59,13 +64,21 @@ public:
 private:
     /// 打开编辑器（截图结果浮层上的「编辑」按钮、以及 --edit 都走这里）
     void openEditor(const QImage &image, const QString &sourcePath);
+    /// 录制流程（Phase 4）
+    void startRecordFlow();
+    void beginRecording(const SelectionResult &selection);
+    void stopRecording();
+    void onRecordingFinished(const QString &gifPath, int captured, int dropped, int failed,
+                             qint64 elapsedMs, const QString &error);
+    QString defaultGifPath() const;
     /// 打开配置界面（托盘菜单与 --settings 共用）
     void openSettings();
     /// 配置变化后重新应用（浮层超时/托盘/阴影/快捷键）
     void applySettings();
-    void applyHotkey(const QString &sequence);
 
+    void applyHotkey(const QString &sequence);
     void startResident();
+    /// 开始一次交互式截图（热键/托盘/--capture 都走这里）
     void startCapture();
     void handleSelection(const SelectionResult &result);
     void performCapture();
@@ -92,6 +105,10 @@ private:
     std::unique_ptr<Overlay> m_overlay;
     std::unique_ptr<Toast> m_toast;
     std::unique_ptr<Tray> m_tray;
+    std::unique_ptr<GifRecorder> m_recorder;
+    std::unique_ptr<RecordingIndicator> m_recordingIndicator;
+    bool m_recordIntent = false; ///< 正在选择录制区域
+    bool m_keepAliveForRecording = false;
     QPointer<QWidget> m_settingsDialog;
     QString m_appliedHotkey;
     bool m_hotkeyApplied = false;

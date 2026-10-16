@@ -186,6 +186,16 @@ layer-shell 覆盖层、悬停虚框、单击截窗、拖拽截区、`wl-copy` �
 验收：改设置立刻生效、重启后保持、恢复默认、快捷键被占用时给出明确提示。
 
 ### Phase 4：GIF 录制
+
+**状态：已交付（2026-10-16）** —— 验收 7/7 通过，记录见 `docs/acceptance/phase4.md`，
+复现命令 `bash scripts/acceptance-phase4.sh`。
+
+**与本节原计划的偏差（已实测后决定）**：原计划“优先 portal ScreenCast”，实际改为
+**定时调用自己的截图后端**（Wayland → ScreenShot2 / X11 → MIT-SHM）：
+KWin 6.7 无录制 D-Bus 接口，portal 需 PipeWire 客户端消费 + 每次授权弹窗 + 新依赖，
+而轮询方案零依赖、双后端一套代码、且满足“帧采集自己做”的要求（实测 15.19fps、0 丢帧）。
+PipeWire 直读作为可选增强记录在 `docs/known-issues.md` 的 ISSUE-006。
+
 只录选定区域；帧率默认 15 可调；**无时长与体积上限**；停止方式：热键/托盘/浮层按钮；
 帧采集自己做，编码用已装的 `ffmpeg`（palettegen/paletteuse 两遍）。
 录制来源优先级：

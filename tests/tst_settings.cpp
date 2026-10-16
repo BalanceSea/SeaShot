@@ -28,6 +28,9 @@ private slots:
         // 每个用例从干净配置开始（否则前一个用例写下的值会污染默认值断言）
         QSettings().clear();
         QSettings().sync();
+        // 临时目录也要清：上次运行留下的 fixed.png 会让序号断言从 _1 变成 _2
+        QDir(m_dir).removeRecursively();
+        QDir().mkpath(m_dir);
     }
 
     void defaultsAreSane()
@@ -83,7 +86,8 @@ private slots:
     {
         Settings settings;
         settings.setSaveDir(m_dir);
-        settings.setFilenameTemplate(QStringLiteral("t_%1"));
+        // 用不随时间变的模板，否则跨秒时会生成不同的基础名（测试会变成随机失败）
+        settings.setFilenameTemplate(QStringLiteral("fixed"));
 
         const QString first = settings.defaultSavePath(QStringLiteral("png"));
         QVERIFY(first.startsWith(m_dir));
