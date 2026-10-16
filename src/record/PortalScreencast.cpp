@@ -31,10 +31,11 @@ constexpr uint kCursorModeEmbedded = 1;
 
 QString PortalScreencast::newToken(const QString &prefix)
 {
-    // portal 要求 token 只含 [A-Za-z0-9_]
-    return QStringLiteral("%1_%2")
-        .arg(prefix)
-        .arg(QRandomGenerator::global()->generate(), 10);
+    // portal 要求 token 只含 [A-Za-z0-9_]（会当成 D-Bus 对象路径元素校验）。
+    // ⚠️ 注意 QString::arg(value, 10) 的第二个参数是**字段宽度**不是进制，
+    //    之前这么写会生成 "seashot_  61130904"（带空格）→ portal 报 Invalid token。
+    const quint32 value = QRandomGenerator::global()->generate();
+    return QStringLiteral("%1_%2").arg(prefix, QString::number(value, 16));
 }
 
 QString PortalScreencast::requestPathFor(const QString &token)
