@@ -79,6 +79,8 @@ public:
     friend class TestGifRecorder;
 
 signals:
+    /// 临时空间不足，已提前停止采集（参数是当时的可用字节数）
+    void stoppedForSpace(qint64 availableBytes);
     void started(const QRectF &region, int fps);
     void progress();
     void finished(const QString &gifPath, const seashot::GifRecorder::Stats &stats,
@@ -105,6 +107,7 @@ private:
     bool m_finishing = false;
     bool m_deferExport = false;
     bool m_lossless = true;
+    qint64 m_lastSpaceCheckMs = 0;
     int m_fps = 15;
 };
 

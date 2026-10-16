@@ -53,6 +53,13 @@ public:
     static QStringList mp4EncodeArgs(const QString &intermediatePath, const QString &mp4Path, int fps);
     /// 按输出扩展名决定目标格式（.mp4/.m4v → MP4，其余 → GIF）
     static bool wantsMp4(const QString &path);
+    /// 中间文件目录：~/.cache/seashot/recording（**磁盘**）。
+    /// ⚠️ 不能用 QDir::tempPath()：本机 /tmp 是 tmpfs（内存盘，7.8G），
+    ///    无损中间文件 ≈554MB/分钟，录十几分钟就会吃光内存并触发 OOM。
+    static QString intermediateDirectory();
+    /// 清理上一次异常退出留下的中间文件（按 PID 判断进程是否还活着）。返回清理数量。
+    static int cleanStaleIntermediates();
+
     static bool ffmpegAvailable();
     static QString ffmpegPath();
 

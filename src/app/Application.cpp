@@ -12,6 +12,7 @@
 #include "editor/AnnotationRenderer.h"
 #include "editor/EditorWindow.h"
 #include "overlay/Overlay.h"
+#include "record/GifEncoder.h"
 #include "record/GifRecorder.h"
 #include "record/PipeWireFrameSource.h"
 #include "record/PortalScreencast.h"
@@ -130,6 +131,14 @@ Application::Application(const Options &options, QObject *parent)
         m_backendError = error;
     }
 
+    // 上一次崩溃/被 kill 可能留下几百 MB~几 GB 的中间文件（占磁盘），启动时清掉。
+    // 只清理进程已不存在的那些，不碰正在录制的另一个实例。
+    {
+        const int cleaned = GifEncoder::cleanStaleIntermediates();
+        if (cleaned > 0)
+            SS_INFO() << "[app] 启动清理：已删除" << cleaned << "个残留中间文件";
+    }
+
     m_overlay = std::make_unique<Overlay>();
     connect(m_overlay.get(), &Overlay::selectionFinished, this, &Application::handleSelection);
     connect(m_overlay.get(), &Overlay::selectionCancelled, this, [this]() {
@@ -153,6 +162,9 @@ Application::Application(const Options &options, QObject *parent)
     // 录制（Phase 4）
     m_recorder = std::make_unique<GifRecorder>();
     m_recordingIndicator = std::make_unique<RecordingIndicator>();
+    connect(m_recorder.get(), &GifRecorder::stoppedForSpace, this, [](qint64 available) {
+        SS_WARN() << "[app] 录制因临时空间不足提前停止，剩余" << available / 1048576 << "MB";
+    });
     connect(m_recorder.get(), &GifRecorder::progress, this, [this]() {
         if (!m_recordingIndicator || !m_recorder)
             return;

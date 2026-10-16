@@ -6,11 +6,17 @@
 
 #include <QCoreApplication>
 #include <QFile>
+#include <QStorageInfo>
 #include <QFileInfo>
 #include <QThread>
 #include <QTimer>
 
 namespace seashot {
+
+namespace {
+/// 低于这个可用空间就停止采集：无损中间文件 ≈554MB/分钟，留 2GB 大约 3.6 分钟余量
+constexpr qint64 kMinFreeBytes = 2LL * 1024 * 1024 * 1024;
+} // namespace
 
 GifRecorder::GifRecorder(QObject *parent)
     : QObject(parent)
@@ -228,6 +234,25 @@ void GifRecorder::onFrame(const CaptureImage &image)
         emit progress();
         return;
     }
+    // 每约 1 秒查一次可用空间：无损中间文件可能几百 MB/分钟，
+    // 而本机 /tmp 是 tmpfs（内存盘）—— 撑满会直接吃光内存并触发 OOM，
+    // 所以宁可提前停，也不能让它写满。
+    if (m_elapsed.elapsed() - m_lastSpaceCheckMs > 1000) {
+        m_lastSpaceCheckMs = m_elapsed.elapsed();
+        const QStorageInfo storage(GifEncoder::intermediateDirectory());
+        const qint64 available = storage.isValid() ? storage.bytesAvailable() : -1;
+        if (available >= 0 && available < kMinFreeBytes) {
+            SS_WARN() << "[record] 临时空间不足（剩余" << available / 1048576 << "MB），提前停止采集";
+            m_stats.elapsedMs = m_elapsed.elapsed();
+            ++m_stats.captured;
+            m_lastFrame = image.image;
+            emit progress();
+            emit stoppedForSpace(available);
+            stop();
+            return;
+        }
+    }
+
     ++m_stats.captured;
     m_lastFrame = image.image;
     // ⚠️ 必须每帧同步用时：指示器读的是 stats.elapsedMs，而这个字段原先只在 stop()

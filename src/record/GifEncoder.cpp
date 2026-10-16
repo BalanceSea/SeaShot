@@ -98,6 +98,44 @@ QStringList GifEncoder::mp4EncodeArgs(const QString &intermediatePath, const QSt
             QStringLiteral("-y"), mp4Path};
 }
 
+QString GifEncoder::intermediateDirectory()
+{
+    // ⚠️ 不用 QStandardPaths::CacheLocation：它解析出来的目录取决于应用名/组织名，
+    //    实测不是 ~/.cache/seashot（与本项目其它路径的约定不一致，排查了半天）。
+    //    这里跟 restore token 用同一套确定性路径，行为可预期、也好清理。
+    return QDir::homePath() + QStringLiteral("/.cache/seashot/recording");
+}
+
+int GifEncoder::cleanStaleIntermediates()
+{
+    // 上一次崩溃/kill 留下的中间文件可能有几百 MB 到几 GB，且占的是磁盘。
+    // 只删"进程已经不在了"的那些：同一时刻可能有另一个实例正在录制，不能误删。
+    int removed = 0;
+    QStringList dirs{intermediateDirectory(),
+                     QStandardPaths::writableLocation(QStandardPaths::TempLocation)};
+    dirs.removeAll(QString());
+    for (const QString &dir : std::as_const(dirs)) {
+        QDir d(dir);
+        const QStringList files =
+            d.entryList({QStringLiteral("seashot-record-*")}, QDir::Files, QDir::Name);
+        for (const QString &name : files) {
+            // 文件名形如 seashot-record-<pid>.<ext>
+            const QString stem = name.section(QLatin1Char('.'), 0, 0);
+            const QString pidText = stem.section(QLatin1Char('-'), 2, 2);
+            bool isPid = false;
+            const qint64 pid = pidText.toLongLong(&isPid);
+            const bool alive = isPid && pid > 0 && QFile::exists(QStringLiteral("/proc/%1").arg(pid));
+            if (alive)
+                continue;
+            if (QFile::remove(dir + QLatin1Char('/') + name)) {
+                ++removed;
+                SS_INFO() << "[record] 已清理残留中间文件" << dir + QLatin1Char('/') + name;
+            }
+        }
+    }
+    return removed;
+}
+
 bool GifEncoder::wantsMp4(const QString &path)
 {
     return path.endsWith(QLatin1String(".mp4"), Qt::CaseInsensitive)
@@ -121,7 +159,7 @@ bool GifEncoder::start(const QSize &size, int fps, QString *error)
     m_fps = qMax(1, fps);
     m_frames = 0;
 
-    const QString dir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
+    const QString dir = intermediateDirectory();
     QDir().mkpath(dir);
     m_intermediatePath = QStringLiteral("%1/seashot-record-%2.%3")
                              .arg(dir)
