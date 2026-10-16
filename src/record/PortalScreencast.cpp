@@ -59,6 +59,7 @@ QString PortalScreencast::Result::describe() const
     parts << QStringLiteral("session=%1").arg(sessionPath.isEmpty() ? QStringLiteral("(none)")
                                                                    : sessionPath);
     parts << QStringLiteral("streams=%1").arg(streams.size());
+    parts << QStringLiteral("streamsPresent=%1").arg(streamsPresent ? 1 : 0);
     for (const StreamInfo &stream : streams)
         parts << QStringLiteral("node=%1").arg(stream.nodeId);
     parts << QStringLiteral("usedRestoreToken=%1").arg(usedRestoreToken ? 1 : 0);
@@ -252,6 +253,14 @@ void PortalScreencast::start(const QString &restoreToken, uint persistMode, Call
                             result.sessionPath = m_sessionPath;
                             result.startLatencyMs = timer->elapsed();
                             result.usedRestoreToken = usingToken;
+                            result.streamsPresent = startResults.contains(QStringLiteral("streams"));
+                            {
+                                QTextStream diag(stdout);
+                                diag << "PORTAL_SCREENCAST_RESPONSE Start code=" << startCode
+                                     << " keys=" << startResults.keys().join(QLatin1Char(','))
+                                     << " startLatencyMs=" << result.startLatencyMs << "\n";
+                                diag.flush();
+                            }
                             if (startCode != 0) {
                                 result.error =
                                     QStringLiteral("Start 被取消或失败（response=%1）").arg(startCode);
@@ -261,23 +270,14 @@ void PortalScreencast::start(const QString &restoreToken, uint persistMode, Call
                             }
                             result.restoreToken =
                                 startResults.value(QStringLiteral("restore_token")).toString();
-                            const QVariant streamsVar = startResults.value(QStringLiteral("streams"));
-                            if (streamsVar.canConvert<QDBusArgument>()) {
-                                QDBusArgument argument = streamsVar.value<QDBusArgument>();
-                                argument.beginArray();
-                                while (!argument.atEnd()) {
-                                    argument.beginStructure();
-                                    uint nodeId = 0;
-                                    QVariantMap properties;
-                                    argument >> nodeId >> properties;
-                                    argument.endStructure();
-                                    result.streams.append({nodeId, properties});
-                                }
-                                argument.endArray();
-                            }
-                            result.ok = !result.sessionPath.isEmpty() && !result.streams.isEmpty();
+                            // 注意：这里**故意不手工迭代 streams**（a(ua{sv})）。
+                            // 实测读取嵌套结构时 Qt 会直接 abort：
+                            //   "QDBusArgument: write from a read-only object" + SIGABRT。
+                            // 诊断阶段只需要知道"有没有流"，用 OpenPipeWireRemote 判定即可
+                            // （没有流时它会报 No streams available，已实测）。
+                            result.ok = !result.sessionPath.isEmpty() && result.streamsPresent;
                             if (!result.ok && result.error.isEmpty())
-                                result.error = QStringLiteral("Start 成功但没有流（streams 为空）");
+                                result.error = QStringLiteral("Start 成功但没有 streams");
                             SS_INFO() << "[portal] ScreenCast 会话建立:" << result.describe();
                             if (m_callback)
                                 m_callback(result);

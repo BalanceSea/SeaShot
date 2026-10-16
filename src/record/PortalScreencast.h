@@ -37,6 +37,7 @@ public:
         QString sessionPath;
         QString restoreToken; ///< 下次 CreateSession 带上它就能免弹窗
         QVector<StreamInfo> streams;
+        bool streamsPresent = false; ///< Start 结果里是否有 streams（不手工迭代 a(ua{sv})）
         qint64 startLatencyMs = -1; ///< 从 Start() 到用户应答的耗时（判断有没有弹窗）
         bool usedRestoreToken = false;
         QString error;
