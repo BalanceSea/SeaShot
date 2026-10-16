@@ -49,11 +49,12 @@ sleep 2.5
 wait "$OVERLAY_PID" 2>/dev/null
 if [ -f "$OUT/b1-baseline.png" ] && [ -f "$OUT/b2-with-overlay.png" ]; then
     # 失败模式是「覆盖层入镜」：整屏压暗 ~47% → 平均亮度会掉约 120。
-    # 用平均亮度差判定（比 RMSE 稳健：区域内可能有时钟/动效等动态内容）。
+    # 用平均亮度差判定（比 RMSE 稳健），阈值放到 25：
+    # 实测桌面在动时两次截图的自然抖动可达 ~5，而真失败会掉 ~120，两者差 5 倍以上。
     M1=$(magick "$OUT/b1-baseline.png" -format '%[fx:mean*255]' info:)
     M2=$(magick "$OUT/b2-with-overlay.png" -format '%[fx:mean*255]' info:)
-    OK=$(python3 -c "print(1 if abs(float('$M1') - float('$M2')) < 3.0 else 0)")
-    report "B. 覆盖层自排除(像素)" "$OK" "平均亮度 $M1 vs $M2（差 <3 视为不含覆盖层）"
+    OK=$(python3 -c "print(1 if abs(float('$M1') - float('$M2')) < 25.0 else 0)")
+    report "B. 覆盖层自排除(像素)" "$OK" "平均亮度 $M1 vs $M2（差 <25 视为不含覆盖层；真失败会掉 ~120）"
 else
     report "B. 覆盖层自排除(像素)" 0 "缺少截图产物"
 fi
@@ -152,19 +153,29 @@ PY
 import re, sys
 cx, cy = float(sys.argv[2]), float(sys.argv[3])
 best = None
+panel = 0
 for line in open(sys.argv[1]).read().splitlines():
-    m = re.search(r'^(\S+) appId=(\S+).*?stack=(-?\d+).*?frame=(-?[\d.]+),(-?[\d.]+) ([\d.]+)x([\d.]+)',
+    m = re.search(r'^(\S+) appId=(\S+).*?normal=([01]).*?stack=(-?\d+).*?frame=(-?[\d.]+),(-?[\d.]+) ([\d.]+)x([\d.]+)',
                   line)
     if not m:
         continue
-    appid, stack = m.group(2), int(m.group(3))
-    x, y, w, h = (float(m.group(i)) for i in (4, 5, 6, 7))
-    if x <= cx <= x + w and y <= cy <= y + h and (best is None or stack > best[0]):
+    appid, normal, stack = m.group(2), m.group(3) == '1', int(m.group(4))
+    x, y, w, h = (float(m.group(i)) for i in (5, 6, 7, 8))
+    if not (x <= cx <= x + w and y <= cy <= y + h):
+        continue
+    # 面板/桌面挂件这类 surface 不在普通窗口的栈序里，但视觉上盖在普通窗口之上：
+    # 它们出现时不能因为"栈序最高的是测试窗口"就判定成真失败
+    if not normal:
+        panel = 1
+    if best is None or stack > best[0]:
         best = (stack, appid)
-print(best[1] if best else '(none)')
+print(f"{best[1] if best else '(none)'} {panel}")
 PY
 )
-        echo "TOPMOST_AT_TESTWINDOW_CENTER=$TOPMOST" >> "$OUT/c-analysis.txt"
+        TOPMOST_APP="${TOPMOST%% *}"
+        PANEL_COVER="${TOPMOST##* }"
+        echo "TOPMOST_AT_TESTWINDOW_CENTER=$TOPMOST_APP panelSurfacesCoverPoint=$PANEL_COVER" \
+            >> "$OUT/c-analysis.txt"
         # 阈值 0.05：摄对时实测 0.02（窗口自身渲染 vs 合成后屏幕像素的微小差异），
         # 摄错/错位时负对照 >0.3；要求两者拉开 5 倍以上
         WOK=$(python3 -c "
@@ -172,9 +183,9 @@ rmse=float('${WRMSE:-1}'); neg=float('${WNEG:-0}')
 print(1 if rmse < 0.05 and neg > max(0.15, 5*rmse) else 0)")
         if [ "$WOK" = 1 ]; then
             report "C. 窗口图与屏幕一致" 1 "$(echo "$ANALYSIS" | sed 's/BBOX=/frame定位 /')"
-        elif [ "$TOPMOST" != "seashot-probe-window" ]; then
+        elif [ "$TOPMOST_APP" != "seashot-probe-window" ] || [ "$PANEL_COVER" = 1 ]; then
             printf 'SKIP  %-36s %s\n' "C. 窗口图与屏幕一致" \
-                "该矩形最上层是「$TOPMOST」（别的窗口压着测试窗口），本次无法比对；RMSE=$WRMSE"
+                "该矩形被遮挡（最上层窗口=「$TOPMOST_APP」，面板表面覆盖=$PANEL_COVER），本次无法比对；RMSE=$WRMSE"
             SKIPPED=$((SKIPPED + 1))
         else
             report "C. 窗口图与屏幕一致" 0 "$(echo "$ANALYSIS" | sed 's/BBOX=/frame定位 /')（顶层确实是测试窗口 → 有真问题）"

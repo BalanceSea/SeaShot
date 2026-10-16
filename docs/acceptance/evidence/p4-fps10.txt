@@ -1,59 +1,55 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-369517" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-388848" id= 1 run方式= Script<N>.run 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
 [info] [shot2] "CaptureArea" ok 3 ms 240 x 180 "" 
-[info] [record] 编码器已启动 QSize(240, 180) 10 fps → "/tmp/seashot-record-369517.mkv" 
+[info] [record] 编码器已启动 QSize(240, 180) 10 fps → "/tmp/seashot-record-388848.mkv" 
 [info] [record] 开始录制 QRectF(300,200 240x180) 10 fps 帧尺寸 QSize(240, 180) 输出 "docs/acceptance/evidence/p4-fps10.gif" 
 [info] [record] 指示器已套 layer-shell 
 RECORDING_INDICATOR_GEOMETRY x=300 y=154 w=300 h=40 regionTop=200 regionBottom=380
 RECORDING_INDICATOR region=300,200 240x180 fps=10 output=docs/acceptance/evidence/p4-fps10.gif
 [info] [app] 将在 2 秒后自动停止录制 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 2 ms 240 x 180 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 3 ms 240 x 180 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 3 ms 240 x 180 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
 [info] [shot2] "CaptureArea" ok 4 ms 240 x 180 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
 [info] [shot2] "CaptureArea" ok 3 ms 240 x 180 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
 [info] [shot2] "CaptureArea" ok 4 ms 240 x 180 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 2 ms 240 x 180 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 2 ms 240 x 180 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 3 ms 240 x 180 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 2 ms 240 x 180 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 3 ms 240 x 180 "" 
+[info] [shot2] "CaptureArea" ok 4 ms 240 x 180 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
 [info] [shot2] "CaptureArea" ok 4 ms 240 x 180 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 3 ms 240 x 180 "" 
+[info] [shot2] "CaptureArea" ok 4 ms 240 x 180 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 3 ms 240 x 180 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 2 ms 240 x 180 "" 
+[info] [shot2] "CaptureArea" ok 4 ms 240 x 180 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
 [info] [shot2] "CaptureArea" ok 5 ms 240 x 180 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 3 ms 240 x 180 "" 
+[info] [shot2] "CaptureArea" ok 5 ms 240 x 180 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 3 ms 240 x 180 "" 
+[info] [shot2] "CaptureArea" ok 4 ms 240 x 180 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 2 ms 240 x 180 "" 
+[info] [shot2] "CaptureArea" ok 4 ms 240 x 180 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
-[info] [shot2] "CaptureArea" ok 3 ms 240 x 180 "" 
+[info] [shot2] "CaptureArea" ok 7 ms 240 x 180 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
+[info] [shot2] "CaptureArea" ok 7 ms 240 x 180 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
+[info] [shot2] "CaptureArea" ok 5 ms 240 x 180 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
+[info] [shot2] "CaptureArea" ok 6 ms 240 x 180 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
+[info] [shot2] "CaptureArea" ok 7 ms 240 x 180 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
+[info] [shot2] "CaptureArea" ok 5 ms 240 x 180 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 240x180) 
+[info] [shot2] "CaptureArea" ok 6 ms 240 x 180 "" 
 RECORD_STOP requested
-[info] [record] 停止采集：请求 21 帧 / 采到 21 / 丢 0 / 失败 0 用时 2081 ms 
-[info] [record] GIF 完成 "docs/acceptance/evidence/p4-fps10.gif" 21 帧 18721 字节 
-RECORD ok path=docs/acceptance/evidence/p4-fps10.gif frames=21 dropped=0 failed=0 elapsedMs=2081 fps=10.09
+[info] [record] 停止采集：请求 19 帧 / 采到 19 / 丢 0 / 失败 0 用时 1901 ms 
+[info] [record] GIF 完成 "docs/acceptance/evidence/p4-fps10.gif" 19 帧 37509 字节 
+RECORD ok path=docs/acceptance/evidence/p4-fps10.gif frames=19 dropped=0 failed=0 elapsedMs=1901 fps=9.99
 [info] [toast] layer-shell role 已应用（LayerOverlay） 
 TOAST image=240x180 display=240x180 scaled=0 anchor=300,200 240x180 geometry=300,382 640x214 autoHide=0
 [info] [toast] visible= true layerShell= true geometry= QRect(300,382 640x214) autoHideMs= 0 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-369517" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-388848" 

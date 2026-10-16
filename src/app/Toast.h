@@ -44,6 +44,9 @@ public:
     /// 诊断用：直接走拖动时的定位路径（不经过鼠标事件）
     void dragTo(const QPoint &globalTopLeft) { applyPosition(globalTopLeft); }
     QRect currentGeometry() const { return geometry(); }
+    /// 诊断用：累计提交次数（每次 applyPosition 一次）
+    int commitCount() const { return m_commitCount; }
+    void resetCommitCount() { m_commitCount = 0; }
 
 signals:
     void editRequested();
@@ -72,6 +75,7 @@ private:
     void rebuildCache();
     void invalidateCache();
     void reposition(const QRect &anchorGlobalRect);
+    void flushPendingPosition();
     void applyPosition(const QPoint &globalTopLeft);
     void ensureLayerShell();
     void closeAndNotify();
@@ -88,8 +92,13 @@ private:
     bool m_cacheDirty = true;
 
     QTimer m_autoHide;
+    /// 拖动节流：把位置提交压到 ~90Hz（KWin 每次 margin 变化都会重排该层，
+    /// 240Hz 鼠标下不节流会造成闪烁/发涩）
+    QTimer m_moveThrottle;
+    QPoint m_pendingTopLeft;
     /// 上一次实际提交过的位置（重复位置不再提交）
     QPoint m_lastAppliedTopLeft{-1, -1};
+    int m_commitCount = 0;
 
     bool m_editEnabled = true;
     bool m_layerShellApplied = false;

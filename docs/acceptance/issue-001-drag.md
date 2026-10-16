@@ -72,3 +72,40 @@ DRAGBENCH samples=10 lagPxAvg=0 lagPxMax=0 lagMsAvg=0
   4ms 合并（把 `applyPosition` 调用放进一个 4ms 定时器即可）。
 - 这个修法是"客户端多干一点活保证提交"，不依赖 KWin 版本行为；但若将来 KWin 改变
   layer-shell 边距的应用时机，需要重跑本基准确认。
+
+## 第二轮（反馈"会闪烁并且拖动不顺畅"）—— 提交风暴
+
+第一版的修法（每次定位都 `update()` 促成提交）确实让位置跟上了，但引入了新问题：
+**每次定位提交两次**——`setMargins()` 自己发一次"只带状态"的 commit，`update()` 又发一次
+"带缓冲"的 commit，而后者会把整张卡片的缓冲重传一遍。
+
+量化（`SEASHOT_BENCH_STEP_MS=4` 模拟 240Hz 鼠标）：
+
+| 变体 | 每秒提交 | 每秒能服务的输入事件 | lagPxMax |
+| --- | --- | --- | --- |
+| 每次整块重绘（第一版） | 389 | 241 | 1 |
+| 只标 1px 脏区 | 420 | 420 | 8 |
+| **只标 1px 脏区 + 90Hz 节流（最终）** | **100** | 250（节流后按 90Hz 提交） | **0** |
+
+闪烁的来源就是"每秒几百次整块缓冲提交 + 几百次层重排"：Qt 的 shm 后端每次 `update()`
+都要重写并重传整块缓冲，KWin 每次 margin 变化都要重排该层。
+
+最终修法：
+
+1. `applyPosition()` 里对 layer-shell 只调 `update(QRect(0, 0, 1, 1))`：
+   Qt 的 shm 后端只拷贝脏区，但**依旧 attach + commit** —— 于是"位置随提交生效"而
+   "内容不重传"（拖动时卡片内容本来就不变，视觉无差）。
+2. 位置提交节流到 ~90Hz（`m_moveThrottle`，11ms）：240Hz 鼠标下把层重排从 400+/s
+   降到 100/s。松手时强制 flush 最后一次位置，不会丢落点。
+3. 保留诊断开关 `SEASHOT_TOAST_FULL_REPAINT_ON_MOVE=1`（强制整块重绘）用于以后 A/B。
+
+最终实测：
+
+```
+240Hz 输入：samples=11 lagPxAvg=-0.09 lagPxMax=0   commits=250/2.5s = 100/s
+ 60Hz 输入：samples=12 lagPxAvg=0.08  lagPxMax=1
+回归基准（scripts/benchmark-toast-drag.sh）：PASS（判据 ≤ 8px）
+```
+
+CPU（同一台机器、2.5 秒基准）：user 532ms / sys 40ms（含基准自身的 240Hz 定时器与
+子进程观测开销，只能当量级参考）。

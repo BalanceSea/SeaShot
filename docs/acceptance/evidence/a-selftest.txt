@@ -1,7 +1,6 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 4 ms 8 x 8 "" 
-[info] [kwin] 已清理陈旧助手脚本 "seashot-367526" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-367683" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 23 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-392609" id= 1 run方式= Script<N>.run 
 BACKEND_CHOICE Wayland 会话 + KDE 桌面（WAYLAND_DISPLAY=wayland-0）
 SeaShot 自检（Phase 1）
 ========================
@@ -19,11 +18,11 @@ SeaShot 自检（Phase 1）
 [OK  ] 窗口枚举
        共 17 个窗口
        {d43be7d4-87f8-4686-a0d5-3d282620bc21} appId=plasmashell frame=0,0 1920x1080 stack=0
-       {35d77d6e-0ee7-42a0-a2b1-4e5f6636d598} appId=clash-verge frame=884.653,697.963 940x700 stack=7
+       {35d77d6e-0ee7-42a0-a2b1-4e5f6636d598} appId=clash-verge frame=884.653,697.963 940x700 stack=6
        {01d4f58d-92ae-4e3e-b453-983a4abd547e} appId=open-orpheus frame=0,0 1920x1080 stack=2
        {7f79715c-b972-4716-bd31-1d3ac206842f} appId=cc-switch frame=151.589,448.131 1360x723 stack=3
        {963dd8a0-78ac-41e1-bd25-4ab68b81b6cb} appId=dsh-tauri-app frame=347.167,800.908 1920x1080 stack=4
-       {1209843e-8ba9-4a1b-8e6b-39b5707ce4bd} appId=org.telegram.desktop frame=623.712,294.048 801x594 stack=6
+       {1209843e-8ba9-4a1b-8e6b-39b5707ce4bd} appId=org.telegram.desktop frame=623.712,294.048 801x594 stack=10
 [OK  ] 区域截图（32x32 探测）
        得到 32x32，scale=1
 [OK  ] 剪贴板（wl-copy）
@@ -41,4 +40,4 @@ SeaShot 自检（Phase 1）
 
 
 结果: 9 项检查，0 项致命失败
-[info] [kwin] 脚本已卸载 pluginName= "seashot-367683" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-392609" 

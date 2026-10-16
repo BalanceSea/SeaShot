@@ -22,6 +22,7 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <sys/resource.h>
 #include <QDialog>
 #include <QElapsedTimer>
 #include <QEventLoop>
@@ -896,15 +897,22 @@ int Application::runToastDragBench(int durationMs)
     m_toast->setDragMarkerEnabled(true);
     m_toast->setAutoHideMs(0);
     m_toast->showResult(image, QString(), QStringLiteral("拖动基准"), QString(), anchor);
+    m_toast->resetCommitCount();
+    auto cpuStart = std::make_shared<struct rusage>();
+    auto cpuEnd = std::make_shared<struct rusage>();
+    ::getrusage(RUSAGE_SELF, cpuStart.get());
 
     auto trajectory = std::make_shared<QVector<QPair<qint64, int>>>();
     auto reports = std::make_shared<QVector<QString>>();
     auto startX = std::make_shared<int>(m_toast->currentGeometry().x());
     auto step = std::make_shared<int>(0);
     auto timer = new QTimer(this);
-    const int stepMs = 16;   // ~60Hz 事件
-    const int stepPx = 4;    // 250px/s，接近人手拖动
-    const int captureEvery = 20;
+    // 事件频率可以用 SEASHOT_BENCH_STEP_MS 调（4ms ≈ 240Hz 鼠标，默认 16ms ≈ 60Hz）
+    const int stepMs = qMax(1, qEnvironmentVariableIntValue("SEASHOT_BENCH_STEP_MS") > 0
+                                   ? qEnvironmentVariableIntValue("SEASHOT_BENCH_STEP_MS")
+                                   : 16);
+    const int stepPx = 1;    // 每个事件 1px：240Hz 下仍是 ~250px/s
+    const int captureEvery = qMax(1, int(320.0 / stepMs));
 
     QTextStream out(stdout);
     out << "DRAGBENCH_START startX=" << *startX << " stepMs=" << stepMs << " stepPx=" << stepPx
@@ -1001,6 +1009,16 @@ int Application::runToastDragBench(int durationMs)
             summary << "DRAGBENCH samples=" << valid
                     << " lagPxAvg=" << double(lagSum) / valid << " lagPxMax=" << lagMax
                     << " lagMsAvg=" << (double(lagSum) / valid) * stepMs / stepPx << "\n";
+            ::getrusage(RUSAGE_SELF, cpuEnd.get());
+            const auto ms = [](const timeval &t) {
+                return double(t.tv_sec) * 1000.0 + double(t.tv_usec) / 1000.0;
+            };
+            summary << "DRAGBENCH_CPU userMs="
+                    << (ms(cpuEnd->ru_utime) - ms(cpuStart->ru_utime))
+                    << " sysMs=" << (ms(cpuEnd->ru_stime) - ms(cpuStart->ru_stime)) << "\n";
+            summary << "DRAGBENCH_CHURN steps=" << *step << " commits=" << m_toast->commitCount()
+                    << " elapsedMs=" << durationMs << " commitsPerSec="
+                    << double(m_toast->commitCount()) * 1000.0 / qMax(1, durationMs) << "\n";
         } else {
             summary << "DRAGBENCH_EMPTY 没有有效观测\n";
         }

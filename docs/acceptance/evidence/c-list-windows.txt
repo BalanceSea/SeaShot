@@ -1,31 +1,31 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-368037" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 4 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-393055" id= 1 run方式= Script<N>.run 
 BACKEND wayland (Wayland 会话 + KDE 桌面（WAYLAND_DISPLAY=wayland-0）)
 后端: wayland
 ScreenShot2 Version: 5
 授权: ScreenShot2 授权通过（8x8 探测截图成功）
 输出: DP-3 1920x1080+0+0 scale=1
-KWin 助手脚本: 运行中 (pluginName=seashot-368037)
+KWin 助手脚本: 运行中 (pluginName=seashot-393055)
 快照窗口数: 18（最近 1 次收到推送）
-最近快照: 1 ms 前
+最近快照: 0 ms 前
 WINDOWS 18
 {d43be7d4-87f8-4686-a0d5-3d282620bc21} appId=plasmashell pid=1310 active=0 normal=0 min=0 visible=1 stack=0 frame=0,0 1920x1080 excluded=0 title=
-{35d77d6e-0ee7-42a0-a2b1-4e5f6636d598} appId=clash-verge pid=3218 active=0 normal=1 min=0 visible=1 stack=7 frame=884.653,697.963 940x700 excluded=0 title=Clash Verge
-{01d4f58d-92ae-4e3e-b453-983a4abd547e} appId=open-orpheus pid=5435 active=0 normal=1 min=1 visible=1 stack=2 frame=0,0 1920x1080 excluded=0 title=自由的你 - G.E.M.邓紫棋
+{35d77d6e-0ee7-42a0-a2b1-4e5f6636d598} appId=clash-verge pid=3218 active=0 normal=1 min=0 visible=1 stack=6 frame=884.653,697.963 940x700 excluded=0 title=Clash Verge
+{01d4f58d-92ae-4e3e-b453-983a4abd547e} appId=open-orpheus pid=5435 active=0 normal=1 min=1 visible=1 stack=2 frame=0,0 1920x1080 excluded=0 title=不配说爱我 - 常艾非
 {7f79715c-b972-4716-bd31-1d3ac206842f} appId=cc-switch pid=50949 active=0 normal=1 min=1 visible=1 stack=3 frame=151.589,448.131 1360x723 excluded=0 title=
 {963dd8a0-78ac-41e1-bd25-4ab68b81b6cb} appId=dsh-tauri-app pid=76947 active=0 normal=1 min=1 visible=1 stack=4 frame=347.167,800.908 1920x1080 excluded=0 title=DSH Desktop
-{1209843e-8ba9-4a1b-8e6b-39b5707ce4bd} appId=org.telegram.desktop pid=27689 active=0 normal=1 min=1 visible=1 stack=6 frame=623.712,294.048 801x594 excluded=0 title=(2) ‎⁨AIHUB交流群⁩ – (6623)
+{1209843e-8ba9-4a1b-8e6b-39b5707ce4bd} appId=org.telegram.desktop pid=27689 active=0 normal=1 min=0 visible=1 stack=10 frame=623.712,294.048 801x594 excluded=0 title=‎⁨AIHUB交流群⁩ – (6716)
 {aa3589e8-072f-470c-9535-1404c8ef2126} appId=quickshell pid=248078 active=0 normal=1 min=0 visible=1 stack=14 frame=0,35 1920x971 excluded=0 title=
 {ebe71829-d8ab-4ad4-88f1-5b02a3b55bfc} appId=quickshell pid=248078 active=0 normal=1 min=0 visible=1 stack=1 frame=0,0 1920x1080 excluded=0 title=
 {5b9ea431-b767-4667-a056-7b39d0b439eb} appId=quickshell pid=248078 active=0 normal=0 min=0 visible=1 stack=17 frame=1552,48 350x984 excluded=0 title=
 {80b08c85-31e5-4128-b6c9-fac7d0786361} appId=quickshell pid=248078 active=0 normal=0 min=0 visible=1 stack=15 frame=0,0 1920x35 excluded=0 title=
 {2401ed48-b9c9-4bea-9111-59f414ce8685} appId=quickshell pid=248078 active=0 normal=0 min=0 visible=1 stack=16 frame=0,933 1920x147 excluded=0 title=
-{26604bc4-e08c-4c45-82ae-c4bcabc7c38d} appId=com.mitchellh.ghostty pid=253902 active=0 normal=1 min=0 visible=1 stack=10 frame=298.554,294.969 800x628 excluded=0 title=π - SeaShot
-{7592e4ca-9842-4002-a750-a0a47d65b8bc} appId=org.kde.dolphin pid=277949 active=0 normal=1 min=0 visible=1 stack=9 frame=-171.362,743.011 1416x679 excluded=0 title=SeaShot — Dolphin
+{26604bc4-e08c-4c45-82ae-c4bcabc7c38d} appId=com.mitchellh.ghostty pid=253902 active=0 normal=1 min=1 visible=1 stack=11 frame=298.554,294.969 800x628 excluded=0 title=π - SeaShot
+{7592e4ca-9842-4002-a750-a0a47d65b8bc} appId=org.kde.dolphin pid=277949 active=0 normal=1 min=0 visible=1 stack=8 frame=-171.362,743.011 1416x679 excluded=0 title=SeaShot — Dolphin
 {37dfeb68-42d7-4afa-a630-ae54db50cd14} appId=SJMCL_1.3.2_linux_x86_64_portable pid=278132 active=0 normal=1 min=1 visible=1 stack=5 frame=840.814,592.64 800x550 excluded=0 title=SJMC Launcher
-{7a64346b-b1a2-4a47-ab22-d5dd4d737180} appId=Minecraft* 1.21.1 pid=278516 active=1 normal=1 min=0 visible=1 stack=12 frame=0,0 1920x1080 excluded=0 title=BeebeeBlock_v3.07.6
-{a1615174-5144-4b79-803c-ed46ada67903} appId=MinecraftConnectTool pid=278780 active=0 normal=1 min=1 visible=1 stack=8 frame=587,274 1080x720 excluded=0 title=Minecraft Connect Tool
-{7b7a2b43-f94e-4ff2-8173-14b17ab32bcf} appId=qq pid=2746 active=0 normal=1 min=0 visible=1 stack=11 frame=1145,281 957x720 excluded=0 title=QQ
-{787f2a24-0f4c-4a04-93cc-f0a4b76bdbe1} appId=seashot-probe-window pid=367852 active=0 normal=1 min=0 visible=1 stack=13 frame=660,326 600x428 excluded=0 title=seashot-probe-window
-[info] [kwin] 脚本已卸载 pluginName= "seashot-368037" 
+{7a64346b-b1a2-4a47-ab22-d5dd4d737180} appId=Minecraft* 1.21.1 pid=278516 active=1 normal=1 min=0 visible=1 stack=13 frame=0,0 1920x1080 excluded=0 title=BeebeeBlock_v3.07.6
+{a1615174-5144-4b79-803c-ed46ada67903} appId=MinecraftConnectTool pid=278780 active=0 normal=1 min=1 visible=1 stack=7 frame=587,274 1080x720 excluded=0 title=Minecraft Connect Tool
+{7b7a2b43-f94e-4ff2-8173-14b17ab32bcf} appId=qq pid=2746 active=0 normal=1 min=0 visible=1 stack=9 frame=1145,281 957x720 excluded=0 title=QQ
+{c9291643-98db-4c0b-8fb6-742825aacc31} appId=seashot-probe-window pid=392788 active=0 normal=1 min=0 visible=1 stack=12 frame=1223.23,329.107 600x428 excluded=0 title=seashot-probe-window
+[info] [kwin] 脚本已卸载 pluginName= "seashot-393055" 

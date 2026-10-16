@@ -50,6 +50,16 @@ Toast::Toast(QWidget *parent)
 
     m_autoHide.setSingleShot(true);
     connect(&m_autoHide, &QTimer::timeout, this, &Toast::closeAndNotify);
+
+    m_moveThrottle.setSingleShot(true);
+    m_moveThrottle.setInterval(11); // ~90Hz
+    connect(&m_moveThrottle, &QTimer::timeout, this, &Toast::flushPendingPosition);
+}
+
+void Toast::flushPendingPosition()
+{
+    if (m_pendingTopLeft != m_lastAppliedTopLeft)
+        applyPosition(m_pendingTopLeft);
 }
 
 int Toast::barHeight() const
@@ -243,6 +253,7 @@ void Toast::ensureLayerShell()
 void Toast::applyPosition(const QPoint &globalTopLeft)
 {
     ensureLayerShell();
+    ++m_commitCount;
     if (m_layerShellApplied) {
         QScreen *screen =
             QGuiApplication::screenAt(globalTopLeft + QPoint(width() / 2, height() / 2));
@@ -259,10 +270,19 @@ void Toast::applyPosition(const QPoint &globalTopLeft)
     move(globalTopLeft); // 非 layer-shell（X11）下才有效
 
     // 关键：layer-shell 的位置由边距决定，但边距要随 surface 提交才会生效。
-    // 只调 setMargins() 而不产生新缓冲时，实测位置会以秒级间隔成块跳动（ISSUE-001 的根因）。
-    // 这里显式请求一次重绘（内容有 QPixmap 缓存，代价就是一次 blit）以促成提交。
-    if (m_layerShellApplied)
-        update();
+    // 只调 setMargins() 时，实测 KWin 会在「碰巧有别的提交」时才应用（位置成块跳动，
+    // ISSUE-001）；但每次都对整张卡片重绘+重传缓冲，在 240Hz 鼠标下就是每秒 ~390 次
+    // 整块缓冲提交，表现为闪烁/不跟手。
+    //
+    // 办法：只把 1x1 像素标脏——Qt 的 shm 后端只拷贝脏区，但依旧会 attach+commit，
+    // 于是「位置随提交生效」而「内容不重传」。拖动时卡片内容本来就不变，所以视觉无差。
+    if (m_layerShellApplied) {
+        // 诊断开关：强制整块重绘（用于对比缓冲重传的 CPU 代价）
+        if (qEnvironmentVariableIsSet("SEASHOT_TOAST_FULL_REPAINT_ON_MOVE"))
+            update();
+        else
+            update(QRect(0, 0, 1, 1));
+    }
     m_lastAppliedTopLeft = globalTopLeft;
 }
 
@@ -382,8 +402,7 @@ void Toast::mousePressEvent(QMouseEvent *event)
     if (hit == Button::None && event->button() == Qt::LeftButton) {
         m_dragging = true;
         m_dragOrigin = event->globalPosition().toPoint() - frameGeometry().topLeft();
-        const QPoint target = frameGeometry().topLeft();
-        Q_UNUSED(target)
+        m_pendingTopLeft = frameGeometry().topLeft();
         return;
     }
     switch (hit) {
@@ -410,16 +429,18 @@ void Toast::mouseMoveEvent(QMouseEvent *event)
 {
     if (!m_dragging || !(event->buttons() & Qt::LeftButton))
         return;
-    // 直接应用：每次只是 setMargins + 一次缓存 blit（实测 ~70µs），
-    // 之前按 8ms 合并提交反而凭空加了最多 8ms 延迟；位置没变就不提交。
-    const QPoint target = event->globalPosition().toPoint() - m_dragOrigin;
-    if (target != m_lastAppliedTopLeft)
-        applyPosition(target);
+    // 节流到 ~90Hz：KWin 每次 margin 变化都要重排该层，240Hz 鼠标下逐事件提交会闪烁/发涩；
+    // 每次提交只标 1px 脏区（见 applyPosition 注释），所以 11ms 的合并不会带来额外重传。
+    m_pendingTopLeft = event->globalPosition().toPoint() - m_dragOrigin;
+    if (!m_moveThrottle.isActive())
+        m_moveThrottle.start();
 }
 
 void Toast::mouseReleaseEvent(QMouseEvent *)
 {
     m_dragging = false;
+    m_moveThrottle.stop();
+    flushPendingPosition(); // 松手前把最后的位置落地
 }
 
 void Toast::keyPressEvent(QKeyEvent *event)
