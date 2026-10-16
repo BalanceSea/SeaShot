@@ -37,6 +37,10 @@ QIcon toolIcon(ToolKind kind)
     case ToolKind::Ellipse: return ui::iconToolEllipse();
     case ToolKind::Pen: return ui::iconToolPen();
     case ToolKind::Text: return ui::iconToolText();
+    case ToolKind::Highlight: return ui::iconToolHighlight();
+    case ToolKind::Blur: return ui::iconToolBlur();
+    case ToolKind::Mosaic: return ui::iconToolMosaic();
+    case ToolKind::Number: return ui::iconToolNumber();
     }
     return {};
 }
@@ -86,24 +90,50 @@ EditorWindow::EditorWindow(const QImage &image, const QString &sourcePath, QWidg
     updateZoomUi();
     refreshActions();
     updateTitle();
-    // 工具栏（工具 + 颜色/粗细 + 撤销重做删除 + 复制保存另存为 + 缩放组）在窄窗口里会被折叠到
-    // 右侧的 ">" 溢出菜单里，所以默认给一个够宽的尺寸。
-    resize(qMin(1600, qMax(1180, image.width() + 120)), qMin(980, qMax(760, image.height() + 160)));
+    // 窗口按**图片本身**定尺寸（用户反馈：画布留白太多、图片吊在中间），
+    // 但也不能窄到让工具栏把它后面的工具折进 ">" 溢出菜单里 —— 所以取两者较大值。
+    const QScreen *screen = QGuiApplication::primaryScreen();
+    const QRect avail = screen ? screen->availableGeometry() : QRect(0, 0, 1920, 1080);
+    const int chrome = 64; // 工具栏 + 状态栏的大致高度
+    const int toolbarWidth = m_toolbar ? m_toolbar->sizeHint().width() + 24 : 0;
+    const int wantW = qMax(760, qMax(image.width() + 40, toolbarWidth));
+    const int wantH = qMax(420, image.height() + chrome + 24);
+    resize(qMin(avail.width() - 60, wantW), qMin(avail.height() - 80, wantH));
 }
 
 void EditorWindow::buildUi()
 {
     auto *toolbar = new QToolBar(this);
+    m_toolbar = toolbar;
     toolbar->setMovable(false);
-    toolbar->setIconSize(QSize(18, 18));
-    toolbar->setMovable(false);
+    // 图标与文字都显示：用户反馈“顶栏图标太小、看不懂”，
+    // 统一走 ui::spec::iconSize（与浮层/配置界面同一份规格）。
+    toolbar->setIconSize(QSize(ui::spec::iconSize, ui::spec::iconSize));
+    toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    // 选中态要一眼能看出：QToolButton 在 Fusion/Breeze 下勾选态太淡
+    const auto colors = ui::cardColors(palette());
+    toolbar->setStyleSheet(
+        QStringLiteral("QToolBar { spacing: %1px; padding: 4px; }\n"
+                       "QToolButton { padding: 4px 8px; border-radius: %2px; }\n"
+                       "QToolButton:hover { background: %3; }\n"
+                       "QToolButton:checked { background: %4; color: %5; "
+                       "border: 1px solid %6; }\n")
+            .arg(ui::spec::gap)
+            .arg(ui::spec::buttonRadius)
+            .arg(colors.button.lighter(ui::spec::hoverLighten).name())
+            .arg(colors.primary.name(), colors.primaryText.name(), colors.primary.darker(110).name()));
 
     auto *group = new QButtonGroup(this);
     group->setExclusive(true);
-    const QVector<ToolKind> tools{ToolKind::Select, ToolKind::Arrow, ToolKind::Rectangle,
-                                  ToolKind::Ellipse, ToolKind::Pen, ToolKind::Text};
+    const QVector<ToolKind> tools{ToolKind::Select, ToolKind::Arrow,   ToolKind::Rectangle,
+                                  ToolKind::Ellipse, ToolKind::Pen,     ToolKind::Highlight,
+                                  ToolKind::Text,   ToolKind::Number,  ToolKind::Blur,
+                                  ToolKind::Mosaic};
     int shortcut = 1;
     for (ToolKind tool : tools) {
+        // 「模糊/马赛克」另起一组（它们是区域效果，与绘制工具性质不同）
+        if (tool == ToolKind::Blur)
+            toolbar->addSeparator();
         auto *button = new QToolButton(toolbar);
         button->setText(toolName(tool));
         button->setCheckable(true);
@@ -121,8 +151,7 @@ void EditorWindow::buildUi()
     }
 
     toolbar->addSeparator();
-    m_colorButton = new QToolButton(toolbar);
-    m_colorButton->setIconSize(QSize(ui::spec::iconSize, ui::spec::iconSize));
+    m_colorButton = new QToolButton(toolbar);    m_colorButton->setIconSize(QSize(ui::spec::iconSize, ui::spec::iconSize));
     m_colorButton->setText(QStringLiteral("颜色"));
     m_colorButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     m_colorButton->setIcon(swatchIcon(m_canvas->color()));
@@ -142,6 +171,7 @@ void EditorWindow::buildUi()
     m_undoAction = toolbar->addAction(ui::iconUndo(), QStringLiteral("撤销"), this, [this]() {
         if (m_canvas->document().undo()) {
             m_dirty = true;
+            m_canvas->invalidateComposedCache();
             m_canvas->update();
             refreshActions();
         }
@@ -150,6 +180,7 @@ void EditorWindow::buildUi()
     m_redoAction = toolbar->addAction(ui::iconRedo(), QStringLiteral("重做"), this, [this]() {
         if (m_canvas->document().redo()) {
             m_dirty = true;
+            m_canvas->invalidateComposedCache();
             m_canvas->update();
             refreshActions();
         }

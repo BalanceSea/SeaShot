@@ -91,5 +91,9 @@ QIcon iconToolRectangle();
 QIcon iconToolEllipse();
 QIcon iconToolPen();
 QIcon iconToolText();
+QIcon iconToolHighlight(); ///< 高亮（记号笔）
+QIcon iconToolBlur();      ///< 模糊
+QIcon iconToolMosaic();    ///< 马赛克
+QIcon iconToolNumber();    ///< 序号
 
 } // namespace seashot::ui

@@ -9,6 +9,7 @@
 
 class QAction;
 class QLabel;
+class QToolBar;
 class QScrollArea;
 class QSpinBox;
 class QToolButton;
@@ -55,6 +56,8 @@ private:
     QScrollArea *m_scroll = nullptr;
     QAction *m_fitAction = nullptr;
     QLabel *m_zoomLabel = nullptr;
+    /// 顶栏（用于按工具栏首选宽度决定窗口宽度，避免工具被折进溢出菜单）
+    QToolBar *m_toolbar = nullptr;
     QAction *m_undoAction = nullptr;
     QAction *m_redoAction = nullptr;
     QLabel *m_status = nullptr;

@@ -440,6 +440,144 @@ private slots:
         QCOMPARE(rendered.size(), image.size()); // 导出尺寸 == 源图尺寸
         QVERIFY(rendered.pixel(85, 85) != image.pixel(85, 85));
     }
+
+    /// 新增四种工具（高亮/模糊/马赛克/序号）的模型与渲染行为
+    void newToolsModel()
+    {
+        // 高亮：与画笔同为折线，但更粗、且不是描边状
+        Annotation highlight;
+        highlight.kind = ToolKind::Highlight;
+        highlight.width = 6;
+        highlight.points = {QPointF(0, 50), QPointF(200, 50)};
+        QVERIFY(highlight.isValid());
+        QVERIFY(highlight.hitTest(QPointF(100, 50)));   // 笔迹上
+        QVERIFY(highlight.hitTest(QPointF(100, 56)));   // 容差按 width*1.5 放宽
+        QVERIFY(!highlight.hitTest(QPointF(100, 200)));
+
+        // 序号：单击即有效（只有一个点），按中心圆形命中；不再能改手柄
+        Annotation number;
+        number.kind = ToolKind::Number;
+        number.text = QStringLiteral("1");
+        number.width = 4;
+        number.points = {QPointF(100, 100)};
+        QVERIFY(number.isValid());
+        QVERIFY(number.hitTest(QPointF(100, 100)));
+        QVERIFY(number.hitTest(QPointF(100 + number.numberRadius() - 1, 100)));
+        QVERIFY(!number.hitTest(QPointF(100 + number.numberRadius() + 20, 100)));
+        QVERIFY(number.handles().isEmpty());
+        QVERIFY(number.bounds().contains(QPointF(100, 100)));
+
+        // 模糊/马赛克：区域语义，可拖动、可命中内部（不是描边），且不向外扩
+        Annotation blur;
+        blur.kind = ToolKind::Blur;
+        blur.width = 8;
+        blur.points = {QPointF(20, 20), QPointF(120, 90)};
+        QVERIFY(blur.isValid());
+        QVERIFY(blur.hitTest(QPointF(70, 55)));  // 内部也算命中
+        QVERIFY(!blur.hitTest(QPointF(300, 300)));
+        QCOMPARE(blur.handles().size(), 2);      // 能拖角点改大小
+        QCOMPARE(blur.bounds(), QRectF(20, 20, 100, 70));
+        blur.moveHandle(1, QPointF(200, 150));
+        QCOMPARE(blur.bounds(), QRectF(20, 20, 180, 130));
+    }
+
+    /// 区域特效真的改像素，而且预览与导出走同一实现（所见即所得的前提）
+    void regionEffectChangesPixels()
+    {
+        QImage source(160, 120, QImage::Format_ARGB32);
+        // 画黑白相间的细条纹：模糊/马赛克后条纹一定会被抹平
+        for (int y = 0; y < source.height(); ++y)
+            for (int x = 0; x < source.width(); ++x)
+                source.setPixelColor(x, y, (x % 2 == 0) ? Qt::white : Qt::black);
+
+        Annotation blur;
+        blur.kind = ToolKind::Blur;
+        blur.width = 10;
+        blur.points = {QPointF(40, 30), QPointF(120, 90)};
+
+        const QImage rendered = renderAnnotations(source, {blur});
+        QCOMPARE(rendered.size(), source.size());   // 尺寸不变
+        QCOMPARE(rendered.pixel(10, 10), source.pixel(10, 10)); // 框外不动
+        // 框内条纹被抹平 → 不再是纯黑或纯白
+        const QColor inside = QColor::fromRgba(rendered.pixel(80, 60));
+        QVERIFY(inside.red() > 20 && inside.red() < 235);
+
+        // 马赛克：同一块内多个像素变成同一个值（降采样再放大）
+        Annotation mosaic = blur;
+        mosaic.kind = ToolKind::Mosaic;
+        mosaic.width = 12;
+        const QImage mos = renderAnnotations(source, {mosaic});
+        QCOMPARE(mos.pixel(60, 50), mos.pixel(62, 50));
+        QCOMPARE(mos.size(), source.size());
+
+        // 空框 / 框外：不崩、不改像素
+        Annotation outside;
+        outside.kind = ToolKind::Blur;
+        outside.points = {QPointF(500, 500), QPointF(600, 600)};
+        QCOMPARE(renderAnnotations(source, {outside}).pixel(5, 5), source.pixel(5, 5));
+        QVERIFY(regionEffectPatch(source, QRectF(0, 0, 0, 0), ToolKind::Blur, 5).isNull());
+    }
+
+    /// 序号工具在画布上单击即放置，且编号递增
+    void numberToolPlacesIncrementingBadges()
+    {
+        AnnotationCanvas canvas;
+        canvas.resize(400, 400);
+        canvas.show();
+        QImage image(200, 200, QImage::Format_ARGB32);
+        image.fill(Qt::white);
+        canvas.setImage(image);
+        canvas.setColor(QColor(255, 0, 0));
+        canvas.setStrokeWidth(6);
+        canvas.setTool(ToolKind::Number);
+
+        canvas.handleMousePress(canvas.imageToWidgetForTest(QPointF(40, 40)), Qt::LeftButton);
+        canvas.handleMouseRelease(canvas.imageToWidgetForTest(QPointF(40, 40)), Qt::LeftButton);
+        canvas.handleMousePress(canvas.imageToWidgetForTest(QPointF(120, 80)), Qt::LeftButton);
+        canvas.handleMouseRelease(canvas.imageToWidgetForTest(QPointF(120, 80)), Qt::LeftButton);
+
+        QCOMPARE(canvas.document().count(), 2);
+        QCOMPARE(canvas.document().at(0).kind, ToolKind::Number);
+        QCOMPARE(canvas.document().at(0).text, QStringLiteral("1"));
+        QCOMPARE(canvas.document().at(1).text, QStringLiteral("2"));
+        // 画在图上：徽标圆心附近（避开居中的白色数字）应该是红色填充
+        const double r = canvas.document().at(0).numberRadius();
+        const QColor badgePixel =
+            QColor::fromRgba(canvas.renderedImage().pixel(40, int(40 - r * 0.75)));
+        QVERIFY(badgePixel.red() > 200 && badgePixel.green() < 80);
+        // 画布外的像素不应被改
+        QCOMPARE(canvas.renderedImage().pixel(199, 199), image.pixel(199, 199));
+    }
+
+    /// 区域特效在画布上拖出来，并且导出的尺寸/像素与预览一致
+    void regionEffectViaCanvasDrag()
+    {
+        AnnotationCanvas canvas;
+        canvas.resize(400, 400);
+        canvas.show();
+        QImage image(160, 120, QImage::Format_ARGB32);
+        for (int y = 0; y < image.height(); ++y)
+            for (int x = 0; x < image.width(); ++x)
+                image.setPixelColor(x, y, (x % 2 == 0) ? Qt::white : Qt::black);
+        canvas.setImage(image);
+        canvas.setStrokeWidth(10);
+        canvas.setTool(ToolKind::Mosaic);
+
+        canvas.handleMousePress(canvas.imageToWidgetForTest(QPointF(30, 30)), Qt::LeftButton);
+        canvas.handleMouseMove(canvas.imageToWidgetForTest(QPointF(130, 90)));
+        canvas.handleMouseRelease(canvas.imageToWidgetForTest(QPointF(130, 90)), Qt::LeftButton);
+
+        QCOMPARE(canvas.document().count(), 1);
+        QVERIFY(isRegionEffect(canvas.document().at(0).kind));
+        QVERIFY(canvas.documentHasRegionEffect());
+        const QImage rendered = canvas.renderedImage();
+        QCOMPARE(rendered.size(), image.size());
+        QCOMPARE(rendered.pixel(80, 60), rendered.pixel(82, 60)); // 马赛克块内同色
+        QCOMPARE(rendered.pixel(5, 5), image.pixel(5, 5));        // 框外不变
+        // 撤销后应回到原图（区域特效也要能被撤销）
+        QVERIFY(canvas.document().undo());
+        QCOMPARE(canvas.document().count(), 0);
+    }
 };
 
 QTEST_MAIN(TestAnnotation)

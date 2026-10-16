@@ -152,6 +152,31 @@ QIcon iconToolPen()
     return icon({QStringLiteral("draw-freehand"), QStringLiteral("draw-line")});
 }
 
+QIcon iconToolHighlight()
+{
+    // 本机 Breeze 有 draw-highlight（已实测）；后面两个是其他主题的回退
+    return icon({QStringLiteral("draw-highlight"), QStringLiteral("draw-marker"),
+                 QStringLiteral("marker")});
+}
+
+QIcon iconToolBlur()
+{
+    return icon({QStringLiteral("blur"), QStringLiteral("edit-blur"),
+                 QStringLiteral("image-filter")});
+}
+
+QIcon iconToolMosaic()
+{
+    return icon({QStringLiteral("pixelate"), QStringLiteral("edit-pixelize"),
+                 QStringLiteral("mosaic")});
+}
+
+QIcon iconToolNumber()
+{
+    return icon({QStringLiteral("draw-number"), QStringLiteral("format-number"),
+                 QStringLiteral("draw-text")});
+}
+
 QIcon iconToolText()
 {
     return icon({QStringLiteral("draw-text"), QStringLiteral("insert-text")});

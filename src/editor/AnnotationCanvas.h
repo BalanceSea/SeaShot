@@ -43,8 +43,7 @@ public:
     void zoomToFit() { setFitToWindow(true); }
     void zoomTo100() { setZoom(1.0); }
 
-    AnnotationDocument &document() { return m_document; }
-    int selectedIndex() const { return m_selected; }
+    AnnotationDocument &document() { return m_document; }    int selectedIndex() const { return m_selected; }
     void selectAnnotation(int index);
     void deleteSelected();
 
@@ -57,6 +56,11 @@ public:
     /// 测试/诊断用：把图像坐标换算成控件坐标
     QPointF imageToWidgetForTest(const QPointF &imagePos) const { return imageToWidget(imagePos); }
     double zoomForTest() const { return zoom(); }
+
+    /// 文档被外部改动（撤销/重做）后调用：丢弃内部的光栅缓存
+    void invalidateComposedCache() { m_composedDirty = true; }
+    /// 文档里是否有需要读像素的区域特效（模糊/马赛克）
+    bool documentHasRegionEffect() const;
 
 signals:
     void documentChanged();
@@ -91,6 +95,11 @@ private:
     void drawSelectionOverlay(QPainter &painter, const Annotation &annotation) const;
 
     QImage m_image;
+    /// 文档含区域特效（模糊/马赛克）时的光栅合成图：
+    /// 这类特效要读像素，矢量直绘做不到；用与导出完全相同的 renderAnnotations()
+    /// 烘一张图，才能保证「看到的 == 导出的」。
+    QImage m_composed;
+    bool m_composedDirty = true;
     AnnotationDocument m_document;
     double m_zoom = 1.0;
     bool m_fitToWindow = true;

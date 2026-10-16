@@ -30,6 +30,7 @@ AnnotationCanvas::AnnotationCanvas(QWidget *parent)
 void AnnotationCanvas::setImage(const QImage &image)
 {
     m_image = image;
+    m_composedDirty = true;
     m_selected = -1;
     m_draft = Annotation();
     m_document.reset({});
@@ -238,6 +239,27 @@ void AnnotationCanvas::handleMousePress(const QPointF &widgetPos, Qt::MouseButto
         return;
     }
 
+    if (m_tool == ToolKind::Number) {
+        // 序号：单击即放置，编号按已有序号数递增
+        int next = 1;
+        for (int i = 0; i < m_document.count(); ++i) {
+            if (m_document.at(i).kind == ToolKind::Number)
+                ++next;
+        }
+        Annotation badge;
+        badge.kind = ToolKind::Number;
+        badge.color = m_color;
+        badge.width = m_width;
+        badge.points = {imagePos};
+        badge.text = QString::number(next);
+        m_document.add(badge);
+        m_composedDirty = true;
+        selectAnnotation(m_document.count() - 1);
+        emit documentChanged();
+        update();
+        return;
+    }
+
     m_draft = Annotation();
     m_draft.kind = m_tool;
     m_draft.color = m_color;
@@ -260,7 +282,7 @@ void AnnotationCanvas::handleMouseMove(const QPointF &widgetPos)
     const QPointF imagePos = widgetToImage(widgetPos);
 
     if (m_drawing) {
-        if (m_draft.kind == ToolKind::Pen) {
+        if (m_draft.kind == ToolKind::Pen || m_draft.kind == ToolKind::Highlight) {
             const QPointF last = m_draft.points.last();
             if (QLineF(last, imagePos).length() >= 1.5 / qMax(0.05, zoom()))
                 m_draft.points.append(imagePos);
@@ -295,13 +317,14 @@ void AnnotationCanvas::handleMouseRelease(const QPointF &widgetPos, Qt::MouseBut
     const QPointF imagePos = widgetToImage(widgetPos);
 
     if (m_drawing) {
-        if (m_draft.kind == ToolKind::Pen)
+        if (m_draft.kind == ToolKind::Pen || m_draft.kind == ToolKind::Highlight)
             m_draft.points.append(imagePos);
         else if (m_draft.points.size() >= 2)
             m_draft.points[1] = imagePos;
         m_drawing = false;
         if (m_draft.isValid()) {
             m_document.add(m_draft);
+            m_composedDirty = true;
             selectAnnotation(m_document.count() - 1);
             emit documentChanged();
         }
@@ -314,6 +337,7 @@ void AnnotationCanvas::handleMouseRelease(const QPointF &widgetPos, Qt::MouseBut
         m_dragging = false;
         if (m_selected >= 0 && m_draft.isValid()) {
             m_document.update(m_selected, m_draft);
+            m_composedDirty = true;
             emit documentChanged();
         }
         m_draft = Annotation();
@@ -413,6 +437,7 @@ void AnnotationCanvas::deleteSelected()
     if (m_selected < 0)
         return;
     m_document.removeAt(m_selected);
+    m_composedDirty = true;
     selectAnnotation(-1);
     emit documentChanged();
     update();
@@ -433,6 +458,15 @@ void AnnotationCanvas::drawSelectionOverlay(QPainter &painter, const Annotation 
         painter.drawEllipse(handle, r, r);
 }
 
+bool AnnotationCanvas::documentHasRegionEffect() const
+{
+    for (int i = 0; i < m_document.count(); ++i) {
+        if (isRegionEffect(m_document.at(i).kind))
+            return true;
+    }
+    return false;
+}
+
 void AnnotationCanvas::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
@@ -446,19 +480,52 @@ void AnnotationCanvas::paintEvent(QPaintEvent *)
 
     const QRectF display = imageDisplayRect();
     painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
-    painter.drawImage(display, m_image);
+
+    // 含区域特效（模糊/马赛克）时走光栅路径：整张图一次性烘好，与导出完全一致。
+    // 不含特效时继续走矢量直绘（缩放时不失真，也更快）。
+    const bool baked = documentHasRegionEffect();
+    if (baked) {
+        if (m_composedDirty || m_composed.size() != m_image.size())
+            m_composed = renderAnnotations(m_image, m_document.items());
+        m_composedDirty = false;
+        painter.drawImage(display, m_composed);
+    } else {
+        painter.drawImage(display, m_image);
+    }
     painter.setRenderHint(QPainter::SmoothPixmapTransform, false);
 
     painter.save();
     painter.translate(display.topLeft());
     painter.scale(zoom(), zoom());
+    // 光栅路径下标注已经烘进图里，只补画“正在拖动的草稿”
+    const auto drawOne = [&](const Annotation &annotation) {
+        if (baked) {
+            if (isRegionEffect(annotation.kind)) {
+                // 草稿/拖动中的区域特效画成虚线提示框（拖动中不做实时模糊，免得卡）
+                painter.save();
+                painter.setBrush(Qt::NoBrush);
+                painter.setPen(QPen(QColor(255, 255, 255, 180), 1.0 / qMax(0.05, zoom()),
+                                    Qt::DashLine));
+                painter.drawRect(annotation.bounds());
+                painter.restore();
+            } else if (annotation.kind != ToolKind::Select) {
+                annotation.draw(painter);
+            }
+            return;
+        }
+        if (isRegionEffect(annotation.kind))
+            drawRegionEffect(painter, m_image, annotation);
+        else
+            annotation.draw(painter);
+    };
+
     if (m_selected < 0 && m_draft.isValid())
-        m_draft.draw(painter);
+        drawOne(m_draft);
     for (int i = 0; i < m_document.count(); ++i) {
         if (i == m_selected && m_draft.isValid())
-            m_draft.draw(painter); // 拖动中的预览
+            drawOne(m_draft); // 拖动中的预览
         else
-            m_document.at(i).draw(painter);
+            drawOne(m_document.at(i));
     }
     if (m_selected >= 0 && m_document.count() > m_selected) {
         const Annotation &current = m_draft.isValid() ? m_draft : m_document.at(m_selected);

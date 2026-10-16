@@ -13,7 +13,28 @@
 
 namespace seashot {
 
-enum class ToolKind { Select, Arrow, Rectangle, Ellipse, Pen, Text };
+enum class ToolKind {
+    Select,
+    Arrow,
+    Rectangle,
+    Ellipse,
+    Pen,
+    Text,
+    Highlight, ///< 记号笔：半透明粗笔迹（Multiply 混合，压住底字仍可读）
+    Blur,      ///< 模糊：拖一个矩形，对区域做高斯近似模糊
+    Mosaic,    ///< 马赛克：拖一个矩形，区域降采样再放大
+    Number,    ///< 序号：单击放置一个带数字的圆徽标（依次递增）
+};
+
+/// 需要「读取源图像素」的区域特效。
+/// ⚠️ 这类标注在 Annotation::draw() 里画不出来（拿不到像素），
+///    必须由 renderAnnotations() / AnnotationCanvas 用
+///    AnnotationRenderer::drawRegionEffect() 统一处理 —— 预览与导出共用它，
+///    否则就会出现「导出的和看到的不一样」。
+inline bool isRegionEffect(ToolKind kind)
+{
+    return kind == ToolKind::Blur || kind == ToolKind::Mosaic;
+}
 
 QString toolName(ToolKind kind);
 
@@ -25,6 +46,9 @@ struct Annotation {
     QColor color = QColor(255, 64, 64);
     /// 形状：线宽（像素）；文字：字号档位（实际字号 = max(10, width*4)）
     int width = 4;
+
+    /// 序号徽标半径（图像像素）。由 width 推导，所以「粗细/字号」对它同样有效。
+    double numberRadius() const { return qMax(9.0, width * 2.5); }
 
     bool isValid() const;
 
