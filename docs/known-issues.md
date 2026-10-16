@@ -40,6 +40,34 @@ KDE 也只在 `SelectSources` 里读（`screencast.cpp:206`）；KDE 的 `Create
 - 附带做了正确但非根因的改动：私有 D-Bus 连接 + 首个调用即 `Registry.Register("seashot")`
   （`0f12294`）—— 身份确定化，命令行/桌面文件/自启都是同一个 id，值得保留。
 
+**接帧验证：已通过（2026-10-16）** ✅
+
+`--probe-portal-screencast --probe-pipewire-frames N` 实测真的出帧了：
+
+```
+PORTAL_SCREENCAST_RESULT ok=1 streams=1 streamsPresent=1 node=88 usedRestoreToken=1 startLatencyMs=7
+PIPEWIRE_PROBE_NODEID 88（来自 portal 应答的 streams）
+PIPEWIRE_PROBE frames=10 firstFrameMs=301 elapsedMs=1471 bytes=8678871
+抽出的第一帧：1920x1080，均值 169，标准差 80 → 是真实屏幕内容
+```
+
+两个关键点（都踩过坑）：
+1. **必须从 portal 应答的 `streams` 里取 node id**。手工迭代 `a(ua{sv})` 会让 Qt 直接 abort
+   （"QDBusArgument: write from a read-only object"）；改用注册元类型 + `qdbus_cast` 才稳。
+   顺带：`pw-dump` **看不到**这个节点（它只存在于 portal 给的那条 fd 连接里），
+   所以"枚举找节点"这条路是不通的。
+2. `pipewiresrc` 要用 **`path=<nodeid>`**（收数字 id），不是 `target-object=<id>`
+   （那个要的是节点名/序列号，给 id 会报 target not found）。
+
+**"Stream error: target not found" 的定性（重要）**：不是拆卸噪音，是**真错误** ——
+不指定目标时 `pipewiresrc` 会拿 PW_ID_ANY 去连，服务端就报这个。
+指定 `path=88` 之后立刻出帧。这解释了此前每一次尝试日志里的那两行。
+
+**已排除的旧说法**：早期记录写"仍未验证/可能建不起来"，现已确认**能出图**。
+
+**下一步（尚未做）**：真正把录制切到 PipeWire 需要引入 GStreamer 或 libpipewire 依赖
+（当前应用没有），并重做 GifRecorder 的取帧路径。属于独立任务，需要你决定是否要切。
+
 **仍未验证（下一步的真正风险点）**
 
 - `OpenPipeWireRemote` 拿到了 fd（`fd=22`），但**从未消费过帧**。KDE portal 日志里每次都有：

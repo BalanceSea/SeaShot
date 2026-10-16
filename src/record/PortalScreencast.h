@@ -12,6 +12,7 @@
 // 验证授权持久化；帧管线（消费 PipeWire 流）是第二步，确认静默后再接。
 #pragma once
 
+#include <QDBusArgument>
 #include <QDBusObjectPath>
 #include <QObject>
 #include <QString>
@@ -85,11 +86,27 @@ private:
     static QString requestPathFor(const QString &token);
     static QString newToken(const QString &prefix);
 
-    QString m_sessionPath;
-    std::function<void(uint, const QVariantMap &)> m_responseHandler;
+    QString m_sessionPath;    std::function<void(uint, const QVariantMap &)> m_responseHandler;
     QString m_sender;
     Callback m_callback;
     bool m_finished = false;
 };
+
+} // namespace seashot
+
+Q_DECLARE_METATYPE(seashot::PortalScreencast::StreamInfo);
+
+namespace seashot {
+
+// a(ua{sv}) 的 Qt D-Bus 元类型：只有用这套注册过的运算符 + qdbus_cast，
+// 才能安全读出 node id。
+// ⚠️ 不要手工 beginArray/beginStructure/>> 迭代：实测 Qt 会在读嵌套 QVariantMap 时
+//    直接 abort（"QDBusArgument: write from a read-only object"）。
+QDBusArgument &operator<<(QDBusArgument &argument, const PortalScreencast::StreamInfo &stream);
+const QDBusArgument &operator>>(const QDBusArgument &argument, PortalScreencast::StreamInfo &stream);
+QDBusArgument &operator<<(QDBusArgument &argument,
+                          const QVector<PortalScreencast::StreamInfo> &streams);
+const QDBusArgument &operator>>(const QDBusArgument &argument,
+                                QVector<PortalScreencast::StreamInfo> &streams);
 
 } // namespace seashot

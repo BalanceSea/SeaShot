@@ -31,6 +31,10 @@
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QFileDialog>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QLocalServer>
@@ -1216,10 +1220,22 @@ int Application::runPortalScreencastProbe(const QString &tokenFile)
 
     if (result.ok && !m_options.probePortalNoStart) {
         QString pipewireError;
-        const int fd = portal.openPipeWireRemote(&pipewireError);
+        int fd = portal.openPipeWireRemote(&pipewireError);
         out << "PORTAL_SCREENCAST_PIPEWIRE_FD ok=" << (fd >= 0 ? 1 : 0) << " fd=" << fd
             << (pipewireError.isEmpty() ? QString() : QStringLiteral(" error=%1").arg(pipewireError))
             << "\n";
+        out.flush();
+        // 接帧验证：把 fd 交给 gst-launch 去真的取几帧。
+        // 注意必须在 closeSession() 之前做 —— 会话一关流就没了。
+        if (fd >= 0 && m_options.probePipewireFrames > 0) {
+            uint nodeId = 0;
+            if (!result.streams.isEmpty())
+                nodeId = result.streams.first().nodeId;
+            out << "PIPEWIRE_PROBE_NODEID " << nodeId << "（来自 portal 应答的 streams）\n";
+            out.flush();
+            runPipeWireFrameProbe(fd, m_options.probePipewireFrames, m_options.probePipewireOut,
+                                  nodeId);
+        }
         if (fd >= 0)
             ::close(fd);
     }
@@ -1235,6 +1251,155 @@ int Application::runPortalScreencastProbe(const QString &tokenFile)
     portal.closeSession();
     out.flush();
     return result.ok ? 0 : 1;
+}
+
+int Application::runPipeWireFrameProbe(int fd, int frameCount, const QString &outDir, uint nodeId)
+{
+    QTextStream out(stdout);
+    const QString program = QStandardPaths::findExecutable(QStringLiteral("gst-launch-1.0"));
+    if (program.isEmpty()) {
+        out << "PIPEWIRE_PROBE_NO_GSTREAMER 终端里没有 gst-launch-1.0，无法做接帧验证\n";
+        out.flush();
+        return 4;
+    }
+    if (!QDir().mkpath(outDir)) {
+        out << "PIPEWIRE_PROBE_ERROR 无法创建 " << outDir << "\n";
+        out.flush();
+        return 3;
+    }
+    for (const QString &old : QDir(outDir).entryList({QStringLiteral("frame-*")}, QDir::Files))
+        QFile::remove(outDir + QLatin1Char('/') + old);
+
+    // dup() 出来的 fd 不带 CLOEXEC，所以子进程能直接继承（Qt 不会去关它）。
+    const int childFd = ::dup(fd);
+    if (childFd < 0) {
+        out << "PIPEWIRE_PROBE_ERROR dup(fd) 失败\n";
+        out.flush();
+        return 5;
+    }
+
+    // 落盘方式：avenc_png 把每帧编成一个 PNG，filesink 把它们首尾相接写进同一个文件。
+    // （本机没装 gst-plugins-good，所以 multifilesink/pngenc 用不了。）
+    // 帧数 = 文件里 PNG 签名的出现次数 —— 这个计数很可靠。
+    const QString rawPath = outDir + QStringLiteral("/frames.png");
+
+    // pipewiresrc 光给 fd 不够：它会用 PW_ID_ANY 去连，服务端报
+    //   "stream error: target not found"（就是 KDE 日志里那句，实测确认不是拆卸噪音）。
+    // 所以要先找到 portal 刚建的那个视频源节点。
+    // 这里用 pw-dump 枚举（会话存活期间它在 PipeWire 图里可见），
+    // 比手工解析 D-Bus 的 a(ua{sv}) 稳 —— 后者会让 Qt 在读嵌套 QVariantMap 时 abort。
+    QString target;
+    {
+        QProcess dump;
+        dump.start(QStringLiteral("pw-dump"), {});
+        if (!dump.waitForFinished(6000)) {
+            dump.kill();
+        } else {
+            const QJsonDocument doc =
+                QJsonDocument::fromJson(dump.readAllStandardOutput());
+            for (const QJsonValue &entry : doc.array()) {
+                const QJsonObject object = entry.toObject();
+                if (object.value(QStringLiteral("type")).toString()
+                    != QLatin1String("PipeWire:Interface:Node"))
+                    continue;
+                const QJsonObject props = object.value(QStringLiteral("info"))
+                                             .toObject()
+                                             .value(QStringLiteral("props"))
+                                             .toObject();
+                if (props.value(QStringLiteral("media.class")).toString()
+                    != QLatin1String("Video/Source"))
+                    continue;
+                const int id = object.value(QStringLiteral("id")).toInt();
+                const QString name = props.value(QStringLiteral("node.name")).toString();
+                out << "PIPEWIRE_PROBE_TARGET id=" << id << " name=" << name
+                    << " description="
+                    << props.value(QStringLiteral("node.description")).toString() << "\n";
+                target = QString::number(id);
+                if (!name.isEmpty())
+                    target = name;
+                break;
+            }
+        }
+    }
+    if (target.isEmpty() && nodeId > 0) {
+        // pw-dump 看不到 portal 的节点（它只存在于那条 fd 连接里），
+        // 所以用 portal 应答里给的 node id 作为目标。
+        target = QString::number(nodeId);
+        out << "PIPEWIRE_PROBE_TARGET 用 portal 给的 node id=" << nodeId << "\n";
+    }
+    if (target.isEmpty())
+        out << "PIPEWIRE_PROBE_TARGET (没有可用目标)\n";
+
+    QStringList args{QStringLiteral("-q"),
+                     QStringLiteral("pipewiresrc"),
+                     QStringLiteral("fd=%1").arg(childFd),
+                     QStringLiteral("num-buffers=%1").arg(frameCount),
+                     QStringLiteral("!"),
+                     QStringLiteral("videoconvert"),
+                     QStringLiteral("!"),
+                     QStringLiteral("avenc_png"),
+                     QStringLiteral("!"),
+                     QStringLiteral("filesink"),
+                     QStringLiteral("location=%1").arg(rawPath)};
+    if (!target.isEmpty()) {
+        // path = 数字节点 id（已废弃但收 id）；target-object 要的是节点名/序列号。
+        args.insert(3, QStringLiteral("path=%1").arg(target));
+    }
+    out << "PIPEWIRE_PROBE_CMD gst-launch-1.0 " << args.join(QLatin1Char(' ')) << "\n";
+    out.flush();
+
+    QElapsedTimer timer;
+    timer.start();
+    QProcess proc;
+    proc.setProcessChannelMode(QProcess::MergedChannels);
+    proc.start(program, args);
+    if (!proc.waitForStarted(5000)) {
+        out << "PIPEWIRE_PROBE_ERROR gst-launch 启动失败: " << proc.errorString() << "\n";
+        out.flush();
+        ::close(childFd);
+        return 6;
+    }
+
+    qint64 firstFrameMs = -1;
+    QString firstFrameSize;
+    static const QByteArray pngMagic("\x89PNG\r\n\x1a\n", 8);
+    const auto countFrames = [&]() -> int {
+        QFile file(rawPath);
+        if (!file.open(QIODevice::ReadOnly))
+            return 0;
+        const QByteArray blob = file.readAll();
+        int count = 0;
+        for (int at = blob.indexOf(pngMagic); at >= 0; at = blob.indexOf(pngMagic, at + 1))
+            ++count;
+        return count;
+    };
+
+    while (proc.state() != QProcess::NotRunning) {
+        proc.waitForFinished(100);
+        if (firstFrameMs < 0 && countFrames() > 0) {
+            firstFrameMs = timer.elapsed();
+            const QImage first(rawPath); // 多帧文件里读第一帧
+            if (!first.isNull())
+                firstFrameSize = QStringLiteral("%1x%2").arg(first.width()).arg(first.height());
+        }
+        if (timer.elapsed() > 20000) { // 兜底：不能把探测卡死
+            proc.kill();
+            break;
+        }
+    }
+    const QString gstOutput = QString::fromLocal8Bit(proc.readAll()).simplified();
+    const int frames = countFrames();
+
+    out << "PIPEWIRE_PROBE frames=" << frames << " firstFrameMs=" << firstFrameMs
+        << " elapsedMs=" << timer.elapsed() << " exit=" << proc.exitCode() << " bytes="
+        << QFileInfo(rawPath).size() << "\n";
+    if (frames > 0)
+        out << "PIPEWIRE_PROBE_FIRST " << rawPath << " size=" << firstFrameSize << "\n";
+    else
+        out << "PIPEWIRE_PROBE_GST_OUTPUT " << gstOutput.left(700) << "\n";
+    out.flush();
+    ::close(childFd);
+    return frames > 0 ? 0 : 1;
 }
 
 int Application::run()

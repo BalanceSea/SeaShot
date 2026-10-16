@@ -149,11 +149,10 @@ void Toast::showResult(const QImage &image, const QString &savedPath, const QStr
         ? image
         : image.scaled(display, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-    // 2) 卡片 == 图片尺寸（按钮条浮在图片上），但至少留够按钮宽度
-    // 4) 按钮条 + 卡片最小尺寸（按钮变多变大后，卡片可能比图片宽）
-    m_cardSize = display; // 先按图片尺寸算，下面按按钮再放宽
-    const int buttonsWidth = buttons().isEmpty() ? 0 : (buttons().last().second.right() + 1);
-    m_cardSize.setWidth(qMax(m_cardSize.width(), buttonsWidth + kButtonPadding));
+    // 2) 卡片宽度：图片宽度 与「按钮条所需宽度」取大者
+    //    （按钮变多变大后，卡片可能比图片宽；这个量必须直接算，不能用按钮位置反推）
+    m_cardSize = display; // 先按图片尺寸算
+    m_cardSize.setWidth(qMax(m_cardSize.width(), barNeededWidth()));
     m_cardSize.setHeight(m_cardSize.height() + barHeight());
     m_cardSize.setWidth(qMax(m_cardSize.width(), 320));
     m_cardSize.setHeight(qMax(m_cardSize.height(), 150));
@@ -224,10 +223,33 @@ QRect Toast::barRect() const
     return QRect(0, m_cardSize.height() - barHeight(), m_cardSize.width(), barHeight());
 }
 
+QVector<Toast::Button> Toast::buttonOrder() const
+{
+    return {m_editEnabled ? Button::Edit : Button::None, Button::Save, Button::SaveAs, Button::Copy,
+            Button::Close};
+}
+
+int Toast::barNeededWidth() const
+{
+    const QFontMetrics metrics(font());
+    int total = ui::spec::cardPadding * 2;
+    bool first = true;
+    for (Button button : buttonOrder()) {
+        if (button == Button::None)
+            continue;
+        if (!first)
+            total += ui::spec::gap;
+        first = false;
+        const QIcon ic = iconFor(button);
+        const int iconPart = ic.isNull() ? 0 : ui::spec::iconSize + ui::spec::gap / 2;
+        total += metrics.horizontalAdvance(labelFor(button)) + iconPart + ui::spec::buttonPadX * 2;
+    }
+    return total;
+}
+
 QVector<QPair<Toast::Button, QRect>> Toast::buttons() const
 {
-    const QVector<Button> order{m_editEnabled ? Button::Edit : Button::None, Button::Save,
-                                Button::SaveAs, Button::Copy, Button::Close};
+    const QVector<Button> order = buttonOrder();
     QVector<QPair<Button, QRect>> result;
     const QFontMetrics metrics(font());
     const int width = qMax(260, m_cardSize.width());

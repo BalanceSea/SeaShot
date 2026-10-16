@@ -53,6 +53,8 @@ struct Options {
     bool probePortal = false; ///< --probe-portal-screencast：验证 portal 授权持久化
     QString portalTokenFile;  ///< 存/取 ScreenCast restore token 的文件
     bool probePortalNoStart = false; ///< 只走到 SelectSources（不弹授权对话框）
+    int probePipewireFrames = 0;     ///< >0 时：从 portal 的 PipeWire fd 消费这么多帧（接帧验证）
+    QString probePipewireOut;        ///< 接帧落盘目录
 };
 
 class Application : public QObject
@@ -102,6 +104,9 @@ private:
     int runBenchCapture(const QString &path);
     /// 验证 xdg-desktop-portal ScreenCast 的授权持久化（首次弹窗、之后静默）
     int runPortalScreencastProbe(const QString &tokenFile);
+    /// 接帧验证：把 portal 给的 PipeWire fd 交给 gst-launch-1.0 取 frameCount 帧并落盘。
+    /// 返回 0 = 真的出帧了。不改现有录制路径，纯诊断。
+    int runPipeWireFrameProbe(int fd, int frameCount, const QString &outDir, uint nodeId);
     /// ISSUE-001 诊断：程序化拖拽浮层 + 截屏定位，量出「目标位置 vs 实见位置」的偏差
     int runToastDragBench(int durationMs);
     QRect virtualGeometry() const;

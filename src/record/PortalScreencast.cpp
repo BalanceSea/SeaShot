@@ -5,6 +5,7 @@
 #include <QDBusArgument>
 #include <QDBusConnection>
 #include <QDBusMessage>
+#include <QDBusMetaType>
 #include <QDBusPendingCall>
 #include <QDBusPendingCallWatcher>
 #include <QDBusUnixFileDescriptor>
@@ -75,6 +76,46 @@ QDBusConnection portalConnection()
 }
 } // namespace
 
+QDBusArgument &operator<<(QDBusArgument &argument, const PortalScreencast::StreamInfo &stream)
+{
+    argument.beginStructure();
+    argument << stream.nodeId << stream.properties;
+    argument.endStructure();
+    return argument;
+}
+
+const QDBusArgument &operator>>(const QDBusArgument &argument, PortalScreencast::StreamInfo &stream)
+{
+    argument.beginStructure();
+    argument >> stream.nodeId >> stream.properties;
+    argument.endStructure();
+    return argument;
+}
+
+QDBusArgument &operator<<(QDBusArgument &argument,
+                          const QVector<PortalScreencast::StreamInfo> &streams)
+{
+    argument.beginArray(qMetaTypeId<PortalScreencast::StreamInfo>());
+    for (const PortalScreencast::StreamInfo &stream : streams)
+        argument << stream;
+    argument.endArray();
+    return argument;
+}
+
+const QDBusArgument &operator>>(const QDBusArgument &argument,
+                                QVector<PortalScreencast::StreamInfo> &streams)
+{
+    argument.beginArray();
+    streams.clear();
+    while (!argument.atEnd()) {
+        PortalScreencast::StreamInfo stream;
+        argument >> stream;
+        streams.append(stream);
+    }
+    argument.endArray();
+    return argument;
+}
+
 QString PortalScreencast::newToken(const QString &prefix)
 {
     // portal 要求 token 只含 [A-Za-z0-9_]（会当成 D-Bus 对象路径元素校验）。
@@ -119,6 +160,13 @@ QString PortalScreencast::Result::describe() const
 PortalScreencast::PortalScreencast(QObject *parent)
     : QObject(parent)
 {
+    // 读 a(ua{sv}) 必须先注册元类型（否则 qdbus_cast 拿不到数据）
+    static bool registered = false;
+    if (!registered) {
+        qDBusRegisterMetaType<StreamInfo>();
+        qDBusRegisterMetaType<QVector<StreamInfo>>();
+        registered = true;
+    }
 }
 
 int PortalScreencast::portalVersion()
@@ -342,6 +390,9 @@ void PortalScreencast::start(const QString &restoreToken, uint persistMode, Call
                             result.startLatencyMs = timer->elapsed();
                             result.usedRestoreToken = usingToken;
                             result.streamsPresent = startResults.contains(QStringLiteral("streams"));
+                            if (result.streamsPresent)
+                                result.streams = qdbus_cast<QVector<StreamInfo>>(
+                                    startResults.value(QStringLiteral("streams")));
                             {
                                 QTextStream diag(stdout);
                                 diag << "PORTAL_SCREENCAST_RESPONSE Start code=" << startCode

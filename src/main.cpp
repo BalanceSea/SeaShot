@@ -97,6 +97,14 @@ int main(int argc, char **argv)
     QCommandLineOption probePortalNoStartOption(
         QStringLiteral("probe-portal-no-start"),
         QStringLiteral("（诊断）portal 链路自检：只到 SelectSources，不弹授权对话框"));
+    QCommandLineOption probePipewireFramesOption(
+        QStringLiteral("probe-pipewire-frames"),
+        QStringLiteral("（诊断）接帧验证：从 portal 的 PipeWire fd 消费 N 帧并落盘（需 gst-launch-1.0）"),
+        QStringLiteral("count"), QStringLiteral("0"));
+    QCommandLineOption probePipewireOutOption(
+        QStringLiteral("probe-pipewire-out"),
+        QStringLiteral("（诊断）接帧落盘目录"),
+        QStringLiteral("dir"), QStringLiteral("/tmp/seashot-pipewire"));
     QCommandLineOption portalTokenOption(
         QStringLiteral("portal-token-file"),
         QStringLiteral("（诊断）存/取 ScreenCast restore token 的文件"),
@@ -131,6 +139,8 @@ int main(int argc, char **argv)
     parser.addOption(dragBenchOption);
     parser.addOption(probePortalOption);
     parser.addOption(probePortalNoStartOption);
+    parser.addOption(probePipewireFramesOption);
+    parser.addOption(probePipewireOutOption);
     parser.addOption(portalTokenOption);
     parser.addOption(benchCaptureOption);
     parser.process(app);
@@ -161,6 +171,8 @@ int main(int argc, char **argv)
     options.probePortal = parser.isSet(probePortalOption);
     options.portalTokenFile = parser.value(portalTokenOption);
     options.probePortalNoStart = parser.isSet(probePortalNoStartOption);
+    options.probePipewireFrames = parser.value(probePipewireFramesOption).toInt();
+    options.probePipewireOut = parser.value(probePipewireOutOption);
 
     if (parser.isSet(rectOption)) {
         const QStringList parts = parser.value(rectOption).split(QLatin1Char(','));

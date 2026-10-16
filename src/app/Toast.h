@@ -88,6 +88,13 @@ private:
     }
     int barHeight() const;
     QRect barRect() const;
+    /// 按钮的显示顺序（左→右）
+    QVector<Button> buttonOrder() const;
+    /// 按钮条所需的**总宽度**（含两侧内边距与按钮间距）。
+    /// ⚠️ 不能用 buttons() 算出的位置来推：按钮是从右边缘往左摆的，
+    ///    last().right() 恒等于卡片宽度，量不出溢出量 —— 那就正是
+    ///    「工具超出边框」的原因。
+    int barNeededWidth() const;
     QVector<QPair<Button, QRect>> buttons() const;
     Button buttonAt(const QPoint &position) const;
     QPoint cardTopLeftGlobal() const;                  ///< 卡片左上角（全局）
