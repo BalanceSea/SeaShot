@@ -94,6 +94,9 @@ int main(int argc, char **argv)
     QCommandLineOption probePortalOption(
         QStringLiteral("probe-portal-screencast"),
         QStringLiteral("（诊断）建立 portal ScreenCast 会话，验证授权持久化（首次弹窗、之后静默）"));
+    QCommandLineOption probePortalNoStartOption(
+        QStringLiteral("probe-portal-no-start"),
+        QStringLiteral("（诊断）portal 链路自检：只到 SelectSources，不弹授权对话框"));
     QCommandLineOption portalTokenOption(
         QStringLiteral("portal-token-file"),
         QStringLiteral("（诊断）存/取 ScreenCast restore token 的文件"),
@@ -127,6 +130,7 @@ int main(int argc, char **argv)
     parser.addOption(secondsOption);
     parser.addOption(dragBenchOption);
     parser.addOption(probePortalOption);
+    parser.addOption(probePortalNoStartOption);
     parser.addOption(portalTokenOption);
     parser.addOption(benchCaptureOption);
     parser.process(app);
@@ -156,6 +160,7 @@ int main(int argc, char **argv)
     options.benchCapturePath = parser.value(benchCaptureOption);
     options.probePortal = parser.isSet(probePortalOption);
     options.portalTokenFile = parser.value(portalTokenOption);
+    options.probePortalNoStart = parser.isSet(probePortalNoStartOption);
 
     if (parser.isSet(rectOption)) {
         const QStringList parts = parser.value(rectOption).split(QLatin1Char(','));

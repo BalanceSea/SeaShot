@@ -50,7 +50,8 @@ public:
 
     /// 建立一次 ScreenCast 会话。restoreToken 为空 = 首次（会弹授权对话框）。
     /// persistMode: 0=不持久化, 1=本次运行有效, 2=持久直到撤销
-    void start(const QString &restoreToken, uint persistMode, Callback callback);
+    void start(const QString &restoreToken, uint persistMode, Callback callback,
+               bool stopBeforeStart = false);
 
     /// 拿到 PipeWire 远程连接的 fd（帧管线要用；失败返回 -1）
     int openPipeWireRemote(QString *error = nullptr);

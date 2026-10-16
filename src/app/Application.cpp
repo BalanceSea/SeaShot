@@ -51,6 +51,9 @@
 namespace {
 // SIGTERM/SIGINT → 自管道 → 事件循环里优雅退出（会正常卸载 KWin 助手脚本）
 int g_signalFds[2] = {-1, -1};
+// 诊断模式会在 QCoreApplication::exec() 之外再起嵌套 QEventLoop；
+// QCoreApplication::quit() 只退主循环，所以这里登记一个"当前嵌套循环"一并退出。
+QEventLoop *g_nestedLoop = nullptr;
 void seashotSignalHandler(int)
 {
     if (g_signalFds[1] >= 0) {
@@ -165,6 +168,8 @@ Application::Application(const Options &options, QObject *parent)
             const ssize_t read = ::read(g_signalFds[0], &token, 1);
             Q_UNUSED(read)
             SS_INFO() << "[app] 收到退出信号，正在收尾（卸载 KWin 助手脚本）";
+            if (g_nestedLoop)
+                g_nestedLoop->quit();
             QCoreApplication::quit();
         });
         std::signal(SIGTERM, seashotSignalHandler);
@@ -1158,14 +1163,19 @@ int Application::runPortalScreencastProbe(const QString &tokenFile)
 
     PortalScreencast portal;
     QEventLoop loop;
+    g_nestedLoop = &loop;
     PortalScreencast::Result result;
-    portal.start(token, /*persistMode=*/2, [&](const PortalScreencast::Result &r) {
-        result = r;
-        loop.quit();
-    });
+    portal.start(
+        token, /*persistMode=*/2,
+        [&](const PortalScreencast::Result &r) {
+            result = r;
+            loop.quit();
+        },
+        m_options.probePortalNoStart);
     // 弹窗要等用户点，给足时间；静默的话这里几乎立刻就返回
     QTimer::singleShot(180000, &loop, &QEventLoop::quit);
     loop.exec();
+    g_nestedLoop = nullptr;
 
     out << "PORTAL_SCREENCAST_RESULT " << result.describe() << "\n";
     const bool silent = result.startLatencyMs >= 0 && result.startLatencyMs < 1000;
@@ -1173,7 +1183,7 @@ int Application::runPortalScreencastProbe(const QString &tokenFile)
         out << "PORTAL_SCREENCAST_DIALOG_LIKELY " << (silent ? 0 : 1) << " (startLatencyMs="
             << result.startLatencyMs << ")\n";
 
-    if (result.ok) {
+    if (result.ok && !m_options.probePortalNoStart) {
         QString pipewireError;
         const int fd = portal.openPipeWireRemote(&pipewireError);
         out << "PORTAL_SCREENCAST_PIPEWIRE_FD ok=" << (fd >= 0 ? 1 : 0) << " fd=" << fd

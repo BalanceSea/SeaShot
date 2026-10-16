@@ -52,6 +52,7 @@ struct Options {
     QString benchCapturePath; ///< --bench-capture PATH：截全屏存盘并打印帧时间戳（给基准测试当观测者）
     bool probePortal = false; ///< --probe-portal-screencast：验证 portal 授权持久化
     QString portalTokenFile;  ///< 存/取 ScreenCast restore token 的文件
+    bool probePortalNoStart = false; ///< 只走到 SelectSources（不弹授权对话框）
 };
 
 class Application : public QObject

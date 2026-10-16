@@ -11,6 +11,7 @@
 #include <QElapsedTimer>
 #include <QRandomGenerator>
 #include <QTextStream>
+#include <QTimer>
 
 #include <unistd.h>
 
@@ -40,10 +41,14 @@ QString PortalScreencast::newToken(const QString &prefix)
 
 QString PortalScreencast::requestPathFor(const QString &token)
 {
-    // 规范：/org/freedesktop/portal/desktop/request/<sender>/<handle_token>，
-    // sender 是唯一名（':' 与 '.' 换成 '_'）
+    // 规范：/org/freedesktop/portal/desktop/request/<sender>/<handle_token>。
+    // ⚠️ 实测（dbus-monitor）：portal 对唯一名的处理是**去掉开头的 ':'**，再把 '.' 换成 '_'
+    //    —— ":1.50529" → "1_50529"；如果按"把 ':' 也换成 '_'"来猜（"_1_50529"）就会订阅错路径，
+    //    于是 portal 发了 Response 也收不到（表现为一直挂着）。
     QString sender = QDBusConnection::sessionBus().baseService();
-    sender.replace(QLatin1Char(':'), QLatin1Char('_')).replace(QLatin1Char('.'), QLatin1Char('_'));
+    if (sender.startsWith(QLatin1Char(':')))
+        sender.remove(0, 1);
+    sender.replace(QLatin1Char('.'), QLatin1Char('_'));
     return QStringLiteral("/org/freedesktop/portal/desktop/request/%1/%2").arg(sender, token);
 }
 
@@ -128,6 +133,10 @@ void PortalScreencast::callWithResponse(
     args << callOptions;
     msg.setArguments(args);
 
+    QTextStream diag(stdout);
+    diag << "PORTAL_SCREENCAST_REQUEST " << method << " predictedPath=" << path << "\n";
+    diag.flush();
+
     auto *watcher = new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(msg, 30000), this);
     QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this,
                      [this, watcher, method](QDBusPendingCallWatcher *) {
@@ -136,11 +145,30 @@ void PortalScreencast::callWithResponse(
                          if (reply.type() == QDBusMessage::ErrorMessage) {
                              SS_WARN() << "[portal]" << method << "调用失败:" << reply.errorMessage();
                              fail(QStringLiteral("%1 调用失败：%2").arg(method, reply.errorMessage()));
+                             return;
+                         }
+                         // 方法返回的就是请求对象的真实路径 —— 用它校验我们预测的路径
+                         if (!reply.arguments().isEmpty()) {
+                             const QString actual =
+                                 reply.arguments().first().value<QDBusObjectPath>().path();
+                             QTextStream out(stdout);
+                             out << "PORTAL_SCREENCAST_REQUEST_HANDLE " << method
+                                 << " actualPath=" << (actual.isEmpty() ? QStringLiteral("(empty)")
+                                                                        : actual)
+                                 << "\n";
+                             out.flush();
                          }
                      });
+
+    // 每步超时：portal 不回应时报明确错误，而不是一直挂着
+    QTimer::singleShot(20000, this, [this, method]() {
+        if (m_responseHandler != nullptr)
+            fail(QStringLiteral("%1 等待应答超时（20s）—— portal 没有发出 Response 信号").arg(method));
+    });
 }
 
-void PortalScreencast::start(const QString &restoreToken, uint persistMode, Callback callback)
+void PortalScreencast::start(const QString &restoreToken, uint persistMode, Callback callback,
+                             bool stopBeforeStart)
 {
     m_callback = std::move(callback);
     m_finished = false;
@@ -161,12 +189,24 @@ void PortalScreencast::start(const QString &restoreToken, uint persistMode, Call
 
     callWithResponse(
         QString::fromLatin1(kScreenCastIface), QStringLiteral("CreateSession"), {}, createOptions,
-        [this, usingToken](uint code, const QVariantMap &results) {
+        [this, usingToken, stopBeforeStart](uint code, const QVariantMap &results) {
             if (code != 0) {
                 fail(QStringLiteral("CreateSession 被拒绝或取消（response=%1）").arg(code));
                 return;
             }
-            m_sessionPath = results.value(QStringLiteral("session_handle")).value<QDBusObjectPath>().path();
+            {
+                QTextStream diag(stdout);
+                diag << "PORTAL_SCREENCAST_RESPONSE CreateSession code=" << code << " keys="
+                     << results.keys().join(QLatin1Char(',')) << " session_handleType="
+                     << results.value(QStringLiteral("session_handle")).typeName() << "\n";
+                diag.flush();
+            }
+            m_sessionPath = results.value(QStringLiteral("session_handle")).toString();
+            if (m_sessionPath.isEmpty()) {
+                // 某些版本以对象路径类型返回
+                m_sessionPath =
+                    results.value(QStringLiteral("session_handle")).value<QDBusObjectPath>().path();
+            }
             if (m_sessionPath.isEmpty()) {
                 fail(QStringLiteral("CreateSession 没有返回 session_handle"));
                 return;
@@ -180,9 +220,23 @@ void PortalScreencast::start(const QString &restoreToken, uint persistMode, Call
             callWithResponse(
                 QString::fromLatin1(kScreenCastIface), QStringLiteral("SelectSources"),
                 {QVariant::fromValue(QDBusObjectPath(m_sessionPath))}, selectOptions,
-                [this, usingToken](uint selectCode, const QVariantMap &) {
+                [this, usingToken, stopBeforeStart](uint selectCode, const QVariantMap &) {
                     if (selectCode != 0) {
                         fail(QStringLiteral("SelectSources 失败（response=%1）").arg(selectCode));
+                        return;
+                    }
+                    if (stopBeforeStart) {
+                        m_finished = true;
+                        Result result;
+                        result.sessionPath = m_sessionPath;
+                        result.usedRestoreToken = usingToken;
+                        result.ok = true; // 链路自检：走到 SelectSources 就算通
+                        QTextStream(stdout)
+                            << "PORTAL_SCREENCAST_DRY_RUN ok=1 session=" << m_sessionPath
+                            << "（未 Start，所以没有弹授权对话框）\n";
+                        QTextStream(stdout).flush();
+                        if (m_callback)
+                            m_callback(result);
                         return;
                     }
                     auto timer = std::make_shared<QElapsedTimer>();
