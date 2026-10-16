@@ -105,9 +105,13 @@ bool WaylandBackend::initialize(QString *error)
     }
 
     // 自排除：让覆盖层/浮层不出现在任何截图里（Phase 0 实测：不设的话覆盖层会被拍到）
-    QString excludeError;
-    if (!m_bridge.requestExcludeOwnWindows(true, &excludeError))
-        SS_WARN() << "[wayland] 自排除请求失败：" << excludeError;
+    if (qEnvironmentVariableIsSet("SEASHOT_DISABLE_SELF_EXCLUSION")) {
+        SS_WARN() << "[wayland] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：跳过自排除";
+    } else {
+        QString excludeError;
+        if (!m_bridge.requestExcludeOwnWindows(true, &excludeError))
+            SS_WARN() << "[wayland] 自排除请求失败：" << excludeError;
+    }
 
     return true;
 }

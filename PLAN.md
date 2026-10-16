@@ -203,6 +203,8 @@ layer-shell 覆盖层、悬停虚框、单击截窗、拖拽截区、`wl-copy` �
 | portal 录制需用户授权、体验未知 | 未验证 | 首次录制前解释清楚并引导；失败给出可读错误 |
 | 与 NextKde 的 KWin 助手脚本互相干扰 | 两套脚本共用 `/Scripting` | 独立 pluginName（`seashot`）、不做窗口状态修改、退出即卸载 |
 | 多实例同时截图 | Phase 1 验收踩到过：固定 D-Bus 服务名让第二个进程初始化直接失败 | 服务名与脚本文件按 pid 区分（`org.seashot.SeaShot.p<pid>`） |
+| **被 kill/崩溃后 KWin 助手脚本残留** | Phase 2 后踩到过：残留脚本里的自排除状态会继续把之后所有 SeaShot 窗口标成「排除出截图」，导致浮层/覆盖层再也截不到，排查耗时很久 | ① 启动时扫描缓存目录清理死进程的脚本；② SIGTERM/SIGINT 优雅退出并卸载脚本 |
+| 结果浮层在全屏应用前面看不见 | Phase 2 后实测：普通 `Qt::Tool` 窗口压在全屏窗口之下（且 kwin 的窗口列表里能看到但屏幕上被盖） | 浮层改用 layer-shell（`LayerOverlay`），位置用「锚 top\|left + 边距」精确摆放 |
 | 自排除误伤第三方窗口 | Phase 1 踩到过：子串匹配把 `seashot-probe-window` 也排除了，而 KWin 对已排除窗口会**取消**截图 | 改为精确 appId 匹配（`seashot` / `seashot.*`） |
 | XWayland 下 `GetImage` 返回 BadMatch | Phase 1 实测 code=8 major=73（root 与子窗口均如此），MIT-SHM 正常 | X11 后端优先 MIT-SHM，退回 GetImage；错误信息带 X 错误码 |
 | 快捷键冲突 | 实测 `Ctrl+Alt+A` 属 Spectacle | 见第 7 节待裁决 1 |

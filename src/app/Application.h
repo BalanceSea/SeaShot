@@ -36,6 +36,7 @@ struct Options {
     QString editPath; ///< --edit PATH：直接用编辑器打开一张图
     QString annotateIn; ///< --annotate-demo 的输入图
     QString annotateOut; ///< --annotate-demo 的输出图
+    bool openEditor = false; ///< --open-editor：本次截图后直接打开编辑器（覆盖设置）
 };
 
 class Application : public QObject
@@ -85,6 +86,9 @@ private:
     bool m_shouldQuitAfterCapture = false;
     QImage m_lastImage;
     QString m_lastSavedPath;
+    QRect m_lastAnchorRect; ///< 上一次截图的源矩形（全局坐标），结果浮层贴它左下角
+    bool m_keepAliveForToast = false; ///< 一次性 CLI 下：等浮层消失再退出进程
+    bool m_editorOpened = false; ///< 开过编辑器（一次性 CLI 下要等它关掉再退）
     SelectionResult m_pendingSelection;
 };
 

@@ -76,7 +76,6 @@ bool KWinBridge::writeScriptToCache(QString *path, QString *error) const
     // 脚本里带本进程的 D-Bus 服务名 → 文件名也按 pid 区分，避免多实例互相覆盖
     const QString target = cacheDir
         + QStringLiteral("/seashot-kwin-%1.js").arg(QCoreApplication::applicationPid());
-
     QFile source(scriptResourcePath());
     if (!source.exists() || !source.open(QIODevice::ReadOnly)) {
         if (error)
@@ -146,7 +145,8 @@ bool KWinBridge::start(QString *error)
         return false;
     }
 
-    // 2) 释放脚本并加载
+    // 2) 释放脚本并加载（先扫掉上次崩溃/被 kill 后留下的陈旧脚本）
+    sweepStaleScripts();
     QString scriptPath;
     if (!writeScriptToCache(&scriptPath, error)) {
         stop();
@@ -223,6 +223,11 @@ void KWinBridge::stop()
         bus.unregisterObject(QString::fromLatin1(kObjectPath));
         bus.unregisterService(serviceName());
         m_serviceRegistered = false;
+        // 删掉本进程的脚本文件，别让它变成下一次启动要清理的「陈旧脚本」
+        const QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+        if (!cacheDir.isEmpty())
+            QFile::remove(cacheDir + QStringLiteral("/seashot-kwin-%1.js")
+                                         .arg(QCoreApplication::applicationPid()));
         SS_INFO() << "[kwin] 脚本已卸载 pluginName=" << m_pluginName;
     }
     m_running = false;
@@ -275,6 +280,39 @@ QString KWinBridge::diagnostics() const
         .arg(m_publishedCount)
         .arg(m_lastSnapshotMs == 0 ? QStringLiteral("-")
                                    : QString::number(QDateTime::currentMSecsSinceEpoch() - m_lastSnapshotMs));
+}
+
+void KWinBridge::sweepStaleScripts()
+{
+    // 进程被 kill（或崩溃）时来不及 unloadScript → KWin 里会残留一个同名脚本，
+    // 而它记着的「自排除」状态会继续把之后所有 SeaShot 窗口标成排除出截图
+    // （实测踩过：浮层/覆盖层再也不会被任何截图拍到，排查了很久）。
+    // 这里根据缓存目录里的脚本文件回忆出旧的 pluginName，进程已死的就卸掉。
+    const QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+    if (cacheDir.isEmpty())
+        return;
+    QDir dir(cacheDir);
+    const QStringList stale = dir.entryList({QStringLiteral("seashot-kwin-*.js")}, QDir::Files);
+    if (stale.isEmpty())
+        return;
+
+    QDBusInterface scripting(QString::fromLatin1(kKWinService), QString::fromLatin1(kScriptingPath),
+                             QString::fromLatin1(kScriptingIface), QDBusConnection::sessionBus());
+    const qint64 ownPid = QCoreApplication::applicationPid();
+    for (const QString &fileName : stale) {
+        QString pidText = fileName;
+        pidText.remove(QStringLiteral("seashot-kwin-")).remove(QStringLiteral(".js"));
+        const qint64 pid = pidText.toLongLong();
+        if (pid == ownPid || pid <= 0)
+            continue;
+        if (QFile::exists(QStringLiteral("/proc/%1").arg(pid)))
+            continue; // 还活着：不是陈旧脚本（多实例并存）
+        const QString pluginName = QStringLiteral("seashot-%1").arg(pid);
+        if (scripting.isValid())
+            scripting.call(QStringLiteral("unloadScript"), pluginName);
+        QFile::remove(dir.filePath(fileName));
+        SS_INFO() << "[kwin] 已清理陈旧助手脚本" << pluginName;
+    }
 }
 
 void KWinBridge::enqueue(const QString &command)

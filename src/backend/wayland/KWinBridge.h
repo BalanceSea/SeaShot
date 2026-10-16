@@ -51,6 +51,8 @@ signals:
 private:
     bool writeScriptToCache(QString *path, QString *error) const;
     void enqueue(const QString &command);
+    /// 清理上次崩溃/被 kill 留下的 KWin 助手脚本
+    void sweepStaleScripts();
 
     /// 每个进程用自己的 D-Bus 服务名（否则第二个 SeaShot 实例无法启动 —— Phase 1 验收时踩到过）
     static QString serviceName();

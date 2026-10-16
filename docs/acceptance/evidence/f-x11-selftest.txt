@@ -1,6 +1,10 @@
+[info] [x11] MIT-SHM 可用 1 2 
+[info] [x11] 已连接， 1 个输出 
+[info] [app] 后端不支持自排除，将在截图前隐藏覆盖层： "该后端不支持自排除" 
 BACKEND_CHOICE 显式请求 X11 后端
 SeaShot 自检（Phase 1）
 ========================
+[info] [clipboard] 已通过 wl-copy 写入 99 字节 
 [OK  ] 后端选择
        显式请求 X11 后端
 [OK  ] desktop 文件授权属性
@@ -11,9 +15,9 @@ SeaShot 自检（Phase 1）
        DP-3 1920x1080+0+0 scale=1
 [OK  ] 窗口枚举
        共 3 个窗口
-       2e0000b appId=Minecraft* 1.21.1 frame=445,401 854x508 stack=0
-       320000f appId=MinecraftConnectTool frame=811,246 1080x720 stack=1
-       1200011 appId=QQ frame=875,337 957x720 stack=2
+       2e0000b appId=Minecraft* 1.21.1 frame=1060,381 854x508 stack=0
+       320000f appId=MinecraftConnectTool frame=587,274 1080x720 stack=1
+       1200011 appId=QQ frame=974,315 957x720 stack=2
 [OK  ] 区域截图（32x32 探测）
        得到 32x32，scale=1
 [OK  ] 剪贴板（wl-copy）

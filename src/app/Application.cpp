@@ -24,9 +24,26 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QScreen>
+#include <QSocketNotifier>
 #include <QStandardPaths>
 #include <QTextStream>
 #include <QTimer>
+
+#include <csignal>
+#include <unistd.h>
+
+namespace {
+// SIGTERM/SIGINT → 自管道 → 事件循环里优雅退出（会正常卸载 KWin 助手脚本）
+int g_signalFds[2] = {-1, -1};
+void seashotSignalHandler(int)
+{
+    if (g_signalFds[1] >= 0) {
+        const char token = 1;
+        const ssize_t written = ::write(g_signalFds[1], &token, 1);
+        Q_UNUSED(written)
+    }
+}
+} // namespace
 
 namespace seashot {
 
@@ -70,6 +87,10 @@ Application::Application(const Options &options, QObject *parent)
         if (!m_backend->initialize(&error)) {
             m_backendError = error;
             SS_WARN() << "[app] 后端初始化失败:" << error;
+        } else if (qEnvironmentVariableIsSet("SEASHOT_DISABLE_SELF_EXCLUSION")) {
+            // 调试开关：关掉自排除，方便截到自己的覆盖层/浮层（见 README「调试」）
+            m_selfExclusion = false;
+            SS_WARN() << "[app] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：本次不排除自己的窗口";
         } else {
             QString excludeError;
             m_selfExclusion = m_backend->excludeOwnWindows(true, &excludeError);
@@ -89,12 +110,25 @@ Application::Application(const Options &options, QObject *parent)
             QCoreApplication::exit(0);
     });
 
-    m_toast = std::make_unique<Toast>();
-    m_toast->setEditEnabled(true);
+    m_toast = std::make_unique<Toast>();    m_toast->setEditEnabled(true);
     connect(m_toast.get(), &Toast::saveAsRequested, this, &Application::saveAs);
     connect(m_toast.get(), &Toast::copyRequested, this, &Application::copyLast);
     connect(m_toast.get(), &Toast::editRequested, this,
             [this]() { openEditor(m_lastImage, m_lastSavedPath); });
+
+    // 优雅退出：被 kill/logout 时也把 KWin 助手脚本卸掉（否则会残留成「陈旧脚本」）
+    if (::pipe(g_signalFds) == 0) {
+        auto *notifier = new QSocketNotifier(g_signalFds[0], QSocketNotifier::Read, this);
+        connect(notifier, &QSocketNotifier::activated, this, [this]() {
+            char token = 0;
+            const ssize_t read = ::read(g_signalFds[0], &token, 1);
+            Q_UNUSED(read)
+            SS_INFO() << "[app] 收到退出信号，正在收尾（卸载 KWin 助手脚本）";
+            QCoreApplication::quit();
+        });
+        std::signal(SIGTERM, seashotSignalHandler);
+        std::signal(SIGINT, seashotSignalHandler);
+    }
 }
 
 Application::~Application()
@@ -168,6 +202,7 @@ void Application::openEditor(const QImage &image, const QString &sourcePath)
     editor->show();
     editor->raise();
     editor->activateWindow();
+    m_editorOpened = true;
     out << "EDITOR_OPEN size=" << image.width() << "x" << image.height()
         << " source=" << (sourcePath.isEmpty() ? QStringLiteral("(none)") : sourcePath) << "\n";
     out.flush();
@@ -317,10 +352,12 @@ void Application::performCapture()
         return;
     const SelectionResult result = m_pendingSelection;
     if (result.mode == SelectionMode::Window) {
+        m_lastAnchorRect = result.window.frameGeometry.toAlignedRect();
         SS_INFO() << "[app] 截取窗口" << result.window.id << result.window.title;
         m_backend->captureWindow(result.window,
                                  [this](const CaptureImage &image) { finishCapture(image); });
     } else {
+        m_lastAnchorRect = result.logicalRect.toAlignedRect();
         SS_INFO() << "[app] 截取区域" << result.logicalRect;
         m_backend->captureRect(result.logicalRect,
                               [this](const CaptureImage &image) { finishCapture(image); });
@@ -357,7 +394,16 @@ void Application::finishCapture(const CaptureImage &image)
     m_lastSavedPath = savedPath;
 
     const QString message = QStringLiteral("已截图 %1").arg(sizeText(image.image));
-    m_toast->showResult(image.image, savedPath, message, copyError);
+    const bool wantsEditor = m_options.openEditor || m_settings->openEditorAfterCapture();
+    // 带 --save 视为脚本化调用：不弹浮层、交付完就退出（验收/自动化靠它保持快）
+    const bool scripted = !m_options.saveTo.isEmpty();
+
+    if (wantsEditor) {
+        // 「截图后直接打开编辑器」：浮层就不弹了，编辑器里已有复制/保存/另存为
+        openEditor(image.image, savedPath);
+    } else if (!scripted) {
+        m_toast->showResult(image.image, savedPath, message, copyError, m_lastAnchorRect);
+    }
 
     out << "CAPTURE ok size=" << image.image.width() << "x" << image.image.height()
         << " scale=" << image.scale << "\n";
@@ -369,8 +415,18 @@ void Application::finishCapture(const CaptureImage &image)
         out << "COPY_ERROR " << copyError << "\n";
     out.flush();
 
-    if (isOneShot() && m_options.overlayHoldMs == 0)
-        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+    if (isOneShot() && m_options.overlayHoldMs == 0 && !wantsEditor) {
+        if (scripted) {
+            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        } else {
+            // 一次性 CLI 且没弹编辑器：浮层是用户唯一能操作的界面 →
+            // 等它自动消失或用户点「关闭」再退出（否则刚显示的浮层会随进程一起消失，
+            // 「编辑 / 另存为」按钮形同虚设）
+            m_keepAliveForToast = true;
+            connect(m_toast.get(), &Toast::dismissed, qApp, &QCoreApplication::quit,
+                    Qt::UniqueConnection);
+        }
+    }
 }
 
 void Application::saveAs()
@@ -383,10 +439,12 @@ void Application::saveAs()
     QString error;
     if (Settings::saveImage(path, m_lastImage, &error)) {
         m_lastSavedPath = path;
-        m_toast->showResult(m_lastImage, path, QStringLiteral("已保存 %1").arg(sizeText(m_lastImage)));
+        m_toast->showResult(m_lastImage, path,
+                            QStringLiteral("已保存 %1").arg(sizeText(m_lastImage)), QString(),
+                            m_lastAnchorRect);
         QTextStream(stdout) << "SAVED " << path << "\n";
     } else {
-        m_toast->showResult(m_lastImage, {}, QStringLiteral("保存失败"), error);
+        m_toast->showResult(m_lastImage, {}, QStringLiteral("保存失败"), error, m_lastAnchorRect);
     }
 }
 
@@ -397,7 +455,8 @@ void Application::copyLast()
     QString error;
     const bool ok = Clipboard::copyImage(m_lastImage, &error);
     m_toast->showResult(m_lastImage, m_lastSavedPath,
-                        ok ? QStringLiteral("已复制到剪贴板") : QStringLiteral("复制失败"), error);
+                        ok ? QStringLiteral("已复制到剪贴板") : QStringLiteral("复制失败"), error,
+                        m_lastAnchorRect);
     QTextStream(stdout) << (ok ? "COPIED image/png\n" : "COPY_ERROR " + error + "\n");
 }
 
@@ -420,13 +479,14 @@ int Application::runListWindows()
     const QVector<WindowInfo> windows = m_backend->windows();
     out << "WINDOWS " << windows.size() << "\n";
     for (const WindowInfo &w : windows) {
-        out << QStringLiteral("%1 appId=%2 pid=%3 active=%4 normal=%5 min=%6 stack=%7 "
-                             "frame=%8,%9 %10x%11 excluded=%12 title=%13\n")
+        out << QStringLiteral("%1 appId=%2 pid=%3 active=%4 normal=%5 min=%6 visible=%7 stack=%8 "
+                             "frame=%9,%10 %11x%12 excluded=%13 title=%14\n")
                    .arg(w.id, w.appId)
                    .arg(w.pid)
                    .arg(w.active ? 1 : 0)
                    .arg(w.normal ? 1 : 0)
                    .arg(w.minimized ? 1 : 0)
+                   .arg(w.visible ? 1 : 0)
                    .arg(w.stackIndex)
                    .arg(w.frameGeometry.x())
                    .arg(w.frameGeometry.y())
@@ -472,10 +532,13 @@ int Application::runNonInteractiveCapture()
                 break;
             }
         }
+        m_lastAnchorRect = info.frameGeometry.toAlignedRect();
         m_backend->captureWindow(info, callback);
     } else if (m_options.hasRect) {
+        m_lastAnchorRect = m_options.rect.toAlignedRect();
         m_backend->captureRect(m_options.rect, callback);
     } else {
+        m_lastAnchorRect = virtualGeometry();
         m_backend->captureRect(virtualGeometry(), callback);
     }
 
@@ -529,8 +592,13 @@ int Application::run()
         openEditor(image, m_options.editPath);
         return QCoreApplication::exec();
     }
-    if (m_options.captureScreen || m_options.hasRect || !m_options.windowHandle.isEmpty())
-        return runNonInteractiveCapture();
+    if (m_options.captureScreen || m_options.hasRect || !m_options.windowHandle.isEmpty()) {
+        const int code = runNonInteractiveCapture();
+        // 浮层还在 / 编辑器还开着：别急着退（quitOnLastWindowClosed 会在窗口关掉时收尾）
+        if (m_keepAliveForToast || m_editorOpened)
+            return QCoreApplication::exec();
+        return code;
+    }
     if (m_options.overlayHoldMs > 0) {
         if (sendToExistingInstance(QStringLiteral("capture"))) {
             out << "FORWARDED_TO_RUNNING_INSTANCE\n";

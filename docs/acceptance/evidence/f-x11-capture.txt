@@ -1,2 +1,6 @@
+[info] [x11] MIT-SHM 可用 1 2 
+[info] [x11] 已连接， 1 个输出 
+[info] [app] 后端不支持自排除，将在截图前隐藏覆盖层： "该后端不支持自排除" 
+[info] [settings] 已保存 "docs/acceptance/evidence/f-x11.png" 
 CAPTURE ok size=200x150 scale=1
 SAVED docs/acceptance/evidence/f-x11.png

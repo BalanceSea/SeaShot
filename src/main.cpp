@@ -4,6 +4,7 @@
 #include <QApplication>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
+#include <QLoggingCategory>
 #include <QRegularExpression>
 #include <QTextStream>
 
@@ -23,6 +24,9 @@ int main(int argc, char **argv)
     // layer-shell 必须在创建窗口前启用（Phase 0 已实测可用）
     if (QGuiApplication::platformName().startsWith(QLatin1String("wayland")))
         LayerShellQt::Shell::useLayerShell();
+
+    // 默认把 info 级日志打开：SeaShot 的诊断（[kwin]/[shot2]/[toast]/[app]）依赖它
+    QLoggingCategory::setFilterRules(QStringLiteral("*.info=true\n*.debug=false"));
 
     QCommandLineParser parser;
     parser.setApplicationDescription(
@@ -60,6 +64,9 @@ int main(int argc, char **argv)
     QCommandLineOption annotateOutOption(QStringLiteral("annotate-out"),
                                          QStringLiteral("（诊断/验收）标注演示的输出图"),
                                          QStringLiteral("path"));
+    QCommandLineOption openEditorOption(
+        QStringLiteral("open-editor"),
+        QStringLiteral("本次截图后直接打开编辑器（覆盖配置里的 capture/openEditorAfterCapture）"));
 
     parser.addOption(selftestOption);
     parser.addOption(listOption);
@@ -74,6 +81,7 @@ int main(int argc, char **argv)
     parser.addOption(editOption);
     parser.addOption(annotateInOption);
     parser.addOption(annotateOutOption);
+    parser.addOption(openEditorOption);
     parser.process(app);
 
     seashot::Options options;
@@ -89,6 +97,7 @@ int main(int argc, char **argv)
     options.editPath = parser.value(editOption);
     options.annotateIn = parser.value(annotateInOption);
     options.annotateOut = parser.value(annotateOutOption);
+    options.openEditor = parser.isSet(openEditorOption);
 
     if (parser.isSet(rectOption)) {
         const QStringList parts = parser.value(rectOption).split(QLatin1Char(','));

@@ -15,6 +15,7 @@ constexpr const char *kCopyAfterCapture = "capture/copyAfterCapture";
 constexpr const char *kSaveDir = "capture/saveDir";
 constexpr const char *kFilenameTemplate = "capture/filenameTemplate";
 constexpr const char *kAutoSave = "capture/autoSave";
+constexpr const char *kOpenEditor = "capture/openEditorAfterCapture";
 constexpr const char *kKeepShadow = "capture/keepShadowMargin";
 constexpr const char *kHotkey = "shortcut/hotkey";
 constexpr const char *kGifFps = "record/fps";
@@ -79,14 +80,24 @@ void Settings::setAutoSaveAfterCapture(bool value)
     emit changed();
 }
 
-bool Settings::keepShadowMargin() const
-{
+bool Settings::keepShadowMargin() const{
     return QSettings().value(QLatin1String(kKeepShadow), true).toBool();
 }
 
 void Settings::setKeepShadowMargin(bool value)
 {
     QSettings().setValue(QLatin1String(kKeepShadow), value);
+    emit changed();
+}
+
+bool Settings::openEditorAfterCapture() const
+{
+    return QSettings().value(QLatin1String(kOpenEditor), false).toBool();
+}
+
+void Settings::setOpenEditorAfterCapture(bool value)
+{
+    QSettings().setValue(QLatin1String(kOpenEditor), value);
     emit changed();
 }
 

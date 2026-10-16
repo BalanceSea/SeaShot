@@ -42,6 +42,7 @@ seashot --capture-screen --save /tmp/full.png
 seashot --rect 100,200,400,300 --save /tmp/rect.png [--no-copy]
 seashot --window '{uuid}' --save /tmp/window.png
 seashot --overlay-hold 5000          # 显示选择覆盖层 5 秒后退出（调试/验收）
+seashot --open-editor                # 本次截图后直接打开编辑器（覆盖配置）
 seashot --backend=x11 --list-windows # 显式选后端（XWayland 冒烟用）
 ```
 
@@ -65,6 +66,19 @@ PLAN 已定：**默认不注册任何键**（实测 `Ctrl+Alt+A` 已被本机 Sp
 - `Esc` / 右键：取消
 - 覆盖层与结果浮层通过 KWin 的 `excludeFromCapture` 自我排除，不会出现在任何截图里
 
+### 截图后的结果浮层（按你的要求定稿）
+
+- **按原尺寸显示**：截图多大卡片就多大（1:1）；整张图在屏幕可用区放不下时才等比缩小，
+  并在文字里写明「已缩到 W×H 显示」
+- **贴着截图框的左下角**：卡片左上角 = 选区（或窗口）的左下角；下方放不下就改成卡片左下角
+  与选区左下角对齐（往上盖）
+- **外观跟随系统主题**（用 `QPalette` 取色，Breeze 亮/暗主题都跟；当前在你机器上是 BreezeLight）
+- 底部一条浮在图片上的按钮条：「编辑」（主按钮，高亮） / 另存为 / 复制 / 关闭；
+  左侧写明「已截图 W×H」（若已复制/已保存也一并显示）
+- 按住图片区域可以**拖动浮层**；鼠标悬停时不自动消失；8 秒后自动消失
+- 浮层用 layer-shell（`LayerOverlay`）实现，所以**全屏应用前面也能看见**
+- 带 `--save` 的脚本化调用（验收/自动化）不弹浮层，交付完就退出
+
 ## 配置
 
 `~/.config/seashot/seashot.conf`（改动即时生效）：
@@ -75,10 +89,20 @@ PLAN 已定：**默认不注册任何键**（实测 `Ctrl+Alt+A` 已被本机 Sp
 | `capture/saveDir` | `~/Pictures/Screenshots` | 默认保存目录 |
 | `capture/filenameTemplate` | `seashot_%1` | `%1`=时间戳，另有 `%d`、`%t`；同名自动加序号 |
 | `capture/autoSaveAfterCapture` | `false` | 不点按钮也自动落盘 |
+| `capture/openEditorAfterCapture` | `false` | 截图后直接打开编辑器（不弹浮层） |
 | `capture/keepShadowMargin` | `true` | 窗口图保留阴影边距 |
 | `shortcut/hotkey` | 空 | 全局快捷键（空=不绑定） |
 | `record/fps` | `15` | GIF 帧率（Phase 4） |
 | `ui/trayPersistent` | `true` | 常驻托盘 |
+
+## 调试
+
+- `SEASHOT_DISABLE_SELF_EXCLUSION=1 seashot …`：本次不把 SeaShot 自己的窗口排除出截图。
+  调试浮层/覆盖层外观时用（默认它们不会被任何截图拍到）。
+- 日志走 stderr（`[app]`/`[kwin]`/`[shot2]`/`[toast]` 前缀）；Qt 默认会吞掉 `qInfo`，
+  所以 SeaShot 显式写 stderr。
+- KWin 助手脚本残留在 `~/.cache/seashot/seashot/*.js`；若上次是被 kill 的，
+  下次启动会自动卸载并删除陈旧脚本（否则它会把之后所有 SeaShot 窗口标成排除出截图）。
 
 ## 已知限制（与实测依据）
 

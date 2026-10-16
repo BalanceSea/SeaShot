@@ -26,6 +26,10 @@ public:
     bool autoSaveAfterCapture() const;
     void setAutoSaveAfterCapture(bool value);
 
+    /// 截图后直接打开编辑器（浮层不再弹）—— Phase 2 后新增
+    bool openEditorAfterCapture() const;
+    void setOpenEditorAfterCapture(bool value);
+
     bool keepShadowMargin() const;
     void setKeepShadowMargin(bool value);
 
@@ -43,7 +47,6 @@ public:
 
     /// 按模板生成默认保存路径（应用 saveDir + filenameTemplate；不覆盖同名文件）
     QString defaultSavePath(const QString &suffix = QStringLiteral("png")) const;
-
     /// 保存图像到指定路径（PNG），失败写 *error
     static bool saveImage(const QString &path, const QImage &image, QString *error);
 
