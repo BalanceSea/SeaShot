@@ -84,6 +84,14 @@ int main(int argc, char **argv)
     QCommandLineOption secondsOption(QStringLiteral("seconds"),
                                      QStringLiteral("录制 N 秒后自动停止（0 = 手动停）"),
                                      QStringLiteral("N"), QStringLiteral("0"));
+    QCommandLineOption dragBenchOption(
+        QStringLiteral("toast-drag-bench"),
+        QStringLiteral("（诊断）程序化拖动结果浮层 MS 毫秒，量出目标位置与实见位置的偏差"),
+        QStringLiteral("ms"));
+    QCommandLineOption benchCaptureOption(
+        QStringLiteral("bench-capture"),
+        QStringLiteral("（诊断）抓一帧全屏存盘并打印帧时间戳，给拖动基准当观测者"),
+        QStringLiteral("path"));
 
     parser.addOption(selftestOption);
     parser.addOption(listOption);
@@ -106,6 +114,8 @@ int main(int argc, char **argv)
     parser.addOption(recordOption);
     parser.addOption(recordStopOption);
     parser.addOption(secondsOption);
+    parser.addOption(dragBenchOption);
+    parser.addOption(benchCaptureOption);
     parser.process(app);
 
     seashot::Options options;
@@ -129,6 +139,8 @@ int main(int argc, char **argv)
     options.record = parser.isSet(recordOption);
     options.recordStop = parser.isSet(recordStopOption);
     options.seconds = parser.value(secondsOption).toInt();
+    options.toastDragBenchMs = parser.value(dragBenchOption).toInt();
+    options.benchCapturePath = parser.value(benchCaptureOption);
 
     if (parser.isSet(rectOption)) {
         const QStringList parts = parser.value(rectOption).split(QLatin1Char(','));

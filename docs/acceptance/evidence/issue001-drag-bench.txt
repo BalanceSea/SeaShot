@@ -1,0 +1,24 @@
+[info] [wayland] ScreenShot2 Version = 5 
+[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
+[info] [kwin] 已清理陈旧助手脚本 "seashot-366781" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-367397" id= 1 run方式= Script<N>.run 
+[warn] [wayland] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：跳过自排除 
+[warn] [app] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：本次不排除自己的窗口 
+[info] [toast] layer-shell role 已应用（LayerOverlay） 
+TOAST image=400x300 display=400x300 scaled=0 anchor=300,200 400x300 geometry=300,502 640x334 autoHide=0
+[info] [toast] visible= true layerShell= true geometry= QRect(300,502 640x334) autoHideMs= 0 
+DRAGBENCH_START startX=300 stepMs=16 stepPx=4 durationMs=2500 captureEvery=20
+DRAGBENCH_SAMPLE step=41 observed=400 targetAtFrame=400 lagPx=0 lagMs=0 applyUs=71
+DRAGBENCH_SAMPLE step=59 observed=476 targetAtFrame=476 lagPx=0 lagMs=0 applyUs=105
+DRAGBENCH_SAMPLE step=79 observed=556 targetAtFrame=560 lagPx=4 lagMs=16 applyUs=67
+DRAGBENCH_SAMPLE step=103 observed=652 targetAtFrame=652 lagPx=0 lagMs=0 applyUs=77
+DRAGBENCH_SAMPLE step=115 observed=712 targetAtFrame=712 lagPx=0 lagMs=0 applyUs=100
+DRAGBENCH_SAMPLE step=136 observed=796 targetAtFrame=796 lagPx=0 lagMs=0 applyUs=93
+DRAGBENCH_SAMPLE step=156 observed=872 targetAtFrame=872 lagPx=0 lagMs=0 applyUs=147
+DRAGBENCH_SAMPLE step=177 observed=956 targetAtFrame=956 lagPx=0 lagMs=0 applyUs=56
+DRAGBENCH_SAMPLE step=196 observed=1032 targetAtFrame=1032 lagPx=0 lagMs=0 applyUs=75
+DRAGBENCH_SAMPLE step=216 observed=1116 targetAtFrame=1116 lagPx=0 lagMs=0 applyUs=75
+DRAGBENCH_SAMPLE step=236 observed=1196 targetAtFrame=1196 lagPx=0 lagMs=0 applyUs=84
+DRAGBENCH_SAMPLE step=256 observed=1276 targetAtFrame=1276 lagPx=0 lagMs=0 applyUs=85
+DRAGBENCH samples=12 lagPxAvg=0.333333 lagPxMax=4 lagMsAvg=1.33333
+[info] [kwin] 脚本已卸载 pluginName= "seashot-367397" 

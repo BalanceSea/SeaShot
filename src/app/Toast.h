@@ -39,6 +39,12 @@ public:
     /// 短暂展示后消失（例如另存为完成）
     void dismissAfter(int milliseconds);
 
+    /// 诊断用：浮层边框改成高饱和品红（便于截屏定位实测拖动延迟）
+    void setDragMarkerEnabled(bool enabled);
+    /// 诊断用：直接走拖动时的定位路径（不经过鼠标事件）
+    void dragTo(const QPoint &globalTopLeft) { applyPosition(globalTopLeft); }
+    QRect currentGeometry() const { return geometry(); }
+
 signals:
     void editRequested();
     void saveAsRequested();
@@ -82,13 +88,13 @@ private:
     bool m_cacheDirty = true;
 
     QTimer m_autoHide;
-    QTimer m_positionFlush;
-    QPoint m_pendingTopLeft;
-    bool m_positionPending = false;
+    /// 上一次实际提交过的位置（重复位置不再提交）
+    QPoint m_lastAppliedTopLeft{-1, -1};
 
     bool m_editEnabled = true;
     bool m_layerShellApplied = false;
     bool m_dragging = false;
+    bool m_dragMarker = false;
     QPoint m_dragOrigin;
     QRect m_lastAnchor;
     int m_autoHideMs = 0;

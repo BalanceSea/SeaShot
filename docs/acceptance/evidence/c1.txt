@@ -1,8 +1,8 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-333547" id= 1 run方式= Script<N>.run 
-[info] [shot2] "CaptureWindow" ok 8 ms 730 x 558 "" 
+[info] [shot2] "CaptureArea" ok 5 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-368050" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureWindow" ok 6 ms 730 x 558 "" 
 [info] [settings] 已保存 "docs/acceptance/evidence/c1-window.png" 
 CAPTURE ok size=730x558 scale=1
 SAVED docs/acceptance/evidence/c1-window.png
-[info] [kwin] 脚本已卸载 pluginName= "seashot-333547" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-368050" 

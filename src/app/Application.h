@@ -48,6 +48,8 @@ struct Options {
     bool record = false; ///< --record：进入录制流程（交互选区域，或配合 --rect 直接用矩形）
     bool recordStop = false; ///< --record-stop：让常驻实例停止录制
     int seconds = 0; ///< --seconds N：录制 N 秒后自动停（0 = 手动停）
+    int toastDragBenchMs = 0; ///< --toast-drag-bench MS：诊断拖动延迟（ISSUE-001）
+    QString benchCapturePath; ///< --bench-capture PATH：截全屏存盘并打印帧时间戳（给基准测试当观测者）
 };
 
 class Application : public QObject
@@ -91,6 +93,10 @@ private:
     int showOverlayAndHold();
     int runAnnotateDemo();
     int runPrintConfig();
+    /// ISSUE-001 诊断：子进程观测版（同进程拍不到自己的 layer-shell 表面）
+    int runBenchCapture(const QString &path);
+    /// ISSUE-001 诊断：程序化拖拽浮层 + 截屏定位，量出「目标位置 vs 实见位置」的偏差
+    int runToastDragBench(int durationMs);
     QRect virtualGeometry() const;
     bool isOneShot() const;
 

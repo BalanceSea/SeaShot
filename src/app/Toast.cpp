@@ -22,7 +22,7 @@ constexpr int kScreenMargin = 16;
 constexpr int kAnchorGap = 3;
 constexpr int kButtonHeight = 24;
 constexpr int kButtonPadding = 12;
-constexpr int kPositionFlushMs = 8; ///< 拖动时合并提交间隔
+constexpr int kPositionFlushMs = 8; ///< （已废弃）拖动合并提交：实测会凭空加延迟，改为逐事件提交
 constexpr int kDismissDelayMs = 1200; ///< 保存完成后再展示多久
 
 QString buttonLabel(int id)
@@ -50,12 +50,6 @@ Toast::Toast(QWidget *parent)
 
     m_autoHide.setSingleShot(true);
     connect(&m_autoHide, &QTimer::timeout, this, &Toast::closeAndNotify);
-
-    m_positionFlush.setSingleShot(true);
-    connect(&m_positionFlush, &QTimer::timeout, this, [this]() {
-        m_positionPending = false;
-        applyPosition(m_pendingTopLeft);
-    });
 }
 
 int Toast::barHeight() const
@@ -149,6 +143,12 @@ void Toast::dismissAfter(int milliseconds)
 {
     m_autoHide.stop();
     m_autoHide.start(qMax(0, milliseconds));
+}
+
+void Toast::setDragMarkerEnabled(bool enabled)
+{
+    m_dragMarker = enabled;
+    invalidateCache();
 }
 
 void Toast::maybeStartAutoHide()
@@ -257,6 +257,13 @@ void Toast::applyPosition(const QPoint &globalTopLeft)
         }
     }
     move(globalTopLeft); // 非 layer-shell（X11）下才有效
+
+    // 关键：layer-shell 的位置由边距决定，但边距要随 surface 提交才会生效。
+    // 只调 setMargins() 而不产生新缓冲时，实测位置会以秒级间隔成块跳动（ISSUE-001 的根因）。
+    // 这里显式请求一次重绘（内容有 QPixmap 缓存，代价就是一次 blit）以促成提交。
+    if (m_layerShellApplied)
+        update();
+    m_lastAppliedTopLeft = globalTopLeft;
 }
 
 void Toast::rebuildCache()
@@ -335,6 +342,14 @@ void Toast::rebuildCache()
     // 边框（你的要求：截图内容容易"溶进"背景）
     // 外圈 3px 深色 + 内圈 2px 主题高亮色：浅色与深色桌面上都能一眼找到
     painter.setBrush(Qt::NoBrush);
+    if (m_dragMarker) {
+        // 诊断模式：纯品红粗框，便于截屏后精确求出卡片在屏幕上的位置
+        painter.setPen(QPen(QColor(255, 0, 255), 4));
+        painter.drawRect(QRectF(rect()).adjusted(2, 2, -2, -2));
+        painter.end();
+        m_cacheDirty = false;
+        return;
+    }
     QColor darkRing(0, 0, 0);
     darkRing.setAlpha(115);
     painter.setPen(QPen(darkRing, 3));
@@ -367,7 +382,8 @@ void Toast::mousePressEvent(QMouseEvent *event)
     if (hit == Button::None && event->button() == Qt::LeftButton) {
         m_dragging = true;
         m_dragOrigin = event->globalPosition().toPoint() - frameGeometry().topLeft();
-        m_pendingTopLeft = frameGeometry().topLeft();
+        const QPoint target = frameGeometry().topLeft();
+        Q_UNUSED(target)
         return;
     }
     switch (hit) {
@@ -394,21 +410,15 @@ void Toast::mouseMoveEvent(QMouseEvent *event)
 {
     if (!m_dragging || !(event->buttons() & Qt::LeftButton))
         return;
-    // 合并提交：layer-shell 每次 setMargins 都是一次 commit，逐事件提交会明显卡顿
-    m_pendingTopLeft = event->globalPosition().toPoint() - m_dragOrigin;
-    if (!m_positionPending) {
-        m_positionPending = true;
-        m_positionFlush.start(kPositionFlushMs);
-    }
+    // 直接应用：每次只是 setMargins + 一次缓存 blit（实测 ~70µs），
+    // 之前按 8ms 合并提交反而凭空加了最多 8ms 延迟；位置没变就不提交。
+    const QPoint target = event->globalPosition().toPoint() - m_dragOrigin;
+    if (target != m_lastAppliedTopLeft)
+        applyPosition(target);
 }
 
 void Toast::mouseReleaseEvent(QMouseEvent *)
 {
-    if (m_dragging && m_positionPending) {
-        m_positionFlush.stop();
-        m_positionPending = false;
-        applyPosition(m_pendingTopLeft);
-    }
     m_dragging = false;
 }
 

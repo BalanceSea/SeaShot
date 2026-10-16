@@ -21,7 +21,9 @@
 #endif
 
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QDialog>
+#include <QElapsedTimer>
 #include <QEventLoop>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -29,10 +31,13 @@
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QProcess>
+#include <QProcessEnvironment>
+#include <QRegularExpression>
 #include <QScreen>
 #include <QSocketNotifier>
 #include <QStandardPaths>
 #include <QTextStream>
+#include <QtTest/QTest>
 #include <QTimer>
 
 #include <csignal>
@@ -74,6 +79,10 @@ Application::Application(const Options &options, QObject *parent)
     , m_options(options)
 {
     m_settings = std::make_unique<Settings>(this);
+
+    // 拖动延迟基准测试需要截到自己的浮层：在创建后端之前把自排除关掉
+    if (m_options.toastDragBenchMs > 0)
+        qputenv("SEASHOT_DISABLE_SELF_EXCLUSION", "1");
 
     m_choice = BackendFactory::resolve(parseBackendKind(m_options.backend),
                                        qEnvironmentVariable("XDG_SESSION_TYPE"),
@@ -864,6 +873,169 @@ int Application::showOverlayAndHold()
     return QCoreApplication::exec();
 }
 
+int Application::runToastDragBench(int durationMs)
+{
+    if (!m_backend || !m_backendError.isEmpty()) {
+        QTextStream(stderr) << "拖动基准需要可用的截图后端：" << m_backendError << "\n";
+        return 2;
+    }
+
+    // 已实测：**同一进程**的 ScreenShot2 请求拍不到自己的 layer-shell 表面（另一个进程可以，
+    // 见 docs/known-issues.md ISSUE-007）。所以观测交给子进程 --bench-capture，
+    // 并把帧时间戳带回来跟本进程记录的目标轨迹对账，算出「显示位置落后目标多少像素/毫秒」。
+    const QRectF region = m_options.hasRect ? m_options.rect
+                                            : QRectF(virtualGeometry().topLeft(), QSize(600, 400));
+    QImage image(qMax(120, int(region.width())), qMax(90, int(region.height())),
+                 QImage::Format_ARGB32);
+    for (int y = 0; y < image.height(); ++y) {
+        for (int x = 0; x < image.width(); ++x)
+            image.setPixelColor(x, y, QColor(x % 256, y % 256, 140));
+    }
+
+    const QRect anchor = region.toAlignedRect();
+    m_toast->setDragMarkerEnabled(true);
+    m_toast->setAutoHideMs(0);
+    m_toast->showResult(image, QString(), QStringLiteral("拖动基准"), QString(), anchor);
+
+    auto trajectory = std::make_shared<QVector<QPair<qint64, int>>>();
+    auto reports = std::make_shared<QVector<QString>>();
+    auto startX = std::make_shared<int>(m_toast->currentGeometry().x());
+    auto step = std::make_shared<int>(0);
+    auto timer = new QTimer(this);
+    const int stepMs = 16;   // ~60Hz 事件
+    const int stepPx = 4;    // 250px/s，接近人手拖动
+    const int captureEvery = 20;
+
+    QTextStream out(stdout);
+    out << "DRAGBENCH_START startX=" << *startX << " stepMs=" << stepMs << " stepPx=" << stepPx
+        << " durationMs=" << durationMs << " captureEvery=" << captureEvery << "\n";
+    out.flush();
+
+    connect(timer, &QTimer::timeout, this, [=]() {
+        ++(*step);
+        const int targetX = *startX + (*step) * stepPx;
+        trajectory->append({QDateTime::currentMSecsSinceEpoch(), targetX});
+        QElapsedTimer applyTimer;
+        applyTimer.start();
+        m_toast->dragTo(QPoint(targetX, m_toast->currentGeometry().y()));
+        const qint64 applyUs = applyTimer.nsecsElapsed() / 1000;
+
+        if ((*step) % captureEvery != 0)
+            return;
+
+        const QString path = QStringLiteral("/tmp/seashot-bench-obs-%1.png").arg(*step);
+        auto *child = new QProcess(this);
+        QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+        env.insert(QStringLiteral("SEASHOT_DISABLE_SELF_EXCLUSION"), QStringLiteral("1"));
+        child->setProcessEnvironment(env);
+        child->setProgram(QCoreApplication::applicationFilePath());
+        child->setArguments({QStringLiteral("--bench-capture"), path, QStringLiteral("--backend"),
+                             m_backend->name()});
+        connect(child, &QProcess::finished, this, [=](int, QProcess::ExitStatus) {
+            const QString childOut = QString::fromLocal8Bit(child->readAllStandardOutput());
+            child->deleteLater();
+            qint64 frameAt = 0;
+            const QRegularExpression re(QStringLiteral("BENCH_CAPTURE t=([0-9]+)"));
+            const auto match = re.match(childOut);
+            if (match.hasMatch())
+                frameAt = match.captured(1).toLongLong();
+
+            const QImage frame(path);
+            if (frame.isNull() || frameAt == 0) {
+                reports->append(QStringLiteral("step=%1 观测失败").arg(*step));
+                return;
+            }
+            int minX = -1;
+            for (int y = 0; y < frame.height(); y += 2) {
+                const QRgb *line = reinterpret_cast<const QRgb *>(frame.constScanLine(y));
+                for (int x = 0; x < frame.width(); ++x) {
+                    const QColor color = QColor::fromRgb(line[x]);
+                    if (color.red() > 200 && color.green() < 60 && color.blue() > 200
+                        && (minX < 0 || x < minX))
+                        minX = x;
+                }
+            }
+            if (minX < 0) {
+                reports->append(QStringLiteral("step=%1 没找到品红框").arg(*step));
+                return;
+            }
+            int targetAtFrame = 0;
+            for (const auto &point : *trajectory) {
+                if (point.first <= frameAt)
+                    targetAtFrame = point.second;
+                else
+                    break;
+            }
+            const int lagPx = targetAtFrame - minX;
+            reports->append(QStringLiteral("step=%1 observed=%2 targetAtFrame=%3 lagPx=%4 lagMs=%5 "
+                                           "applyUs=%6")
+                                .arg(*step)
+                                .arg(minX)
+                                .arg(targetAtFrame)
+                                .arg(lagPx)
+                                .arg(lagPx * stepMs / stepPx)
+                                .arg(applyUs));
+        });
+        child->start();
+    });
+    timer->start(stepMs);
+
+    QTimer::singleShot(durationMs + 2000, this, [=]() {
+        timer->stop();
+        QTextStream summary(stdout);
+        int lagSum = 0;
+        int lagMax = 0;
+        int valid = 0;
+        for (const QString &report : *reports) {
+            summary << "DRAGBENCH_SAMPLE " << report << "\n";
+            const QRegularExpression re(QStringLiteral("lagPx=(-?[0-9]+)"));
+            const auto match = re.match(report);
+            if (match.hasMatch()) {
+                const int lag = match.captured(1).toInt();
+                lagSum += lag;
+                lagMax = qMax(lagMax, lag);
+                ++valid;
+            }
+        }
+        if (valid > 0) {
+            summary << "DRAGBENCH samples=" << valid
+                    << " lagPxAvg=" << double(lagSum) / valid << " lagPxMax=" << lagMax
+                    << " lagMsAvg=" << (double(lagSum) / valid) * stepMs / stepPx << "\n";
+        } else {
+            summary << "DRAGBENCH_EMPTY 没有有效观测\n";
+        }
+        summary.flush();
+        m_toast->hide();
+        QCoreApplication::quit();
+    });
+
+    return QCoreApplication::exec();
+}
+
+int Application::runBenchCapture(const QString &path)
+{
+    if (!m_backend || !m_backendError.isEmpty()) {
+        QTextStream(stderr) << "BENCH_CAPTURE_ERROR " << m_backendError << "\n";
+        return 2;
+    }
+    const qint64 frameAt = QDateTime::currentMSecsSinceEpoch();
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+    bool ok = false;
+    m_backend->captureRect(QRectF(virtualGeometry()), [&](const CaptureImage &frame) {
+        ok = frame.ok() && frame.image.save(path, "PNG");
+        loop.quit();
+    });
+    timeout.start(20000);
+    loop.exec();
+    QTextStream out(stdout);
+    out << "BENCH_CAPTURE t=" << frameAt << " path=" << path << " ok=" << (ok ? 1 : 0) << "\n";
+    out.flush();
+    return ok ? 0 : 1;
+}
+
 int Application::run()
 {
     QTextStream out(stdout);
@@ -873,6 +1045,10 @@ int Application::run()
         out.flush();
         return runSelfTest();
     }
+    if (!m_options.benchCapturePath.isEmpty())
+        return runBenchCapture(m_options.benchCapturePath);
+    if (m_options.toastDragBenchMs > 0)
+        return runToastDragBench(m_options.toastDragBenchMs);
     if (m_options.printConfig)
         return runPrintConfig();
     if (m_options.hotkeyStatus) {
