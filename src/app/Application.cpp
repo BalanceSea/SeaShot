@@ -44,6 +44,7 @@
 #include <QLocalSocket>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QKeyEvent>
 #include <QMouseEvent>
 #include <QRegularExpression>
 #include <QScreen>
@@ -1366,10 +1367,13 @@ int Application::runInplaceDemo(const QString &outPrefix)
         }
 
         // 判据 4：选区**外**被压暗（kDimAlpha=120 → 原亮度 ×0.529）
+        // 工具条盖在选区下方，落在它上面的探针不能用（那里量到的是工具条）
         int dimChecked = 0;
         int dimBad = 0;
+        int dimSkipped = 0;
         if (!frozen.isNull() && qFuzzyCompare(dpr, 1.0)) {
             const QRect sel = localSelection.toAlignedRect();
+            const QRectF barRect = m_overlay->toolbarRect();
             const QVector<QPoint> probes{
                 QPoint(sel.center().x(), sel.top() - 30),
                 QPoint(sel.center().x(), sel.bottom() + 30),
@@ -1377,8 +1381,14 @@ int Application::runInplaceDemo(const QString &outPrefix)
                 QPoint(sel.right() + 30, sel.center().y())};
             constexpr double kKeep = 1.0 - 120.0 / 255.0;
             for (const QPoint &p : probes) {
-                if (!shot.rect().contains(p) || !frozen.rect().contains(p))
+                if (!shot.rect().contains(p) || !frozen.rect().contains(p)) {
+                    ++dimSkipped;
                     continue;
+                }
+                if (barRect.contains(QPointF(p))) {
+                    ++dimSkipped; // 被工具条盖住的那一条
+                    continue;
+                }
                 ++dimChecked;
                 const QColor s = shot.pixelColor(p);
                 const QColor f = frozen.pixelColor(p);
@@ -1390,16 +1400,140 @@ int Application::runInplaceDemo(const QString &outPrefix)
         }
 
         const bool sizeMatches = !frozen.isNull() && frozen.size() == m_overlay->size();
-        const bool ok = annotating && onlyOverlay && sizeMatches && mismatched == 0
+        const bool a1ok = annotating && onlyOverlay && sizeMatches && mismatched == 0
             && handleHits == 8 && dimChecked > 0 && dimBad == 0;
         out << "INPLACE_DEMO frozen=" << frozen.width() << "x" << frozen.height()
             << " surface=" << m_overlay->width() << "x" << m_overlay->height()
             << " exactMismatch=" << mismatched << " maxChannelDiff=" << maxDiff
             << " handles=" << handleHits << "/8 dimProbe=" << (dimChecked - dimBad) << "/"
-            << dimChecked << "\n";
-        out << (ok ? "INPLACE_DEMO PASS" : "INPLACE_DEMO FAIL") << "\n";
+            << dimChecked << " (跳过" << dimSkipped << ")\n";
+        out << (a1ok ? "INPLACE_DEMO PASS" : "INPLACE_DEMO FAIL") << "\n";
+
+        // ─────────────────────────────────────────────────
+        // A2：自绘图标工具条 —— 位置、命中、切换、快捷键
+        // 注意：这一步会合成鼠标点击，所以放在所有“画面像素”判据之后。
+        // ─────────────────────────────────────────────────
+        auto postMouse = [this](QEvent::Type type, const QPointF &pos, Qt::MouseButton button,
+                                Qt::MouseButtons buttons) {
+            QMouseEvent event(type, pos, m_overlay->mapToGlobal(pos.toPoint()), button, buttons,
+                              Qt::NoModifier);
+            QCoreApplication::sendEvent(m_overlay.get(), &event);
+        };
+        auto clickAt = [&postMouse](const QPointF &pos) {
+            postMouse(QEvent::MouseMove, pos, Qt::NoButton, Qt::NoButton);
+            postMouse(QEvent::MouseButtonPress, pos, Qt::LeftButton, Qt::LeftButton);
+            postMouse(QEvent::MouseButtonRelease, pos, Qt::LeftButton, Qt::NoButton);
+        };
+
+        const QRectF bar = m_overlay->toolbarRect();
+        const QVector<Overlay::ToolButton> toolButtons = m_overlay->toolButtons();
+        const QVector<Overlay::ActionButton> actionButtons = m_overlay->actionButtons();
+        const QRectF surface(0, 0, m_overlay->width(), m_overlay->height());
+
+        QStringList toolNames;
+        QStringList keyLabels;
+        for (const Overlay::ToolButton &button : toolButtons) {
+            toolNames << toolName(button.kind);
+            keyLabels << (button.keyNumber > 0 ? QString::number(button.keyNumber)
+                                               : QStringLiteral("-"));
+        }
+        out << "INPLACE_DEMO toolbar=" << qRound(bar.x()) << "," << qRound(bar.y()) << " "
+            << qRound(bar.width()) << "x" << qRound(bar.height())
+            << " toolButtons=" << toolButtons.size() << " actionButtons=" << actionButtons.size()
+            << "\n";
+        out << "INPLACE_DEMO tools=" << toolNames.join(QLatin1Char('/')) << " keys="
+            << keyLabels.join(QLatin1Char('/')) << " " << Overlay::toolIconDiagnostics() << "\n";
+
+        const bool barOutsideSelection = !bar.intersects(localSelection);
+        const bool barInsideSurface = surface.contains(bar);
+
+        // 逐个点一下工具按钮：命中数 + 切换结果（与用户点击同一条路径）
+        int toolHits = 0;
+        QStringList switched;
+        for (const Overlay::ToolButton &button : toolButtons) {
+            clickAt(button.rect.center());
+            const ToolKind now = m_overlay->currentTool();
+            switched << toolName(now);
+            if (now == button.kind)
+                ++toolHits;
+        }
+        out << "INPLACE_DEMO toolHits=" << toolHits << "/" << toolButtons.size()
+            << " switched=" << switched.join(QLatin1Char('/')) << "\n";
+
+        // 快捷键 1–9
+        int keyHits = 0;
+        for (int i = 0; i < toolButtons.size() && i < 9; ++i) {
+            QKeyEvent key(QEvent::KeyPress, Qt::Key_1 + i, Qt::NoModifier);
+            QCoreApplication::sendEvent(m_overlay.get(), &key);
+            if (m_overlay->currentTool() == toolButtons.at(i).kind)
+                ++keyHits;
+        }
+        out << "INPLACE_DEMO keyHits=" << keyHits << "/"
+            << qMin(9, toolButtons.size()) << "\n";
+
+        // 落在工具条**空隙**上（按钮之间 2px）不应切换工具（Phase 0 的判定策略）
+        const ToolKind beforeGap = m_overlay->currentTool();
+        bool gapQuiet = false;
+        if (toolButtons.size() >= 2) {
+            const QPointF gap(toolButtons.at(0).rect.right() + 1.0,
+                              toolButtons.at(0).rect.center().y());
+            clickAt(gap);
+            gapQuiet = (m_overlay->currentTool() == beforeGap);
+        }
+
+        // hover：鼠标移到第 4 个按钮上，悬停格应为它
+        int hoverCellIndex = -1;
+        if (toolButtons.size() >= 4) {
+            postMouse(QEvent::MouseMove, toolButtons.at(3).rect.center(), Qt::NoButton,
+                      Qt::NoButton);
+            hoverCellIndex = m_overlay->hoveredCellIndex();
+            postMouse(QEvent::MouseMove, QPointF(2, 2), Qt::NoButton, Qt::NoButton); // 移开
+        }
+        const bool hoverWorks = (hoverCellIndex == 3);
+
+        // A2 附带判据：工具条自动避让（下方放不下 → 上方；贴右边缘 → 往里收）
+        SelectionResult probeSelection;
+        probeSelection.mode = SelectionMode::Rect;
+        probeSelection.logicalRect = QRectF(600, 900, 400, 160); // bottom=1060：下方放不下
+        m_overlay->beginAnnotating(probeSelection, frozen, 1.0);
+        const QRectF aboveBar = m_overlay->toolbarRect();
+        const bool barGoesAbove =
+            aboveBar.bottom() <= m_overlay->localSelectionRect().top() + 0.5;
+
+        probeSelection.logicalRect = QRectF(1800, 40, 110, 120); // 贴着右边缘
+        m_overlay->beginAnnotating(probeSelection, frozen, 1.0);
+        const QRectF edgeBar = m_overlay->toolbarRect();
+        const bool barClamped = edgeBar.right() <= m_overlay->width() - 8 + 0.5
+            && edgeBar.left() >= 8 - 0.5;
+
+        // 回到原来的选区，便于证据与日志保持一致
+        m_overlay->beginAnnotating(m_pendingSelection, frozen, 1.0);
+
+        // 「取消」按钮真的接上了（点它之后应该退出标注阶段）
+        bool cancelWorks = false;
+        if (actionButtons.size() == 2) {
+            const Overlay::ActionButton &cancel =
+                actionButtons.at(0).confirm ? actionButtons.at(1) : actionButtons.at(0);
+            clickAt(cancel.rect.center());
+            cancelWorks = !m_overlay->isAnnotating();
+        }
+
+        out << "INPLACE_DEMO barOutsideSelection=" << (barOutsideSelection ? 1 : 0)
+            << " barInsideSurface=" << (barInsideSurface ? 1 : 0)
+            << " gapQuiet=" << (gapQuiet ? 1 : 0) << " hover=" << (hoverWorks ? 1 : 0)
+            << " hoverCell=" << hoverCellIndex
+            << " cancelButton=" << (cancelWorks ? 1 : 0) << "\n";
+        out << "INPLACE_DEMO barGoesAboveWhenNoRoom=" << (barGoesAbove ? 1 : 0)
+            << " barClampedAtRightEdge=" << (barClamped ? 1 : 0) << " edgeBar="
+            << qRound(edgeBar.x()) << "," << qRound(edgeBar.y()) << " "
+            << qRound(edgeBar.width()) << "x" << qRound(edgeBar.height()) << "\n";
+
+        const bool a2ok = annotating && !toolButtons.isEmpty() && barOutsideSelection
+            && barInsideSurface && toolHits == toolButtons.size() && keyHits == 9 && gapQuiet
+            && hoverWorks && cancelWorks && barGoesAbove && barClamped;
+        out << (a2ok ? "INPLACE_DEMO A2 PASS" : "INPLACE_DEMO A2 FAIL") << "\n";
         out.flush();
-        QCoreApplication::exit(ok ? 0 : 1);
+        QCoreApplication::exit((a1ok && a2ok) ? 0 : 1);
     });
 
     return QCoreApplication::exec();

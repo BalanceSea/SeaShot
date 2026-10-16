@@ -1,11 +1,11 @@
 == Phase A1 验收（就地编辑骨架）==
-二进制: /home/balancesea/.local/bin/seashot (2026-10-17 06:39:09)
+二进制: /home/balancesea/.local/bin/seashot (2026-10-17 07:05:35)
 
-PASS  A1. 选完进入 Annotating 阶段     annotating=1 stage=Annotating 冻结图=1920x1080 表面=1920x1080 选区本地=220,180 540x380 选区逻辑=220,180 540x380
+PASS  A1. 选完进入 Annotating 阶段     annotating=1 stage=Annotating 冻结图=1920x1080 表面=1920x1080 选区本地=220,180 540x380 选区逻辑=220,180 540x380 工具条=220,568 502x40 当前工具=选择
 PASS  A1. 不弹新窗口（可见顶层部件） 只有 seashot-overlay，无 EditorWindow
 PASS  A1. 冻结屏幕 1:1（尺寸一致） 冻结图 1920x1080 == 覆盖层表面 1920x1080
 PASS  A1. 选区内逐像素一致（无缩放误差） 内缩 4px 逐像素比对：不一致 0px，最大通道差 0
-PASS  A1. 选区边框/手柄 + 区外压暗 8 个手柄命中 8/8；区外压暗探针 4/4 符合 ×0.529
+PASS  A1. 选区边框/手柄 + 区外压暗 8 个手柄命中 8/8；区外压暗探针 3/3 符合 ×0.529
 PASS  A1. 视觉证据落盘                 docs/acceptance/evidence/a1-inplace-overlay.png (1920x1080) / -frozen.png
 
 == 汇总: 6 通过 / 0 失败 ==

@@ -3,27 +3,35 @@
 > 本文是**自包含**的：明天开新对话时，读这一份即可接上，不依赖上一轮对话上下文。
 >
 > **一句话现状**：截图/编辑/录制/配置/托盘全部可用且验收通过；正在进行「就地编辑」大改造，
-> Phase 0 与 **Phase A1 已完成并验收**（`scripts/acceptance-phaseA1.sh` 6/6 通过），
-> **下一步是 Phase A2（自绘图标工具条）**。
+> Phase 0、**Phase A1（骨架）与 Phase A2（自绘图标工具条）已完成并验收**
+> （`acceptance-phaseA1.sh` 6/6、`acceptance-phaseA2.sh` 10/10），**下一步是 Phase A3
+> （标注绘制/命中/撤销接到 `AnnotationDocument`）**。
 
 ---
 
 ## 0. 明天下手第一件事
 
-**做 Phase A2**（见第 4 节）：自绘紧凑**图标**工具条（贴选区下方，放不下则上方）+ 工具切换与高亮。
+**做 Phase A3**（见第 4 节）：把标注的**绘制/命中/撤销**接到 `AnnotationDocument`，
+即"真的能在冻结屏幕 + 选区上画东西"。
 
-为什么现在就从 A2 开始：A1 已把"选完不退出、就地 1:1 显示冻结屏幕 + 选区/手柄"做完并逐像素验收过
-（详见 `docs/acceptance/phaseA1.md`），A2 只是在这个已经稳住的画面上补一个自绘控件。
+为什么现在就从 A3 开始：A1 把"选完不退出、就地 1:1 显示冻结屏幕 + 选区/手柄"做完并逐像素验收过，
+A2 把自绘工具条做完（10 个工具按钮 + hover/气泡/避让/完成/取消，全部自动验收），
+`m_currentTool` 已经能正确切换 —— A3 只需要把它接到 `AnnotationCanvas` 里已经写好但
+**被固定在控件坐标**的那套绘制/命中/撤销逻辑上（`Annotation` 存的是**图像坐标**，正好对口）。
 
-⚠️ A1 之后交互式截图选完区域**需要按一下 `Enter`（或双击）**才会出结果 ——
-因为 A2 的工具条（带「完成」按钮）还没做。想临时退回旧行为：`SEASHOT_INPLACE_ANNOTATE=0 seashot --capture`。
+已经在位的两个细节（A3 直接用）：
+- 工具条命中**优先于**标注逻辑；落在工具条矩形内不开始标注（Phase 0 已验证的判定顺序）
+- 已完成/已取消两条出口：`annotationConfirmed(SelectionResult)` / `annotationCancelled()`
 
-开始前请先确认两件外部依赖（不阻塞 A2，但影响 Phase E）：
+⚠️ 目前交互式截图选完区域后，工具条的「✓ 完成」和「✕ 取消」都已可用（也能用 `Enter`/`Esc`），
+但**工具按钮点了还不会画东西**（A3 才接）。
+
+开始前请先确认一件事（外部依赖，不阻塞 A3，但影响 Phase E）：
 
 ```fish
 # OCR 语言包（本机只有 afr/osd，缺中英文）
-sudo pacman -S --needed tesseract-data-chi_sim tesseract-data-eng
-tesseract --list-langs    # 应能看到 chi_sim 和 eng
+# ✅ 2026-10-17 已确认装好：chi_sim 与 eng 都在
+tesseract --list-langs    # afr / chi_sim / eng / osd
 ```
 
 ---
@@ -115,12 +123,12 @@ QQ/PixPin 是选完区域**直接在屏幕上标注**（不打开新窗口），
 
 | 步 | 内容 | 用户怎么验 | 状态 |
 | --- | --- | --- | --- |
-| **A1** | `Overlay` 增加 Annotating 阶段：选完**不退出**，1:1 绘制冻结屏幕 + 选区边框/手柄 | 拖框后**不弹新窗口**，屏幕上出现带手柄的选框 | ✅ **已完成**（2026-10-17，`scripts/acceptance-phaseA1.sh` 6/6；判据 1–5 含逐像素比对，见 `docs/acceptance/phaseA1.md`） |
-| **A2** | 自绘紧凑**图标**工具条（贴选区下方，下方放不下则上方）+ 工具切换与高亮 | 点工具能切、当前工具高亮 | ⬅ **下一步** |
-| **A3** | 标注绘制/命中/撤销接到 `AnnotationDocument` | 能画矩形/箭头，`Ctrl+Z` 生效 | 待做 |
-| **A4** | 保存/复制/取消接现有链路 | **`acceptance-phase1.sh` 必须仍全绿** | 待做 |
+| **A1** | `Overlay` 增加 Annotating 阶段：选完**不退出**，1:1 绘制冻结屏幕 + 选区边框/手柄 | 拖框后**不弹新窗口**，屏幕上出现带手柄的选框 | ✅ **已完成**（2026-10-17，6/6；判据 1–5 含逐像素比对，见 `docs/acceptance/phaseA1.md`） |
+| **A2** | 自绘紧凑**图标**工具条（贴选区下方，下方放不下则上方）+ 工具切换与高亮 | 点工具能切、当前工具高亮 | ✅ **已完成**（2026-10-17，10/10；含 10 按钮全命中、`1`–`9` 切换、hover、自动避让，见 `docs/acceptance/phaseA2.md`） |
+| **A3** | 标注绘制/命中/撤销接到 `AnnotationDocument` | 能画矩形/箭头，`Ctrl+Z` 生效 | ⬅ **下一步** |
+| **A4** | 保存/复制/取消接现有链路 | **`acceptance-phase1.sh` 必须仍全绿** | 待做（取消/完成已在 A2 先接上） |
 
-### A1 已落地的实现要点（A2 直接接在这些之上）
+### A1/A2 已落地的实现要点（A3 直接接在这些之上）
 
 - `Overlay` 内部多了 `Stage{Selecting,Annotating}`；`startSelection()` 复位，
   `beginAnnotating(selection, frozenPhysical, scale)` 进入标注阶段（冻结图会被归一到**逻辑像素**）。
@@ -128,8 +136,14 @@ QQ/PixPin 是选完区域**直接在屏幕上标注**（不打开新窗口），
   新增开关 `setAnnotationEnabled()`（**只有交互式截图打开**，脚本式调用一律 false）。
 - `Application::enterAnnotationPhase()` 负责抓冻结屏幕（自排除可用时直接抓；否则先藏覆盖层再等 250ms），
   `Application::finishSelectionPhase()` 负责收尾（隐藏 + 按需等一帧 + `performCapture()`）。
-- 自检/验收入口：`seashot --inplace-demo <prefix>` —— 程序化拖框 → 校验 1:1/手柄/压暗 →
-  落盘 `<prefix>-overlay.png` / `-frozen.png`（`docs/acceptance/evidence/a1-inplace-*`）。
+- 工具条**自绘**且几何只有一处真源：`toolOrder()/buildBarCells()/toolbarSize()/toolbarRect()`
+  → `toolButtons()/actionButtons()/cellIndexAt()`。绘制、命中、验收用的都是同一串 cell，
+  改按钮顺序/宽度不会出现"画的地方和点的地方不一致"。
+- `m_currentTool`（`ToolKind`，默认 `Select`）已经能被点击与 `1`–`9` 正确设置；
+  **A3 只需要读它，并把鼠标事件在"非工具条区域"转成标注绘制**。
+- `setMouseTracking(true)` 是 A2 的必要条件（否则不按键时收不到 `mouseMove`，hover 全失效）。
+- 自检/验收入口：`seashot --inplace-demo <prefix>` —— 程序化拖框 → 跑完 A1/A2 全部判据 →
+  落盘 `<prefix>-overlay.png` / `-frozen.png`（`docs/acceptance/evidence/a{1,2}-inplace-*`）。
 
 ### ⚠️ A4 的关键约束（不做就会被验收打回）
 
@@ -143,13 +157,15 @@ ISSUE-007 自排除）。`Toast` 用自绘走通了，照它做。工具条命�
 
 1. 工具条矩形**优先**于标注逻辑判定
 2. 落在工具条矩形内但不在按钮上 → 也算"工具条"，**不开始标注**
-3. 图标、hover/按下态自己画；提示气泡可后补
+3. 图标、hover/按下态自己画；提示气泡可后补（A2 已补：悬停显示工具名 + 数字键）
+4. 顺序坑：不调 `setMouseTracking(true)` 就收不到不带按键的 `mouseMove` → hover 全失效
 
 ### 状态机
 
 ```
 Idle → Selecting（拖框 / 悬停高亮窗口）
-     → Annotating（A1 已实现：1:1 显示冻结屏幕 + 选区边框/手柄；A2 加图标工具条；B 加拖手柄改选区）
+     → Annotating（A1 已实现：1:1 显示冻结屏幕 + 选区边框/手柄；A2 已实现：自绘图标工具条 + 1–9 切换；
+                   A3 要接的是：在选区内画标注 + 撤销；B 加拖手柄改选区）
      → Done（保存 / 复制 / 贴图 / 进编辑器 / 取消）
 ```
 
@@ -186,7 +202,7 @@ Idle → Selecting（拖框 / 悬停高亮窗口）
 | 复制 GIF 后剪贴板为空 | `wl-copy` 靠 fork 的子进程持有选区；本进程退出→管道关闭→持有者被杀。改用 `QProcess::startDetached` + shell 重定向 |
 | 中间文件吃内存 | 本机 **`/tmp` 是 tmpfs**，无损中间文件 ≈554MB/分钟 → 会吃内存。已改落磁盘 `~/.cache/seashot/recording` + 启动清理 + 录制中 <2GB 自动停 |
 
-完整列表见 `docs/known-issues.md`（ISSUE-001 ~ ISSUE-011）。
+完整列表见 `docs/known-issues.md`（ISSUE-001 ~ ISSUE-012）。
 
 ---
 
@@ -207,6 +223,9 @@ bash scripts/acceptance-phase1.sh
 # 就地编辑（Phase A1）验收：程序化拖框 → 1:1/手柄/压暗 自动判定 + 落盘证据
 bash scripts/acceptance-phaseA1.sh
 
+# 就地编辑（Phase A2）验收：工具条命中/1–9 切换/hover/自动避让 + 工具条 2 倍放大图
+bash scripts/acceptance-phaseA2.sh
+
 # 编辑器验收
 bash scripts/acceptance-phase2.sh
 
@@ -223,6 +242,10 @@ bash scripts/acceptance-phase2.sh
 
 1. **GIF 剪贴板 MIME**：现挂 `image/gif`（聊天/浏览器可当动图粘）。
    若用户实际粘到某程序里变成文件或粘不进去 → 改挂 `text/uri-list`。**取决于用户粘到哪**。
-2. **长截图（Phase D）** 的拼接算法与滚动检测都无现有验证，可能需先做可行性探针，像 Phase 0 那样。
-3. **用户提过"问题很多"**，但只明确列了编辑器这一块。
+2. **`acceptance-phase4.sh` 的 F 段判据已过期（ISSUE-012）**：常驻实例录制现在走
+   `setDeferExport(true)`（弹格式选择浮层），所以 `RECORD ok path=` 是空的，
+   而 F 段还要求它非空 → 必失败。**不是 A1/A2 的回归**（录制本身 `frames=31 dropped=0` 都正常）。
+   要不要把它改成"转发=1 + 停止=1 + RECORD ok + 浮层如预期"？由你定。
+3. **长截图（Phase D）** 的拼接算法与滚动检测都无现有验证，可能需先做可行性探针，像 Phase 0 那样。
+4. **用户提过"问题很多"**，但只明确列了编辑器这一块。
    其余界面问题**尚未列举** —— 明天可主动问一次，按用户给的优先级修，不要靠猜。
