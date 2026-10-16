@@ -259,16 +259,17 @@ void PortalScreencast::start(const QString &restoreToken, uint persistMode, Call
         << " portalVersion=" << portalVersion() << "\n";
     out.flush();
 
+    // ⚠️ CreateSession 的合法 options 只有 session_handle_token / handle_token。
+    //    persist_mode 与 restore_token 属于 **SelectSources**（见下），放这里会被静默忽略：
+    //    KDE 的 CreateSession 对 options 是 Q_UNUSED，前端也只认
+    //    screen_cast_select_sources_options[] 里的那两个键。
     QVariantMap createOptions;
-    if (persistMode > 0)
-        createOptions.insert(QStringLiteral("persist_mode"), persistMode);
-    if (usingToken)
-        createOptions.insert(QStringLiteral("restore_token"), restoreToken);
     createOptions.insert(QStringLiteral("session_handle_token"), newToken(QStringLiteral("seashot_s")));
 
     callWithResponse(
         QString::fromLatin1(kScreenCastIface), QStringLiteral("CreateSession"), {}, createOptions,
-        [this, usingToken, stopBeforeStart](uint code, const QVariantMap &results) {
+        [this, usingToken, stopBeforeStart, persistMode, restoreToken](uint code,
+                                                                     const QVariantMap &results) {
             if (code != 0) {
                 fail(QStringLiteral("CreateSession 被拒绝或取消（response=%1）").arg(code));
                 return;
@@ -291,10 +292,19 @@ void PortalScreencast::start(const QString &restoreToken, uint persistMode, Call
                 return;
             }
 
+            // ⚠️ persist_mode / restore_token 必须放在这里（SelectSources），不是 CreateSession：
+            //   - 前端 screen-cast.c 的 screen_cast_select_sources_options[] 只有这两个键的校验；
+            //   - KDE 在 SelectSources 里读（screencast.cpp:206 session->setPersistMode(...)）；
+            //   放错的后果：KDE 的 persistMode() 恒为 NoPersist → Start 不回 restore_data
+            //   → 前端不铸 restore_token → 每次必弹窗。
             QVariantMap selectOptions;
             selectOptions.insert(QStringLiteral("types"), kSourceTypeMonitor);
             selectOptions.insert(QStringLiteral("multiple"), false);
             selectOptions.insert(QStringLiteral("cursor_mode"), kCursorModeEmbedded);
+            if (persistMode > 0)
+                selectOptions.insert(QStringLiteral("persist_mode"), persistMode);
+            if (usingToken)
+                selectOptions.insert(QStringLiteral("restore_token"), restoreToken);
 
             callWithResponse(
                 QString::fromLatin1(kScreenCastIface), QStringLiteral("SelectSources"),
