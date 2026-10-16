@@ -668,7 +668,7 @@ void Toast::activate(Button button)
 
 void Toast::scheduleAutoClick()
 {
-    // 验收用：SEASHOT_TOAST_AUTOCLICK=save|saveas|copy|edit|close
+    // 验收用：SEASHOT_TOAST_AUTOCLICK=save|saveas|copy|edit|close|gif|mp4
     // 走 activate()，与真实鼠标点击完全同一条路径。
     const QString name = qEnvironmentVariable("SEASHOT_TOAST_AUTOCLICK").toLower();
     if (name.isEmpty())
@@ -684,6 +684,10 @@ void Toast::scheduleAutoClick()
         target = Button::Edit;
     else if (name == QLatin1String("close"))
         target = Button::Close;
+    else if (name == QLatin1String("gif"))
+        target = Button::ExportGif;
+    else if (name == QLatin1String("mp4"))
+        target = Button::ExportMp4;
     else {
         SS_WARN() << "[toast] 未知的 SEASHOT_TOAST_AUTOCLICK=" << name;
         return;
