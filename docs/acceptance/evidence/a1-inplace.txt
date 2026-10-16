@@ -1,0 +1,17 @@
+[info] [wayland] ScreenShot2 Version = 5 
+[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-24208" id= 1 run方式= Script<N>.run 
+[info] [overlay] layer-shell role 已应用（LayerOverlay，四边锚定） 
+[info] [app] 选择模式已启动，窗口快照 9 个； "覆盖层: layer-shell=已应用, 快照窗口数=9, 虚拟几何=1920x1080+0+0" 
+INPLACE_DEMO drag=220,180 -> 760,560
+[info] [app] 抓取冻结屏幕 QRect(0,0 1920x1080) 自排除= true 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(0,0 1920x1080) 
+[info] [shot2] "CaptureArea" ok 19 ms 1920 x 1080 "" 
+[info] [overlay] 进入就地标注阶段：选区 QRectF(220,180 540x380) 冻结图 1920 x 1080 (scale= 1 ) 表面 1920 x 1080 
+INPLACE_DEMO annotating=1 stage=Annotating 冻结图=1920x1080 表面=1920x1080 选区本地=220,180 540x380 选区逻辑=220,180 540x380
+INPLACE_DEMO grab=1920x1080 dpr=1
+INPLACE_DEMO saved=docs/acceptance/evidence/a1-inplace-overlay.png,docs/acceptance/evidence/a1-inplace-frozen.png
+INPLACE_DEMO visibleTops=seashot-overlay
+INPLACE_DEMO frozen=1920x1080 surface=1920x1080 exactMismatch=0 maxChannelDiff=0 handles=8/8 dimProbe=4/4
+INPLACE_DEMO PASS
+[info] [kwin] 脚本已卸载 pluginName= "seashot-24208" 

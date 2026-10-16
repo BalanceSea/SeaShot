@@ -49,6 +49,7 @@ struct Options {
     bool recordStop = false; ///< --record-stop：让常驻实例停止录制
     int seconds = 0; ///< --seconds N：录制 N 秒后自动停（0 = 手动停）
     int toastDragBenchMs = 0; ///< --toast-drag-bench MS：诊断拖动延迟（ISSUE-001）
+    QString inplaceDemoOut; ///< --inplace-demo PATH：就地标注（Phase A1）的自动化验收
     QString benchCapturePath; ///< --bench-capture PATH：截全屏存盘并打印帧时间戳（给基准测试当观测者）
     bool probePortal = false; ///< --probe-portal-screencast：验证 portal 授权持久化
     QString portalTokenFile;  ///< 存/取 ScreenCast restore token 的文件
@@ -89,6 +90,10 @@ private:
     /// 开始一次交互式截图（热键/托盘/--capture 都走这里）
     void startCapture();
     void handleSelection(const SelectionResult &result);
+    /// Phase A1 就地标注：抓冻结屏幕 → 让覆盖层进入 Annotating（不打开新窗口）
+    void enterAnnotationPhase();
+    /// 选区阶段收尾：隐藏覆盖层并（按需等一帧后）开始截图
+    void finishSelectionPhase();
     void performCapture();
     void finishCapture(const CaptureImage &image);
     void saveAs();
@@ -122,6 +127,9 @@ private:
     void stopPipeWireRecording();
     /// ISSUE-001 诊断：程序化拖拽浮层 + 截屏定位，量出「目标位置 vs 实见位置」的偏差
     int runToastDragBench(int durationMs);
+    /// Phase A1 验收：程序化合成的鼠标拖拽 → 覆盖层就地标注 → 落盘证据 +
+    /// 「覆盖层画面 vs 冻结图」的逐像素 1:1 比对（选区内应完全相同）
+    int runInplaceDemo(const QString &outPrefix);
     QRect virtualGeometry() const;
     bool isOneShot() const;
 

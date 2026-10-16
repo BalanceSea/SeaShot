@@ -84,6 +84,9 @@ void Overlay::startSelection()
     m_dragging = false;
     m_hasHover = false;
     m_hover = WindowInfo();
+    m_stage = Stage::Selecting;
+    m_frozenFrame = QImage();
+    m_selection = SelectionResult();
     applyLayerShell();
     if (!m_virtualGeometry.isEmpty())
         setGeometry(m_virtualGeometry);
@@ -98,6 +101,109 @@ void Overlay::stopSelection()
 {
     releaseKeyboard();
     hide();
+    m_stage = Stage::Selecting;
+    m_frozenFrame = QImage();
+}
+
+void Overlay::beginAnnotating(const SelectionResult &selection, const QImage &frozenPhysical,
+                              double frozenScale)
+{
+    m_dragging = false;
+    m_hasHover = false;
+    m_hover = WindowInfo();
+    m_selection = selection;
+    m_stage = Stage::Annotating;
+
+    // 冻结屏幕归一到**逻辑像素**：这样绘制就是严格的 1:1，不需要在 paint 里做任何缩放。
+    // 本机实测 scale=1（单输出），此时这一步是零成本的直通。
+    const double scale = (frozenScale > 0.0) ? frozenScale : 1.0;
+    if (frozenPhysical.isNull()) {
+        m_frozenFrame = QImage();
+    } else if (qFuzzyCompare(scale, 1.0)) {
+        m_frozenFrame = frozenPhysical;
+    } else {
+        const QSize logicalSize(qMax(1, int(qRound(frozenPhysical.width() / scale))),
+                                qMax(1, int(qRound(frozenPhysical.height() / scale))));
+        m_frozenFrame = frozenPhysical.scaled(logicalSize, Qt::IgnoreAspectRatio,
+                                              Qt::SmoothTransformation);
+    }
+
+    // 保持同一个表面（layer-shell 已应用），只是继续画：不起新窗口、不重设 shell。
+    if (!isVisible()) {
+        show();
+        raise();
+        activateWindow();
+        setFocus(Qt::OtherFocusReason);
+        grabKeyboard();
+    }
+    setCursor(Qt::ArrowCursor);
+    update();
+
+    SS_INFO() << "[overlay] 进入就地标注阶段：选区" << m_selection.logicalRect << "冻结图"
+              << m_frozenFrame.width() << "x" << m_frozenFrame.height() << "(scale=" << scale
+              << ") 表面" << width() << "x" << height();
+}
+
+QVector<QPointF> Overlay::handlePoints() const
+{
+    const QRectF r = toLocal(m_selection.logicalRect);
+    if (r.isEmpty())
+        return {};
+    return {r.topLeft(),
+            QPointF(r.center().x(), r.top()),
+            r.topRight(),
+            QPointF(r.left(), r.center().y()),
+            QPointF(r.right(), r.center().y()),
+            r.bottomLeft(),
+            QPointF(r.center().x(), r.bottom()),
+            r.bottomRight()};
+}
+
+void Overlay::paintAnnotating(QPainter &painter)
+{
+    const QRectF full(0, 0, width(), height());
+    const QRectF selection = toLocal(m_selection.logicalRect);
+
+    // 1) 冻结屏幕 1:1（左上角对齐表面原点 = 虚拟桌面原点）
+    if (!m_frozenFrame.isNull())
+        painter.drawImage(QPointF(0, 0), m_frozenFrame);
+    else
+        painter.fillRect(full, QColor(20, 22, 26));
+
+    // 2) 只压暗选区**之外**的部分：选区里看到的是 1:1 原像素（与 QQ/PixPin 一致）
+    const QColor dim(0, 0, 0, kDimAlpha);
+    painter.fillRect(QRectF(full.left(), full.top(), full.width(), selection.top() - full.top()),
+                     dim);
+    painter.fillRect(QRectF(full.left(), selection.bottom() + 1, full.width(),
+                            full.bottom() - selection.bottom()),
+                     dim);
+    painter.fillRect(QRectF(full.left(), selection.top(), selection.left() - full.left(),
+                            selection.height()),
+                     dim);
+    painter.fillRect(QRectF(selection.right() + 1, selection.top(),
+                            full.right() - selection.right(), selection.height()),
+                     dim);
+
+    // 3) 选区边框 + 8 手柄
+    painter.setRenderHint(QPainter::Antialiasing, false);
+    painter.setPen(QPen(kAccent, 2.0));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRect(selection);
+
+    painter.setPen(QPen(QColor(255, 255, 255), 1.0));
+    painter.setBrush(kAccent);
+    for (const QPointF &point : handlePoints())
+        painter.drawRect(QRectF(point.x() - 3.5, point.y() - 3.5, 7.0, 7.0));
+
+    // 4) 尺寸 + 操作提示（A2 会换成图标工具条，这里先给可发现的出口）
+    const QString title = QStringLiteral("%1 %2 × %3")
+                              .arg(QStringLiteral("区域"))
+                              .arg(ScreenMapper::roundCoord(m_selection.logicalRect.width()))
+                              .arg(ScreenMapper::roundCoord(m_selection.logicalRect.height()));
+    const QString detail = QStringLiteral("Enter 或双击完成 · Esc 或右键取消");
+    drawInfoBox(painter, QPoint(int(selection.left()),
+                                int(qMin(selection.bottom() + 6, full.bottom() - 48))),
+                title, detail);
 }
 
 QPointF Overlay::toLogical(const QPointF &local) const
@@ -148,6 +254,11 @@ void Overlay::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, false);
+
+    if (m_stage == Stage::Annotating) {
+        paintAnnotating(painter);
+        return;
+    }
 
     // 压暗整屏
     painter.fillRect(rect(), QColor(0, 0, 0, kDimAlpha));
@@ -206,6 +317,13 @@ void Overlay::paintEvent(QPaintEvent *)
 
 void Overlay::mousePressEvent(QMouseEvent *event)
 {
+    if (m_stage == Stage::Annotating) {
+        // A1 只管"选区固定 + 可确认/取消"；拖手柄改选区是 Phase B。
+        // 这里必须吞掉左键，否则会退回 Selecting 的拖拽逻辑。
+        if (event->button() == Qt::RightButton)
+            emit annotationCancelled();
+        return;
+    }
     if (event->button() == Qt::RightButton) {
         emit selectionCancelled();
         return;
@@ -220,6 +338,8 @@ void Overlay::mousePressEvent(QMouseEvent *event)
 
 void Overlay::mouseMoveEvent(QMouseEvent *event)
 {
+    if (m_stage == Stage::Annotating)
+        return;
     if (m_dragging) {
         m_dragCurrent = event->position();
         update();
@@ -230,6 +350,8 @@ void Overlay::mouseMoveEvent(QMouseEvent *event)
 
 void Overlay::mouseReleaseEvent(QMouseEvent *event)
 {
+    if (m_stage == Stage::Annotating)
+        return;
     if (event->button() != Qt::LeftButton || !m_dragging)
         return;
     m_dragging = false;
@@ -263,8 +385,29 @@ void Overlay::mouseReleaseEvent(QMouseEvent *event)
     emit selectionFinished(result);
 }
 
+void Overlay::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    if (m_stage == Stage::Annotating) {
+        if (event->button() == Qt::LeftButton)
+            emit annotationConfirmed(m_selection);
+        return;
+    }
+    QWidget::mouseDoubleClickEvent(event);
+}
+
 void Overlay::keyPressEvent(QKeyEvent *event)
 {
+    if (m_stage == Stage::Annotating) {
+        if (event->key() == Qt::Key_Escape) {
+            emit annotationCancelled();
+            return;
+        }
+        if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
+            emit annotationConfirmed(m_selection);
+            return;
+        }
+        return; // 标注阶段先不接受其他键（快捷键表在 Phase B）
+    }
     if (event->key() == Qt::Key_Escape) {
         emit selectionCancelled();
         return;
@@ -281,6 +424,26 @@ QString Overlay::diagnostics() const
         .arg(m_virtualGeometry.height())
         .arg(m_virtualGeometry.x())
         .arg(m_virtualGeometry.y());
+}
+
+QString Overlay::annotationDiagnostics() const
+{
+    const QRectF local = toLocal(m_selection.logicalRect);
+    return QStringLiteral("annotating=%1 stage=%2 冻结图=%3x%4 表面=%5x%6 选区本地=%7,%8 %9x%10 选区逻辑=%11,%12 %13x%14")
+        .arg(m_stage == Stage::Annotating ? 1 : 0)
+        .arg(m_stage == Stage::Annotating ? QStringLiteral("Annotating") : QStringLiteral("Selecting"))
+        .arg(m_frozenFrame.width())
+        .arg(m_frozenFrame.height())
+        .arg(width())
+        .arg(height())
+        .arg(qRound(local.x()))
+        .arg(qRound(local.y()))
+        .arg(qRound(local.width()))
+        .arg(qRound(local.height()))
+        .arg(m_selection.logicalRect.x())
+        .arg(m_selection.logicalRect.y())
+        .arg(m_selection.logicalRect.width())
+        .arg(m_selection.logicalRect.height());
 }
 
 } // namespace seashot

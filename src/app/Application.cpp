@@ -23,6 +23,7 @@
 #include "backend/x11/X11Backend.h"
 #endif
 
+#include <QApplication>
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
@@ -43,6 +44,7 @@
 #include <QLocalSocket>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QMouseEvent>
 #include <QRegularExpression>
 #include <QScreen>
 #include <QSocketNotifier>
@@ -144,6 +146,20 @@ Application::Application(const Options &options, QObject *parent)
     connect(m_overlay.get(), &Overlay::selectionCancelled, this, [this]() {
         m_overlay->stopSelection();
         SS_INFO() << "[app] 已取消截图";
+        if (isOneShot())
+            QCoreApplication::exit(0);
+    });
+    // Phase A1：就地标注阶段的确认 / 取消。
+    // 确认时**不重新选区域**，直接沿用标注阶段里固定的那个选区继续走现有截图链路。
+    connect(m_overlay.get(), &Overlay::annotationConfirmed, this,
+            [this](const SelectionResult &result) {
+                SS_INFO() << "[app] 就地标注确认，进入截图" << result.logicalRect;
+                m_pendingSelection = result;
+                finishSelectionPhase();
+            });
+    connect(m_overlay.get(), &Overlay::annotationCancelled, this, [this]() {
+        m_overlay->stopSelection();
+        SS_INFO() << "[app] 已取消截图（标注阶段）";
         if (isOneShot())
             QCoreApplication::exit(0);
     });
@@ -401,6 +417,9 @@ void Application::startRecordFlow()
     }
     m_recordIntent = true;
     m_overlay->setIntent(Overlay::Intent::Record);
+    // 录制不需要就地标注阶段（录制选完就直接开录），显式关掉，
+    // 免得沿用上一次截图留下的开关。
+    m_overlay->setAnnotationEnabled(false);
     m_backend->refresh();
     m_overlay->setWindows(m_backend->windows());
     m_overlay->setVirtualGeometry(virtualGeometry());
@@ -877,6 +896,11 @@ void Application::startCapture()
     }
     m_recordIntent = false;
     m_overlay->setIntent(Overlay::Intent::Screenshot);
+    // Phase A1：交互式截图才开就地标注（脚本式调用压根不走 startCapture）。
+    // SEASHOT_INPLACE_ANNOTATE=0 可退回"选完直接截图"的旧行为（A/B 对比/应急）。
+    const bool inplaceAnnotate =
+        qEnvironmentVariable("SEASHOT_INPLACE_ANNOTATE") != QLatin1String("0");
+    m_overlay->setAnnotationEnabled(inplaceAnnotate);
     m_backend->refresh();
     const QVector<WindowInfo> windows = m_backend->windows();
     m_overlay->setWindows(windows);
@@ -899,6 +923,47 @@ void Application::handleSelection(const SelectionResult &result)
         return;
     }
     m_pendingSelection = result;
+
+    // Phase A1：交互式截图**不退出覆盖层**，就地冻结屏幕并进入标注阶段
+    // （对齐 QQ/PixPin：选完直接在屏幕上标注，不打开独立窗口）。
+    if (m_overlay->annotationEnabled()) {
+        enterAnnotationPhase();
+        return;
+    }
+    finishSelectionPhase();
+}
+
+void Application::enterAnnotationPhase()
+{
+    // 冻结屏幕必须**不含覆盖层自己**：支持自排除时可以直接抓（覆盖层不入镜），
+    // 否则先把覆盖层藏起来再抓。
+    // Phase 0 实测：隐藏后 16ms 抓到的仍可能是含覆盖层的陈旧帧，所以留 250ms。
+    const bool selfExcluded = m_selfExclusion;
+    if (!selfExcluded)
+        m_overlay->hide();
+
+    const int delayMs = selfExcluded ? 0 : 250;
+    QTimer::singleShot(delayMs, this, [this]() {
+        if (!m_backend) {
+            finishSelectionPhase();
+            return;
+        }
+        const QRect geometry = virtualGeometry();
+        SS_INFO() << "[app] 抓取冻结屏幕" << geometry << "自排除=" << m_selfExclusion;
+        m_backend->captureRect(QRectF(geometry), [this](const CaptureImage &image) {
+            if (!image.ok()) {
+                // 拿不到冻结图就不硬撑：退回原来的"选完直接截图"行为，截图本身仍然可用
+                SS_WARN() << "[app] 冻结屏幕失败，退回直接截图：" << image.error;
+                finishSelectionPhase();
+                return;
+            }
+            m_overlay->beginAnnotating(m_pendingSelection, image.image, image.scale);
+        });
+    });
+}
+
+void Application::finishSelectionPhase()
+{
     m_overlay->stopSelection();
 
     // 支持自排除时可以直接截图（覆盖层不会入镜）；否则先隐藏覆盖层再等一帧。
@@ -1182,6 +1247,161 @@ int Application::showOverlayAndHold()
                         << (m_backend->windows().isEmpty() ? -1 : (m_selfExclusion ? 1 : 0)) << "\n";
     QTextStream(stdout).flush();
     QTimer::singleShot(m_options.overlayHoldMs, qApp, &QCoreApplication::quit);
+    return QCoreApplication::exec();
+}
+
+int Application::runInplaceDemo(const QString &outPrefix)
+{
+    QTextStream out(stdout);
+    if (!m_backend || !m_backendError.isEmpty()) {
+        out << "INPLACE_DEMO_ERROR 就地标注演示需要可用的截图后端：" << m_backendError << "\n";
+        out.flush();
+        return 2;
+    }
+
+    // 走的就是交互式截图入口（annotationEnabled 已在 startCapture() 里打开）
+    startCapture();
+
+    // 合成一次真实的拖拽：直接投递 QMouseEvent，走用户的 mousePress/Move/Release 同一条路径
+    const QPointF from(220, 180);
+    const QPointF to(760, 560);
+    QTimer::singleShot(500, this, [this, from, to]() {
+        auto post = [this](QEvent::Type type, const QPointF &pos, Qt::MouseButton button,
+                           Qt::MouseButtons buttons) {
+            QMouseEvent event(type, pos, m_overlay->mapToGlobal(pos.toPoint()), button, buttons,
+                              Qt::NoModifier);
+            QCoreApplication::sendEvent(m_overlay.get(), &event);
+        };
+        post(QEvent::MouseButtonPress, from, Qt::LeftButton, Qt::LeftButton);
+        constexpr int kSteps = 8;
+        for (int i = 1; i <= kSteps; ++i) {
+            const double t = double(i) / kSteps;
+            post(QEvent::MouseMove, from + (to - from) * t, Qt::NoButton, Qt::LeftButton);
+        }
+        post(QEvent::MouseButtonRelease, to, Qt::LeftButton, Qt::NoButton);
+        QTextStream(stdout) << "INPLACE_DEMO drag=" << from.x() << "," << from.y() << " -> "
+                            << to.x() << "," << to.y() << "\n";
+        QTextStream(stdout).flush();
+    });
+
+    // 拖拽 → selectionFinished → 异步抓冻结屏幕 → beginAnnotating：给这条链 2s
+    QTimer::singleShot(2000, this, [this, outPrefix]() {
+        QTextStream out(stdout);
+        const bool annotating = m_overlay->isAnnotating();
+        const QImage frozen = m_overlay->frozenFrame();
+        const QPixmap grabbed = m_overlay->grab();
+        const QImage shot = grabbed.toImage();
+        const double dpr = grabbed.devicePixelRatio();
+        const QRectF localSelection = m_overlay->localSelectionRect();
+
+        out << "INPLACE_DEMO " << m_overlay->annotationDiagnostics() << "\n";
+        out << "INPLACE_DEMO grab=" << shot.width() << "x" << shot.height() << " dpr=" << dpr
+            << "\n";
+
+        if (!outPrefix.isEmpty()) {
+            shot.save(outPrefix + QStringLiteral("-overlay.png"));
+            frozen.save(outPrefix + QStringLiteral("-frozen.png"));
+            out << "INPLACE_DEMO saved=" << outPrefix << "-overlay.png," << outPrefix
+                << "-frozen.png\n";
+        }
+
+        // 判据 1：**没有新窗口** —— 可见的顶层部件应当只有覆盖层自己
+        QStringList tops;
+        const QList<QWidget *> allTops = QApplication::topLevelWidgets();
+        for (QWidget *w : allTops) {
+            if (w->isVisible())
+                tops << w->windowTitle();
+        }
+        const bool onlyOverlay =
+            tops.size() == 1 && tops.first() == QLatin1String("seashot-overlay");
+        out << "INPLACE_DEMO visibleTops="
+            << (tops.isEmpty() ? QStringLiteral("(none)") : tops.join(QLatin1Char(','))) << "\n";
+
+        // 判据 2：选区内**逐像素 1:1**（内缩 4px 避开边框与手柄）
+        int mismatched = -1;
+        int maxDiff = -1;
+        const QRect area = localSelection.toAlignedRect()
+                               .adjusted(4, 4, -4, -4)
+                               .intersected(frozen.rect())
+                               .intersected(shot.rect());
+        if (!frozen.isNull() && area.isValid() && qFuzzyCompare(dpr, 1.0)) {
+            mismatched = 0;
+            maxDiff = 0;
+            for (int y = area.top(); y <= area.bottom(); ++y) {
+                const QRgb *a = reinterpret_cast<const QRgb *>(shot.constScanLine(y));
+                const QRgb *b = reinterpret_cast<const QRgb *>(frozen.constScanLine(y));
+                for (int x = area.left(); x <= area.right(); ++x) {
+                    const int d =
+                        qMax(qMax(qAbs(qRed(a[x]) - qRed(b[x])), qAbs(qGreen(a[x]) - qGreen(b[x]))),
+                             qMax(qAbs(qBlue(a[x]) - qBlue(b[x])), qAbs(qAlpha(a[x]) - qAlpha(b[x]))));
+                    if (d > 0)
+                        ++mismatched;
+                    maxDiff = qMax(maxDiff, d);
+                }
+            }
+        }
+
+        // 判据 3：8 个手柄真的画出来了（手柄中心 = 强调色 0x3daeff）
+        int handleHits = 0;
+        if (!frozen.isNull()) {
+            const QRectF r = localSelection;
+            const QVector<QPointF> handles{
+                r.topLeft(),
+                QPointF(r.center().x(), r.top()),
+                r.topRight(),
+                QPointF(r.left(), r.center().y()),
+                QPointF(r.right(), r.center().y()),
+                r.bottomLeft(),
+                QPointF(r.center().x(), r.bottom()),
+                r.bottomRight()};
+            for (const QPointF &p : handles) {
+                const QPoint c(qRound(p.x()), qRound(p.y()));
+                if (!shot.rect().contains(c))
+                    continue;
+                const QColor color = shot.pixelColor(c);
+                if (qAbs(color.red() - 0x3d) <= 16 && qAbs(color.green() - 0xae) <= 16
+                    && qAbs(color.blue() - 0xff) <= 16)
+                    ++handleHits;
+            }
+        }
+
+        // 判据 4：选区**外**被压暗（kDimAlpha=120 → 原亮度 ×0.529）
+        int dimChecked = 0;
+        int dimBad = 0;
+        if (!frozen.isNull() && qFuzzyCompare(dpr, 1.0)) {
+            const QRect sel = localSelection.toAlignedRect();
+            const QVector<QPoint> probes{
+                QPoint(sel.center().x(), sel.top() - 30),
+                QPoint(sel.center().x(), sel.bottom() + 30),
+                QPoint(sel.left() - 30, sel.center().y()),
+                QPoint(sel.right() + 30, sel.center().y())};
+            constexpr double kKeep = 1.0 - 120.0 / 255.0;
+            for (const QPoint &p : probes) {
+                if (!shot.rect().contains(p) || !frozen.rect().contains(p))
+                    continue;
+                ++dimChecked;
+                const QColor s = shot.pixelColor(p);
+                const QColor f = frozen.pixelColor(p);
+                if (qAbs(s.red() - f.red() * kKeep) > 3
+                    || qAbs(s.green() - f.green() * kKeep) > 3
+                    || qAbs(s.blue() - f.blue() * kKeep) > 3)
+                    ++dimBad;
+            }
+        }
+
+        const bool sizeMatches = !frozen.isNull() && frozen.size() == m_overlay->size();
+        const bool ok = annotating && onlyOverlay && sizeMatches && mismatched == 0
+            && handleHits == 8 && dimChecked > 0 && dimBad == 0;
+        out << "INPLACE_DEMO frozen=" << frozen.width() << "x" << frozen.height()
+            << " surface=" << m_overlay->width() << "x" << m_overlay->height()
+            << " exactMismatch=" << mismatched << " maxChannelDiff=" << maxDiff
+            << " handles=" << handleHits << "/8 dimProbe=" << (dimChecked - dimBad) << "/"
+            << dimChecked << "\n";
+        out << (ok ? "INPLACE_DEMO PASS" : "INPLACE_DEMO FAIL") << "\n";
+        out.flush();
+        QCoreApplication::exit(ok ? 0 : 1);
+    });
+
     return QCoreApplication::exec();
 }
 
@@ -1736,6 +1956,8 @@ int Application::run()
         return runBenchCapture(m_options.benchCapturePath);
     if (m_options.toastDragBenchMs > 0)
         return runToastDragBench(m_options.toastDragBenchMs);
+    if (!m_options.inplaceDemoOut.isEmpty())
+        return runInplaceDemo(m_options.inplaceDemoOut);
     if (m_options.printConfig)
         return runPrintConfig();
     if (m_options.hotkeyStatus) {

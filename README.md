@@ -42,6 +42,7 @@ seashot --capture-screen --save /tmp/full.png
 seashot --rect 100,200,400,300 --save /tmp/rect.png [--no-copy]
 seashot --window '{uuid}' --save /tmp/window.png
 seashot --overlay-hold 5000          # 显示选择覆盖层 5 秒后退出（调试/验收）
+seashot --inplace-demo /tmp/a1       # 就地标注（Phase A1）自动验收：拖框→1:1/手柄判定→落盘 /tmp/a1-*.png
 seashot --open-editor                # 本次截图后直接打开编辑器（覆盖配置）
 seashot --settings                   # 打开配置界面（托盘菜单「设置…」同此）
 seashot --print-config               # 打印生效中的配置（脚本/排查用）
@@ -67,6 +68,11 @@ PLAN 已定：**默认不注册任何键**（实测 `Ctrl+Alt+A` 已被本机 Sp
 ## 交互约定
 
 - 悬停窗口：虚线框贴 `frameGeometry`（含标题栏的窗口实体边界）
+- **就地标注（Phase A1）**：交互式截图（热键 / 托盘 / `--capture`）拖框选完区域后
+  **不打开新窗口**，而是在同一个 layer-shell 覆盖层上就地显示冻结屏幕（**逻辑像素 1:1**，
+  选区外压暗），选区带边框与 8 个手柄；`Enter` / 双击 = 完成，`Esc` / 右键 = 取消。
+  脚本式调用（`--rect` / `--window` / `--save` / `--capture-screen`）**不走这条路**，行为与以前一致。
+  临时退回旧行为：`SEASHOT_INPLACE_ANNOTATE=0`。
 - 左键单击：截取该窗口（Wayland 走 `CaptureWindow(include-decoration=true)`，即所见即所得：
   含标题栏/边框/圆角/阴影；默认保留阴影边距，`capture/keepShadowMargin=false` 可裁到窗口实体）
 - 按住拖动：按矩形选区截图
@@ -142,6 +148,8 @@ seashot --settings     # 或常驻后点托盘图标 → 「设置…」
 
 - `SEASHOT_DISABLE_SELF_EXCLUSION=1 seashot …`：本次不把 SeaShot 自己的窗口排除出截图。
   调试浮层/覆盖层外观时用（默认它们不会被任何截图拍到）。
+- `SEASHOT_INPLACE_ANNOTATE=0 seashot --capture`：本次交互式截图退回
+  「选完直接截图」的旧行为（不走就地标注阶段）。
 - 日志走 stderr（`[app]`/`[kwin]`/`[shot2]`/`[toast]` 前缀）；Qt 默认会吞掉 `qInfo`，
   所以 SeaShot 显式写 stderr。
 - KWin 助手脚本残留在 `~/.cache/seashot/seashot/*.js`；若上次是被 kill 的，
@@ -164,7 +172,7 @@ seashot --settings     # 或常驻后点托盘图标 → 「设置…」
 src/backend/{wayland,x11}/   后端：KWin 脚本桥 + ScreenShot2 / EWMH + XGetImage
 src/core/                    公共类型 + 选区纯逻辑
 src/geometry/                逻辑↔物理坐标的唯一转换点（ScreenMapper）
-src/overlay/                 选择模式覆盖层（layer-shell + QPainter）
+src/overlay/                 选择模式覆盖层（layer-shell + QPainter；含就地标注阶段 Annotating）
 src/app/                     应用编排、配置、托盘、结果浮层、自检
 resources/seashot-kwin.js    KWin 助手脚本（窗口快照 + 自排除），随二进制内嵌
 tests/                       QtTest 单元测试（坐标/选区/EWMH/配置）

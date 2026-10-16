@@ -118,6 +118,10 @@ int main(int argc, char **argv)
         QStringLiteral("bench-capture"),
         QStringLiteral("（诊断）抓一帧全屏存盘并打印帧时间戳，给拖动基准当观测者"),
         QStringLiteral("path"));
+    QCommandLineOption inplaceDemoOption(
+        QStringLiteral("inplace-demo"),
+        QStringLiteral("（验收）就地标注：合成一次拖框 → 校验 1:1 与手柄选区，证据写入 <prefix>-overlay.png / <prefix>-frozen.png"),
+        QStringLiteral("prefix"));
 
     parser.addOption(selftestOption);
     parser.addOption(listOption);
@@ -148,6 +152,7 @@ int main(int argc, char **argv)
     parser.addOption(probePipewireLibOption);
     parser.addOption(portalTokenOption);
     parser.addOption(benchCaptureOption);
+    parser.addOption(inplaceDemoOption);
     parser.process(app);
 
     seashot::Options options;
@@ -173,6 +178,7 @@ int main(int argc, char **argv)
     options.seconds = parser.value(secondsOption).toInt();
     options.toastDragBenchMs = parser.value(dragBenchOption).toInt();
     options.benchCapturePath = parser.value(benchCaptureOption);
+    options.inplaceDemoOut = parser.value(inplaceDemoOption);
     options.probePortal = parser.isSet(probePortalOption);
     options.portalTokenFile = parser.value(portalTokenOption);
     options.probePortalNoStart = parser.isSet(probePortalNoStartOption);

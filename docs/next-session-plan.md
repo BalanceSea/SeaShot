@@ -3,15 +3,22 @@
 > 本文是**自包含**的：明天开新对话时，读这一份即可接上，不依赖上一轮对话上下文。
 >
 > **一句话现状**：截图/编辑/录制/配置/托盘全部可用且验收通过；正在进行「就地编辑」大改造，
-> Phase 0（可行性探针）已全部通过，**下一步是 Phase A1**。
+> Phase 0 与 **Phase A1 已完成并验收**（`scripts/acceptance-phaseA1.sh` 6/6 通过），
+> **下一步是 Phase A2（自绘图标工具条）**。
 
 ---
 
 ## 0. 明天下手第一件事
 
-**做 Phase A1**（见第 4 节）。它是一切的地基，其余阶段都依赖它。
+**做 Phase A2**（见第 4 节）：自绘紧凑**图标**工具条（贴选区下方，放不下则上方）+ 工具切换与高亮。
 
-开始前请先确认两件外部依赖（不阻塞 A1，但影响 Phase E）：
+为什么现在就从 A2 开始：A1 已把"选完不退出、就地 1:1 显示冻结屏幕 + 选区/手柄"做完并逐像素验收过
+（详见 `docs/acceptance/phaseA1.md`），A2 只是在这个已经稳住的画面上补一个自绘控件。
+
+⚠️ A1 之后交互式截图选完区域**需要按一下 `Enter`（或双击）**才会出结果 ——
+因为 A2 的工具条（带「完成」按钮）还没做。想临时退回旧行为：`SEASHOT_INPLACE_ANNOTATE=0 seashot --capture`。
+
+开始前请先确认两件外部依赖（不阻塞 A2，但影响 Phase E）：
 
 ```fish
 # OCR 语言包（本机只有 afr/osd，缺中英文）
@@ -98,7 +105,7 @@ QQ/PixPin 是选完区域**直接在屏幕上标注**（不打开新窗口），
 
 | 文件 | 复用方式 |
 | --- | --- |
-| `src/overlay/Overlay.{h,cpp}` | 已有 layer-shell 全屏表面 + 完整框选（含 `Intent{Screenshot,Record}`）。**新增 Annotating 阶段** |
+| `src/overlay/Overlay.{h,cpp}` | 已有 layer-shell 全屏表面 + 完整框选（含 `Intent{Screenshot,Record}`）。**A1 已加 Annotating 阶段**（1:1 冻结屏幕 + 选区/手柄 + 确认/取消） |
 | `src/editor/Annotation.{h,cpp}` | 标注数据模型（图像坐标，9 种工具已全） |
 | `src/editor/AnnotationDocument.{h,cpp}` | 增删改 + 撤销/重做 |
 | `src/editor/AnnotationRenderer.{h,cpp}` | `renderAnnotations()` 是**唯一导出出口**；模糊/马赛克的"预览与导出同一实现"已就位，别绕过 |
@@ -106,12 +113,23 @@ QQ/PixPin 是选完区域**直接在屏幕上标注**（不打开新窗口），
 
 ### 分步（每步都要给用户可验证的结果，禁止一次性大坨）
 
-| 步 | 内容 | 用户怎么验 |
-| --- | --- | --- |
-| **A1** | `Overlay` 增加 Annotating 阶段：选完**不退出**，1:1 绘制冻结屏幕 + 选区边框/手柄 | 拖框后**不弹新窗口**，屏幕上出现带手柄的选框 |
-| **A2** | 自绘紧凑**图标**工具条（贴选区下方，下方放不下则上方）+ 工具切换与高亮 | 点工具能切、当前工具高亮 |
-| **A3** | 标注绘制/命中/撤销接到 `AnnotationDocument` | 能画矩形/箭头，`Ctrl+Z` 生效 |
-| **A4** | 保存/复制/取消接现有链路 | **`acceptance-phase1.sh` 必须仍全绿** |
+| 步 | 内容 | 用户怎么验 | 状态 |
+| --- | --- | --- | --- |
+| **A1** | `Overlay` 增加 Annotating 阶段：选完**不退出**，1:1 绘制冻结屏幕 + 选区边框/手柄 | 拖框后**不弹新窗口**，屏幕上出现带手柄的选框 | ✅ **已完成**（2026-10-17，`scripts/acceptance-phaseA1.sh` 6/6；判据 1–5 含逐像素比对，见 `docs/acceptance/phaseA1.md`） |
+| **A2** | 自绘紧凑**图标**工具条（贴选区下方，下方放不下则上方）+ 工具切换与高亮 | 点工具能切、当前工具高亮 | ⬅ **下一步** |
+| **A3** | 标注绘制/命中/撤销接到 `AnnotationDocument` | 能画矩形/箭头，`Ctrl+Z` 生效 | 待做 |
+| **A4** | 保存/复制/取消接现有链路 | **`acceptance-phase1.sh` 必须仍全绿** | 待做 |
+
+### A1 已落地的实现要点（A2 直接接在这些之上）
+
+- `Overlay` 内部多了 `Stage{Selecting,Annotating}`；`startSelection()` 复位，
+  `beginAnnotating(selection, frozenPhysical, scale)` 进入标注阶段（冻结图会被归一到**逻辑像素**）。
+- 新增信号 `annotationConfirmed(SelectionResult)` / `annotationCancelled()`；
+  新增开关 `setAnnotationEnabled()`（**只有交互式截图打开**，脚本式调用一律 false）。
+- `Application::enterAnnotationPhase()` 负责抓冻结屏幕（自排除可用时直接抓；否则先藏覆盖层再等 250ms），
+  `Application::finishSelectionPhase()` 负责收尾（隐藏 + 按需等一帧 + `performCapture()`）。
+- 自检/验收入口：`seashot --inplace-demo <prefix>` —— 程序化拖框 → 校验 1:1/手柄/压暗 →
+  落盘 `<prefix>-overlay.png` / `-frozen.png`（`docs/acceptance/evidence/a1-inplace-*`）。
 
 ### ⚠️ A4 的关键约束（不做就会被验收打回）
 
@@ -131,7 +149,7 @@ ISSUE-007 自排除）。`Toast` 用自绘走通了，照它做。工具条命�
 
 ```
 Idle → Selecting（拖框 / 悬停高亮窗口）
-     → Annotating（新增：1:1 显示冻结屏幕 + 浮动图标工具条 + 可拖手柄改选区）
+     → Annotating（A1 已实现：1:1 显示冻结屏幕 + 选区边框/手柄；A2 加图标工具条；B 加拖手柄改选区）
      → Done（保存 / 复制 / 贴图 / 进编辑器 / 取消）
 ```
 
@@ -185,6 +203,9 @@ cd build && ctest --output-on-failure; cd ..
 
 # 截图主链路验收（改动后必须仍全绿）
 bash scripts/acceptance-phase1.sh
+
+# 就地编辑（Phase A1）验收：程序化拖框 → 1:1/手柄/压暗 自动判定 + 落盘证据
+bash scripts/acceptance-phaseA1.sh
 
 # 编辑器验收
 bash scripts/acceptance-phase2.sh
