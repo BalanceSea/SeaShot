@@ -1,0 +1,17 @@
+uuid={edeceb5c-4b50-4023-a349-cb10ec57aa2a} frame=(660,326,600,428) client=(660,354,600,400) active=False
+
+### 把测试窗口激活到最上层（保证区域截取看到的是它）
+10月 16 10:09:51 balanceos kwin_wayland[1156]: SEASHOT_ACTIVATED {edeceb5c-4b50-4023-a349-cb10ec57aa2a}
+
+### 截取（client-only / include-decoration）
+== saved probes/out/31-client.png size=600x400
+== saved probes/out/30-decor.png size=730x558
+decor 图 730x558；品红块 bbox=(360,276,10,10)
+推得：client 偏移=(65,81)  frame 偏移=(65,53)
+边距：left=65 top=53 right=65 bottom=77
+屏幕矩形：IX=595 IY=273 IW=730 IH=558
+IX=595 IY=273 IW=730 IH=558
+== saved probes/out/32-area-decor.png size=730x558
+RMSE(decor 窗口图 vs 同矩形屏幕图) = 37470.1 (0.571757)
+AE fuzz2%                       = 140002 (0.343698)
+RMSE(client 窗口图 vs 从屏幕图裁出的客户区) = 1232 (0.0187992)

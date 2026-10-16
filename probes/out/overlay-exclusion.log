@@ -1,0 +1,22 @@
+测试窗口: uuid={0668be5c-e052-41fc-9eb9-e1a4f5d97405} frame=(660,326,600,428)
+覆盖层:   uuid={70d17acf-be26-4ac2-a79e-6bbc1d630ee0} frame=(0,0,1920,1080)
+覆盖层程序日志: SEASHOT_OVERLAY role=applied layer=overlay anchors=all SEASHOT_OVERLAY shown geometry=0,0 1920x1080 screens=1 dpr=1.000 role=1 
+
+### A) 覆盖层可见时 CaptureWindow(测试窗口)
+== saved probes/out/80-window-with-overlay.png size=600x400
+meanRGB = 126.493,126.386,63.2995
+对照（无覆盖层时同一窗口）：126.493,126.386,63.2995
+RMSE(vs 无覆盖层时的窗口图) = 0 (0)
+
+### B) 覆盖层可见时 CaptureArea(窗口矩形) —— 预期被品红覆盖
+== saved probes/out/81-area-with-overlay.png size=600x428
+meanRGB = 255,0,255
+
+### C) 给覆盖层设 excludeFromCapture=true（用真实 resourceClass=overlayprobe）
+10月 16 10:12:11 balanceos kwin_wayland[1156]: SEASHOT_EFC uuid={70d17acf-be26-4ac2-a79e-6bbc1d630ee0} before=false after=true err=
+10月 16 10:12:11 balanceos kwin_wayland[1156]: SEASHOT_EFC hits=1
+== saved probes/out/82-area-efc.png size=600x428
+meanRGB = 133.568,133.501,74.5525
+
+### D) 复位（避免留下改动）并收尾
+10月 16 10:12:14 balanceos kwin_wayland[1156]: SEASHOT_EFC_OFF {70d17acf-be26-4ac2-a79e-6bbc1d630ee0} -> false

@@ -1,0 +1,3 @@
+SEASHOT_OVERLAY role=applied layer=overlay anchors=all
+SEASHOT_OVERLAY shown geometry=0,0 1920x1080 screens=1 dpr=1.000 role=1
+SEASHOT_OVERLAY hidden_by_signal

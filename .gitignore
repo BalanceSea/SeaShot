@@ -1,0 +1,10 @@
+# 构建目录
+probes/build/
+build/
+# 探测产生的二进制与临时文件
+probes/out/shot2probe
+probes/out/testwindow
+probes/out/*.raw
+probes/out/tmp*.png
+probes/out/diff*.png
+probes/out/33-diff.png

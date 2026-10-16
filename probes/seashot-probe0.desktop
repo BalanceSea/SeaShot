@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=SeaShot Probe (Phase 0)
+Comment=Phase 0 探测用：验证 KWin ScreenShot2 的授权要求
+# 实测：KWin 用「调用方 PID → /proc/<pid>/exe → KApplicationTrader 查 desktop 文件
+# → 读 X-KDE-DBUS-Restricted-Interfaces」来判定截图授权。Exec 必须与进程的
+# /proc/self/exe 完全一致，含空格的路径不可靠，故用无空格路径。
+Exec=/home/balancesea/.local/bin/seashot-probe0
+NoDisplay=true
+X-KDE-DBUS-Restricted-Interfaces=org.kde.KWin.ScreenShot2

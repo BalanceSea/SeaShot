@@ -1,0 +1,370 @@
+KWin 技术支持信息：
+请在寻求技术支持时 (例如 https://discuss.kde.org 网站) 提供以下信息。
+这些信息包括关于当前正在运行的 Kwin 实例的相关信息、
+使用的选项、OpenGL 驱动程序、正在运行的特效等。
+请不要将本段文字下方的信息直接粘贴到技术支持讨论串，
+而应将它们粘贴到在线剪贴板网站 (例如 https://paste.kde.org)。
+
+==========================
+
+Version
+=======
+KWin version: 6.7.5
+Qt Version: 6.12.0
+Qt compile version: 6.12.0
+XCB compile version: 1.17.0
+
+Operation Mode: Wayland
+
+Build Options
+=============
+KWIN_BUILD_DECORATIONS: yes
+KWIN_BUILD_TABBOX: yes
+KWIN_BUILD_ACTIVITIES: yes
+HAVE_X11_XCB: yes
+
+X11
+===
+Vendor: The X.Org Foundation
+Vendor Release: 12401014
+Protocol Version/Revision: 11/0
+SHAPE: yes; Version: 0x11
+RANDR: yes; Version: 0x14
+Composite: yes; Version: 0x4
+RENDER: yes; Version: 0xb
+XFIXES: yes; Version: 0x50
+SYNC: yes; Version: 0x31
+RES: yes; Version: 0x12
+
+Decoration
+==========
+Plugin: org.kde.breeze
+Theme: 
+Plugin recommends border size: None
+onAllDesktopsAvailable: false
+alphaChannelSupported: true
+closeOnDoubleClickOnMenu: false
+alwaysShowExcludeFromCapture: false
+decorationButtonsLeft: 0, 2, 12
+decorationButtonsRight: 6, 3, 4, 5
+borderSize: 0
+gridUnit: 10
+font: SF Pro Text,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,,0,0
+smallSpacing: 2
+largeSpacing: 10
+
+LogicalOutput backend
+==============
+Name: DRM
+Atomic Mode Setting on GPU 0: true
+
+Cursor
+======
+themeName: breeze_cursors
+themeSize: 24
+
+Options
+=======
+focusPolicy: ClickToFocus
+xwaylandCrashPolicy: 1
+xwaylandMaxCrashCount: 3
+nextFocusPrefersMouse: false
+clickRaise: true
+autoRaise: false
+autoRaiseInterval: 0
+delayFocusInterval: 0
+separateScreenFocus: true
+placement: 5
+activationDesktopPolicy: SwitchToOtherDesktop
+focusPolicyIsReasonable: true
+borderSnapZone: 10
+windowSnapZone: 10
+centerSnapZone: 0
+snapOnlyWhenOverlapping: false
+edgeBarrier: 100
+cornerBarrier: 1
+rollOverDesktops: false
+perOutputVirtualDesktops: false
+focusStealingPreventionLevel: 1
+operationTitlebarDblClick: 5000
+operationMaxButtonLeftClick: 5000
+operationMaxButtonMiddleClick: 5013
+operationMaxButtonRightClick: 5012
+commandActiveTitlebar1: MouseRaise
+commandActiveTitlebar2: MouseNothing
+commandActiveTitlebar3: MouseOperationsMenu
+commandInactiveTitlebar1: MouseActivateAndRaise
+commandInactiveTitlebar2: MouseNothing
+commandInactiveTitlebar3: MouseOperationsMenu
+commandWindow1: MouseActivateRaiseOnReleaseAndPassClick
+commandWindow2: MouseActivateAndPassClick
+commandWindow3: MouseActivateAndPassClick
+commandWindowWheel: MouseNothing
+commandAll1: MouseUnrestrictedMove
+commandAll2: MouseToggleRaiseAndLower
+commandAll3: MouseUnrestrictedResize
+keyCmdAllModKey: 16777250
+doubleClickBorderToMaximize: true
+condensedTitle: false
+electricBorderMaximize: true
+electricBorderTiling: true
+electricBorderAllScreenCorner: true
+electricBorderCornerRatio: 0.25
+borderlessMaximizedWindows: false
+killPingTimeout: 5000
+compositingMode: 1
+allowTearing: true
+interactiveWindowMoveEnabled: true
+pictureInPictureHomeCorner: BottomRightCorner
+pictureInPictureMargin: 20
+overlayVirtualKeyboardOnWindows: false
+
+Screen Edges
+============
+desktopSwitching: false
+desktopSwitchingMovingClients: false
+cursorPushBackDistance: 1x1
+actionTopLeft: 0
+actionTop: 0
+actionTopRight: 0
+actionRight: 0
+actionBottomRight: 0
+actionBottom: 0
+actionBottomLeft: 0
+actionLeft: 0
+
+Screens
+=======
+Number of Screens: 1
+
+Screen 0:
+---------
+Name: DP-3
+Enabled: 1
+Geometry: 0,0,1920x1080
+Physical size: 544x303mm
+Scale: 1
+Refresh Rate: 239964
+Adaptive Sync: automatic
+
+Compositing
+===========
+Compositing is active
+Compositing Type: OpenGL
+OpenGL vendor string: AMD
+OpenGL renderer string: AMD Radeon RX 580 2048SP (radeonsi, polaris10, ACO, DRM 3.64, 7.2.9-zen1-1-zen)
+OpenGL version string: 4.6 (Core Profile) Mesa 26.2.4-arch1.1
+OpenGL platform interface: EGL
+OpenGL shading language version string: 4.60
+Driver: Unknown
+GPU class: Unknown
+OpenGL version: 4.6
+GLSL version: 4.60
+Mesa version: 26.2.4
+X server version: 1.24.1
+Linux kernel version: 7.2.9
+Direct rendering: Requires strict binding: no
+Virtual Machine:  no
+OpenGL 2 Shaders are used
+
+Loaded Effects:
+---------------
+kos_context_menu_input
+shakecursor
+outputlocator
+colorpicker
+zoom
+screenedge
+blur
+glass
+sessionquit
+logout
+login
+slidingpopups
+slidingnotifications
+windowaperture
+kos_dock_window_animation
+slide
+squash
+scale
+maximize
+fullscreen
+frozenapp
+fadingpopups
+dialogparent
+windowview
+tileseditor
+overview
+highlightwindow
+blendchanges
+startupfeedback
+systembell
+screentransform
+kscreen
+kos_bridge
+
+Currently Active Effects:
+-------------------------
+kos_context_menu_input
+blur
+glass
+kos_bridge
+
+Effect Settings:
+----------------
+kos_context_menu_input:
+
+shakecursor:
+
+outputlocator:
+
+colorpicker:
+
+zoom:
+zoomFactor: 1.2
+mouseTracking: 0
+focusDelay: 350
+moveFactor: 20
+targetZoom: 1
+
+screenedge:
+
+blur:
+
+glass:
+
+sessionquit:
+pluginId: sessionquit
+isActiveFullScreenEffect: false
+
+logout:
+pluginId: logout
+isActiveFullScreenEffect: false
+
+login:
+pluginId: login
+isActiveFullScreenEffect: false
+
+slidingpopups:
+slideInDuration: 200
+slideOutDuration: 200
+
+slidingnotifications:
+
+windowaperture:
+pluginId: windowaperture
+isActiveFullScreenEffect: false
+
+kos_dock_window_animation:
+
+slide:
+horizontalGap: 45
+verticalGap: 20
+slideBackground: true
+
+squash:
+pluginId: squash
+isActiveFullScreenEffect: false
+
+scale:
+pluginId: scale
+isActiveFullScreenEffect: false
+
+maximize:
+pluginId: maximize
+isActiveFullScreenEffect: false
+
+fullscreen:
+pluginId: fullscreen
+isActiveFullScreenEffect: false
+
+frozenapp:
+pluginId: frozenapp
+isActiveFullScreenEffect: false
+
+fadingpopups:
+pluginId: fadingpopups
+isActiveFullScreenEffect: false
+
+dialogparent:
+pluginId: dialogparent
+isActiveFullScreenEffect: false
+
+windowview:
+activeView: 
+delegate: 
+animationDuration: 300
+ignoreMinimized: false
+mode: 
+partialActivationFactor: 0
+gestureInProgress: false
+searchText: 
+selectedIds: 
+
+tileseditor:
+activeView: 
+delegate: 
+animationDuration: 200
+
+overview:
+activeView: 
+delegate: 
+animationDuration: 300
+ignoreMinimized: false
+filterWindows: true
+organizedGrid: true
+overviewPartialActivationFactor: 0
+overviewGestureInProgress: false
+transitionPartialActivationFactor: 0
+transitionGestureInProgress: false
+gridPartialActivationFactor: 0
+gridGestureInProgress: false
+searchText: 
+
+highlightwindow:
+
+blendchanges:
+
+startupfeedback:
+type: 1
+
+systembell:
+
+screentransform:
+
+kscreen:
+
+kos_bridge:
+
+
+Loaded Plugins:
+---------------
+BounceKeysPlugin
+KeyNotificationPlugin
+MouseKeysPlugin
+SlowKeysPlugin
+StickyKeysPlugin
+TouchpadShortcutsPlugin
+buttonsrebind
+eis
+krunnerintegration
+nightlight
+screencast
+screenshot
+
+Available Plugins:
+------------------
+BounceKeysPlugin
+KeyNotificationPlugin
+MouseKeysPlugin
+SlowKeysPlugin
+StickyKeysPlugin
+TouchpadShortcutsPlugin
+buttonsrebind
+eis
+gamecontroller
+krunnerintegration
+nightlight
+screencast
+screenshot
+

@@ -1,0 +1,451 @@
+signal time=1792115778.018566 sender=org.freedesktop.DBus -> destination=:1.24852 serial=4294967295 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameAcquired
+   string ":1.24852"
+signal time=1792115778.018618 sender=org.freedesktop.DBus -> destination=:1.24852 serial=4294967295 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=NameLost
+   string ":1.24852"
+method call time=1792115778.029747 sender=:1.13 -> destination=org.kos.Platform serial=447669 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.079148 sender=:1.13 -> destination=org.kos.Platform serial=447670 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.129160 sender=:1.13 -> destination=org.kos.Platform serial=447671 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.179173 sender=:1.13 -> destination=org.kos.Platform serial=447672 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.229768 sender=:1.13 -> destination=org.kos.Platform serial=447673 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.279181 sender=:1.13 -> destination=org.kos.Platform serial=447674 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.328762 sender=:1.13 -> destination=org.kos.Platform serial=447675 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.379200 sender=:1.13 -> destination=org.kos.Platform serial=447676 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.428785 sender=:1.13 -> destination=org.kos.Platform serial=447677 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.479219 sender=:1.13 -> destination=org.kos.Platform serial=447678 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.529228 sender=:1.13 -> destination=org.kos.Platform serial=447679 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.579222 sender=:1.13 -> destination=org.kos.Platform serial=447680 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.629239 sender=:1.13 -> destination=org.kos.Platform serial=447681 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.679305 sender=:1.13 -> destination=org.kos.Platform serial=447682 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.729524 sender=:1.13 -> destination=org.kos.Platform serial=447683 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.778998 sender=:1.13 -> destination=org.kos.Platform serial=447684 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.829598 sender=:1.13 -> destination=org.kos.Platform serial=447685 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method return time=1792115778.863307 sender=:1.13 -> destination=:1.24855 serial=447686 reply_serial=16
+   variant       boolean false
+method return time=1792115778.863402 sender=:1.13 -> destination=:1.24855 serial=447687 reply_serial=17
+   variant       boolean false
+method call time=1792115778.878782 sender=:1.13 -> destination=org.kos.Platform serial=447688 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.929307 sender=:1.13 -> destination=org.kos.Platform serial=447689 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115778.979320 sender=:1.13 -> destination=org.kos.Platform serial=447690 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.028763 sender=:1.13 -> destination=org.kos.Platform serial=447691 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.079340 sender=:1.13 -> destination=org.kos.Platform serial=447692 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.128801 sender=:1.13 -> destination=org.kos.Platform serial=447693 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.179348 sender=:1.13 -> destination=org.kos.Platform serial=447694 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.229130 sender=:1.13 -> destination=org.kos.Platform serial=447695 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.279373 sender=:1.13 -> destination=org.kos.Platform serial=447696 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.328874 sender=:1.13 -> destination=org.kos.Platform serial=447697 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.379635 sender=:1.13 -> destination=org.kos.Platform serial=447698 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.428761 sender=:1.13 -> destination=org.kos.Platform serial=447699 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.479449 sender=:1.13 -> destination=org.kos.Platform serial=447700 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.529414 sender=:1.13 -> destination=org.kos.Platform serial=447701 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.579411 sender=:1.13 -> destination=org.kos.Platform serial=447702 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.629435 sender=:1.13 -> destination=org.kos.Platform serial=447703 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.679029 sender=:1.13 -> destination=org.kos.Platform serial=447704 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.729426 sender=:1.13 -> destination=org.kos.Platform serial=447705 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.779020 sender=:1.13 -> destination=org.kos.Platform serial=447706 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method return time=1792115779.802878 sender=:1.13 -> destination=:1.22812 serial=447707 reply_serial=35276
+method call time=1792115779.829466 sender=:1.13 -> destination=org.kos.Platform serial=447708 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.857489 sender=:1.13 -> destination=org.kos.Platform serial=447709 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"button":1,"timestamp":1792115779857,"type":"global-pointer-press","x":1299.7331208706944,"y":563.1882172938572}"
+method call time=1792115779.879488 sender=:1.13 -> destination=org.kos.Platform serial=447710 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.929492 sender=:1.13 -> destination=org.kos.Platform serial=447711 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115779.979493 sender=:1.13 -> destination=org.kos.Platform serial=447712 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.025540 sender=:1.13 -> destination=org.freedesktop.DBus serial=447713 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=GetConnectionUnixProcessID
+   string ":1.24859"
+method return time=1792115780.028127 sender=:1.13 -> destination=:1.24859 serial=447714 reply_serial=2
+   array [
+      dict entry(
+         string "format"
+         variant             uint32 6
+      )
+      dict entry(
+         string "height"
+         variant             uint32 64
+      )
+      dict entry(
+         string "scale"
+         variant             double 1
+      )
+      dict entry(
+         string "stride"
+         variant             uint32 256
+      )
+      dict entry(
+         string "type"
+         variant             string "raw"
+      )
+      dict entry(
+         string "width"
+         variant             uint32 64
+      )
+   ]
+method call time=1792115780.028752 sender=:1.13 -> destination=org.kos.Platform serial=447715 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.079512 sender=:1.13 -> destination=org.kos.Platform serial=447716 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.101521 sender=:1.13 -> destination=org.kos.Platform serial=447717 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"button":1,"timestamp":1792115780101,"type":"global-pointer-press","x":1299.7331208706944,"y":563.1882172938572}"
+method call time=1792115780.128942 sender=:1.13 -> destination=org.kos.Platform serial=447718 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.179530 sender=:1.13 -> destination=org.kos.Platform serial=447719 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.229380 sender=:1.13 -> destination=org.kos.Platform serial=447720 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.279010 sender=:1.13 -> destination=org.kos.Platform serial=447721 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.329410 sender=:1.13 -> destination=org.kos.Platform serial=447722 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.381210 sender=:1.13 -> destination=org.kos.Platform serial=447723 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.406397 sender=:1.13 -> destination=org.kos.Platform serial=447724 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"type":"snapshot","activeId":"df024682-18e7-4bc0-a44a-10806cd01193","activeDesktop":false,"windows":[{"id":"35d77d6e-0ee7-42a0-a2b1-4e5f6636d598","pid":3218,"appId":"clash-verge","title":"Clash Verge","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":536.582963768418,"y":227.62036761478473,"width":940,"height":700},"outputName":"DP-3","maximized":false,"visible":true},{"id":"01d4f58d-92ae-4e3e-b453-983a4abd547e","pid":5435,"appId":"open-orpheus","title":"等我先说 - 夏天Alex","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":0,"y":0,"width":1920,"height":1080},"outputName":"DP-3","maximized":true,"visible":true},{"id":"7f79715c-b972-4716-bd31-1d3ac206842f","pid":50949,"appId":"cc-switch","title":"","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":151.58904883255664,"y":448.1312879316678,"width":1360,"height":723},"outputName":"DP-3","maximized":false,"visible":true},{"id":"963dd8a0-78ac-41e1-bd25-4ab68b81b6cb","pid":76947,"appId":"dsh-tauri-app","title":"DSH Desktop","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":347.16667833433996,"y":800.9075832979466,"width":1920,"height":1080},"outputName":"DP-3","maximized":false,"visible":true},{"id":"70547f92-fd6d-4353-8735-f4632fb21a25","pid":194975,"appId":"org.kde.dolphin","title":"SeaShot — Dolphin","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":756.6323215915791,"y":175.1758932374064,"width":843,"height":679},"outputName":"DP-3","maximized":false,"visible":true},{"id":"1209843e-8ba9-4a1b-8e6b-39b5707ce4bd","pid":27689,"appId":"org.telegram.desktop","title":"‎⁨豪猪平台⁩ – (6513)","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":296.6434884508258,"y":852.1458697599544,"width":801,"height":594},"outputName":"DP-3","maximized":false,"visible":true},{"id":"228dcb92-c398-4d44-978a-1acf565159d3","pid":50252,"appId":"microsoft-edge","title":"SeaShot - 搜索 和另外 9 个页面 - 个人 - Microsoft​ Edge","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":196.26216330471186,"y":809.4213727620925,"width":993.0000000000001,"height":821},"outputName":"DP-3","maximized":false,"visible":true},{"id":"a4f04ce5-2b84-479b-953e-b6fa14f4d85f","pid":2746,"appId":"qq","title":"QQ","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":772,"y":257,"width":957,"height":720},"outputName":"DP-3","maximized":false,"visible":true},{"id":"26604bc4-e08c-4c45-82ae-c4bcabc7c38d","pid":253902,"appId":"com.mitchellh.ghostty","title":"π - SeaShot","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":220.89436936676515,"y":244.24504026896034,"width":800,"height":628},"outputName":"DP-3","maximized":false,"visible":true},{"id":"df024682-18e7-4bc0-a44a-10806cd01193","pid":2746,"appId":"qq","title":"图片查看器","activated":true,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":467,"y":102,"width":985,"height":875},"outputName":"DP-3","maximized":false,"visible":true}]}"
+method call time=1792115780.415122 sender=:1.13 -> destination=org.freedesktop.DBus serial=447725 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=GetConnectionUnixProcessID
+   string ":1.22812"
+method return time=1792115780.422653 sender=:1.13 -> destination=:1.22812 serial=447726 reply_serial=35292
+   array [
+      dict entry(
+         string "format"
+         variant             uint32 6
+      )
+      dict entry(
+         string "height"
+         variant             uint32 806
+      )
+      dict entry(
+         string "scale"
+         variant             double 1
+      )
+      dict entry(
+         string "stride"
+         variant             uint32 4172
+      )
+      dict entry(
+         string "type"
+         variant             string "raw"
+      )
+      dict entry(
+         string "width"
+         variant             uint32 1043
+      )
+      dict entry(
+         string "windowId"
+         variant             string "{a4f04ce5-2b84-479b-953e-b6fa14f4d85f}"
+      )
+   ]
+method return time=1792115780.422869 sender=:1.13 -> destination=:1.22812 serial=447727 reply_serial=35295
+   array [
+      dict entry(
+         string "available"
+         variant             boolean true
+      )
+      dict entry(
+         string "path"
+         variant             string "/com/canonical/menu/12003F1"
+      )
+      dict entry(
+         string "service"
+         variant             string ":1.297"
+      )
+   ]
+method call time=1792115780.429176 sender=:1.13 -> destination=org.kos.Platform serial=447728 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.478994 sender=:1.13 -> destination=org.kos.Platform serial=447729 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.528978 sender=:1.13 -> destination=org.kos.Platform serial=447730 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.579008 sender=:1.13 -> destination=org.kos.Platform serial=447731 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.628786 sender=:1.13 -> destination=org.kos.Platform serial=447732 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.679249 sender=:1.13 -> destination=org.kos.Platform serial=447733 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.729418 sender=:1.13 -> destination=org.kos.Platform serial=447734 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.779344 sender=:1.13 -> destination=org.kos.Platform serial=447735 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method return time=1792115780.798230 sender=:1.13 -> destination=:1.24860 serial=447736 reply_serial=16
+   variant       boolean false
+method return time=1792115780.798363 sender=:1.13 -> destination=:1.24860 serial=447737 reply_serial=17
+   variant       boolean false
+method call time=1792115780.829288 sender=:1.13 -> destination=org.kos.Platform serial=447738 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.879253 sender=:1.13 -> destination=org.kos.Platform serial=447739 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.929686 sender=:1.13 -> destination=org.kos.Platform serial=447740 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115780.979678 sender=:1.13 -> destination=org.kos.Platform serial=447741 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.029720 sender=:1.13 -> destination=org.kos.Platform serial=447742 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.079716 sender=:1.13 -> destination=org.kos.Platform serial=447743 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.129717 sender=:1.13 -> destination=org.kos.Platform serial=447744 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.179715 sender=:1.13 -> destination=org.kos.Platform serial=447745 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.229766 sender=:1.13 -> destination=org.kos.Platform serial=447746 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.279753 sender=:1.13 -> destination=org.kos.Platform serial=447747 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.329471 sender=:1.13 -> destination=org.kos.Platform serial=447748 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.378764 sender=:1.13 -> destination=org.kos.Platform serial=447749 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.429762 sender=:1.13 -> destination=org.kos.Platform serial=447750 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.478784 sender=:1.13 -> destination=org.kos.Platform serial=447751 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.528781 sender=:1.13 -> destination=org.kos.Platform serial=447752 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.578819 sender=:1.13 -> destination=org.kos.Platform serial=447753 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.628800 sender=:1.13 -> destination=org.kos.Platform serial=447754 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.678798 sender=:1.13 -> destination=org.kos.Platform serial=447755 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.728812 sender=:1.13 -> destination=org.kos.Platform serial=447756 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.778836 sender=:1.13 -> destination=org.kos.Platform serial=447757 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.828833 sender=:1.13 -> destination=org.kos.Platform serial=447758 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method return time=1792115781.863148 sender=:1.13 -> destination=:1.22812 serial=447759 reply_serial=35330
+   array [
+      dict entry(
+         string "available"
+         variant             boolean true
+      )
+      dict entry(
+         string "path"
+         variant             string "/com/canonical/menu/12003F1"
+      )
+      dict entry(
+         string "service"
+         variant             string ":1.297"
+      )
+   ]
+method call time=1792115781.878835 sender=:1.13 -> destination=org.kos.Platform serial=447760 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.928852 sender=:1.13 -> destination=org.kos.Platform serial=447761 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115781.978859 sender=:1.13 -> destination=org.kos.Platform serial=447762 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.028878 sender=:1.13 -> destination=org.kos.Platform serial=447763 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.078883 sender=:1.13 -> destination=org.kos.Platform serial=447764 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.128882 sender=:1.13 -> destination=org.kos.Platform serial=447765 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.178894 sender=:1.13 -> destination=org.kos.Platform serial=447766 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.228850 sender=:1.13 -> destination=org.kos.Platform serial=447767 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.278913 sender=:1.13 -> destination=org.kos.Platform serial=447768 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.328920 sender=:1.13 -> destination=org.kos.Platform serial=447769 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.378933 sender=:1.13 -> destination=org.kos.Platform serial=447770 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.428940 sender=:1.13 -> destination=org.kos.Platform serial=447771 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.478967 sender=:1.13 -> destination=org.kos.Platform serial=447772 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.528957 sender=:1.13 -> destination=org.kos.Platform serial=447773 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.578974 sender=:1.13 -> destination=org.kos.Platform serial=447774 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.628975 sender=:1.13 -> destination=org.kos.Platform serial=447775 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.678988 sender=:1.13 -> destination=org.kos.Platform serial=447776 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method return time=1792115782.699733 sender=:1.13 -> destination=:1.22812 serial=447777 reply_serial=35350
+method return time=1792115782.717897 sender=:1.13 -> destination=:1.24863 serial=447778 reply_serial=16
+   variant       boolean false
+method return time=1792115782.717995 sender=:1.13 -> destination=:1.24863 serial=447779 reply_serial=17
+   variant       boolean false
+method call time=1792115782.728969 sender=:1.13 -> destination=org.kos.Platform serial=447780 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.779005 sender=:1.13 -> destination=org.kos.Platform serial=447781 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.829020 sender=:1.13 -> destination=org.kos.Platform serial=447782 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.879019 sender=:1.13 -> destination=org.kos.Platform serial=447783 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.929048 sender=:1.13 -> destination=org.kos.Platform serial=447784 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115782.979041 sender=:1.13 -> destination=org.kos.Platform serial=447785 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.029055 sender=:1.13 -> destination=org.kos.Platform serial=447786 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.079069 sender=:1.13 -> destination=org.kos.Platform serial=447787 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.129083 sender=:1.13 -> destination=org.kos.Platform serial=447788 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.179082 sender=:1.13 -> destination=org.kos.Platform serial=447789 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.229086 sender=:1.13 -> destination=org.kos.Platform serial=447790 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.279100 sender=:1.13 -> destination=org.kos.Platform serial=447791 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.329104 sender=:1.13 -> destination=org.kos.Platform serial=447792 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.379113 sender=:1.13 -> destination=org.kos.Platform serial=447793 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.429123 sender=:1.13 -> destination=org.kos.Platform serial=447794 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.478780 sender=:1.13 -> destination=org.kos.Platform serial=447795 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.529150 sender=:1.13 -> destination=org.kos.Platform serial=447796 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.578841 sender=:1.13 -> destination=org.kos.Platform serial=447797 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.629170 sender=:1.13 -> destination=org.kos.Platform serial=447798 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.678773 sender=:1.13 -> destination=org.kos.Platform serial=447799 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.729180 sender=:1.13 -> destination=org.kos.Platform serial=447800 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.779196 sender=:1.13 -> destination=org.kos.Platform serial=447801 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.829201 sender=:1.13 -> destination=org.kos.Platform serial=447802 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.879208 sender=:1.13 -> destination=org.kos.Platform serial=447803 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.929227 sender=:1.13 -> destination=org.kos.Platform serial=447804 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115783.939549 sender=:1.13 -> destination=org.kos.Platform serial=447805 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"button":1,"timestamp":1792115783939,"type":"global-pointer-press","x":1315.049260271972,"y":121.97035289874842}"
+method call time=1792115783.979222 sender=:1.13 -> destination=org.kos.Platform serial=447806 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.029033 sender=:1.13 -> destination=org.kos.Platform serial=447807 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.047970 sender=:1.13 -> destination=org.kos.Platform serial=447808 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"type":"snapshot","activeId":"df024682-18e7-4bc0-a44a-10806cd01193","activeDesktop":false,"windows":[{"id":"35d77d6e-0ee7-42a0-a2b1-4e5f6636d598","pid":3218,"appId":"clash-verge","title":"Clash Verge","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":536.582963768418,"y":227.62036761478473,"width":940,"height":700},"outputName":"DP-3","maximized":false,"visible":true},{"id":"01d4f58d-92ae-4e3e-b453-983a4abd547e","pid":5435,"appId":"open-orpheus","title":"等我先说 - 夏天Alex","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":0,"y":0,"width":1920,"height":1080},"outputName":"DP-3","maximized":true,"visible":true},{"id":"7f79715c-b972-4716-bd31-1d3ac206842f","pid":50949,"appId":"cc-switch","title":"","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":151.58904883255664,"y":448.1312879316678,"width":1360,"height":723},"outputName":"DP-3","maximized":false,"visible":true},{"id":"963dd8a0-78ac-41e1-bd25-4ab68b81b6cb","pid":76947,"appId":"dsh-tauri-app","title":"DSH Desktop","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":347.16667833433996,"y":800.9075832979466,"width":1920,"height":1080},"outputName":"DP-3","maximized":false,"visible":true},{"id":"70547f92-fd6d-4353-8735-f4632fb21a25","pid":194975,"appId":"org.kde.dolphin","title":"SeaShot — Dolphin","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":756.6323215915791,"y":175.1758932374064,"width":843,"height":679},"outputName":"DP-3","maximized":false,"visible":true},{"id":"1209843e-8ba9-4a1b-8e6b-39b5707ce4bd","pid":27689,"appId":"org.telegram.desktop","title":"‎⁨豪猪平台⁩ – (6513)","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":296.6434884508258,"y":852.1458697599544,"width":801,"height":594},"outputName":"DP-3","maximized":false,"visible":true},{"id":"228dcb92-c398-4d44-978a-1acf565159d3","pid":50252,"appId":"microsoft-edge","title":"SeaShot - 搜索 和另外 9 个页面 - 个人 - Microsoft​ Edge","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":196.26216330471186,"y":809.4213727620925,"width":993.0000000000001,"height":821},"outputName":"DP-3","maximized":false,"visible":true},{"id":"a4f04ce5-2b84-479b-953e-b6fa14f4d85f","pid":2746,"appId":"qq","title":"QQ","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":772,"y":257,"width":957,"height":720},"outputName":"DP-3","maximized":false,"visible":true},{"id":"26604bc4-e08c-4c45-82ae-c4bcabc7c38d","pid":253902,"appId":"com.mitchellh.ghostty","title":"π - SeaShot","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":220.89436936676515,"y":244.24504026896034,"width":800,"height":628},"outputName":"DP-3","maximized":false,"visible":true},{"id":"df024682-18e7-4bc0-a44a-10806cd01193","pid":2746,"appId":"qq","title":"图片查看器","activated":true,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":419,"y":111,"width":985,"height":875},"outputName":"DP-3","maximized":false,"visible":true}]}"
+method call time=1792115784.079240 sender=:1.13 -> destination=org.kos.Platform serial=447809 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.127626 sender=:1.13 -> destination=org.kos.Platform serial=447810 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"type":"snapshot","activeId":"df024682-18e7-4bc0-a44a-10806cd01193","activeDesktop":false,"windows":[{"id":"35d77d6e-0ee7-42a0-a2b1-4e5f6636d598","pid":3218,"appId":"clash-verge","title":"Clash Verge","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":536.582963768418,"y":227.62036761478473,"width":940,"height":700},"outputName":"DP-3","maximized":false,"visible":true},{"id":"01d4f58d-92ae-4e3e-b453-983a4abd547e","pid":5435,"appId":"open-orpheus","title":"等我先说 - 夏天Alex","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":0,"y":0,"width":1920,"height":1080},"outputName":"DP-3","maximized":true,"visible":true},{"id":"7f79715c-b972-4716-bd31-1d3ac206842f","pid":50949,"appId":"cc-switch","title":"","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":151.58904883255664,"y":448.1312879316678,"width":1360,"height":723},"outputName":"DP-3","maximized":false,"visible":true},{"id":"963dd8a0-78ac-41e1-bd25-4ab68b81b6cb","pid":76947,"appId":"dsh-tauri-app","title":"DSH Desktop","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":347.16667833433996,"y":800.9075832979466,"width":1920,"height":1080},"outputName":"DP-3","maximized":false,"visible":true},{"id":"70547f92-fd6d-4353-8735-f4632fb21a25","pid":194975,"appId":"org.kde.dolphin","title":"SeaShot — Dolphin","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":756.6323215915791,"y":175.1758932374064,"width":843,"height":679},"outputName":"DP-3","maximized":false,"visible":true},{"id":"1209843e-8ba9-4a1b-8e6b-39b5707ce4bd","pid":27689,"appId":"org.telegram.desktop","title":"‎⁨豪猪平台⁩ – (6513)","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":296.6434884508258,"y":852.1458697599544,"width":801,"height":594},"outputName":"DP-3","maximized":false,"visible":true},{"id":"228dcb92-c398-4d44-978a-1acf565159d3","pid":50252,"appId":"microsoft-edge","title":"SeaShot - 搜索 和另外 9 个页面 - 个人 - Microsoft​ Edge","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":196.26216330471186,"y":809.4213727620925,"width":993.0000000000001,"height":821},"outputName":"DP-3","maximized":false,"visible":true},{"id":"a4f04ce5-2b84-479b-953e-b6fa14f4d85f","pid":2746,"appId":"qq","title":"QQ","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":772,"y":257,"width":957,"height":720},"outputName":"DP-3","maximized":false,"visible":true},{"id":"26604bc4-e08c-4c45-82ae-c4bcabc7c38d","pid":253902,"appId":"com.mitchellh.ghostty","title":"π - SeaShot","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":220.89436936676515,"y":244.24504026896034,"width":800,"height":628},"outputName":"DP-3","maximized":false,"visible":true},{"id":"df024682-18e7-4bc0-a44a-10806cd01193","pid":2746,"appId":"qq","title":"图片查看器","activated":true,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":389,"y":114,"width":985,"height":875},"outputName":"DP-3","maximized":false,"visible":true}]}"
+method call time=1792115784.128866 sender=:1.13 -> destination=org.kos.Platform serial=447811 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.179256 sender=:1.13 -> destination=org.kos.Platform serial=447812 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.216095 sender=:1.13 -> destination=org.kos.Platform serial=447813 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"type":"snapshot","activeId":"df024682-18e7-4bc0-a44a-10806cd01193","activeDesktop":false,"windows":[{"id":"35d77d6e-0ee7-42a0-a2b1-4e5f6636d598","pid":3218,"appId":"clash-verge","title":"Clash Verge","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":536.582963768418,"y":227.62036761478473,"width":940,"height":700},"outputName":"DP-3","maximized":false,"visible":true},{"id":"01d4f58d-92ae-4e3e-b453-983a4abd547e","pid":5435,"appId":"open-orpheus","title":"等我先说 - 夏天Alex","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":0,"y":0,"width":1920,"height":1080},"outputName":"DP-3","maximized":true,"visible":true},{"id":"7f79715c-b972-4716-bd31-1d3ac206842f","pid":50949,"appId":"cc-switch","title":"","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":151.58904883255664,"y":448.1312879316678,"width":1360,"height":723},"outputName":"DP-3","maximized":false,"visible":true},{"id":"963dd8a0-78ac-41e1-bd25-4ab68b81b6cb","pid":76947,"appId":"dsh-tauri-app","title":"DSH Desktop","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":347.16667833433996,"y":800.9075832979466,"width":1920,"height":1080},"outputName":"DP-3","maximized":false,"visible":true},{"id":"70547f92-fd6d-4353-8735-f4632fb21a25","pid":194975,"appId":"org.kde.dolphin","title":"SeaShot — Dolphin","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":756.6323215915791,"y":175.1758932374064,"width":843,"height":679},"outputName":"DP-3","maximized":false,"visible":true},{"id":"1209843e-8ba9-4a1b-8e6b-39b5707ce4bd","pid":27689,"appId":"org.telegram.desktop","title":"‎⁨豪猪平台⁩ – (6513)","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":296.6434884508258,"y":852.1458697599544,"width":801,"height":594},"outputName":"DP-3","maximized":false,"visible":true},{"id":"228dcb92-c398-4d44-978a-1acf565159d3","pid":50252,"appId":"microsoft-edge","title":"SeaShot - 搜索 和另外 9 个页面 - 个人 - Microsoft​ Edge","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":196.26216330471186,"y":809.4213727620925,"width":993.0000000000001,"height":821},"outputName":"DP-3","maximized":false,"visible":true},{"id":"a4f04ce5-2b84-479b-953e-b6fa14f4d85f","pid":2746,"appId":"qq","title":"QQ","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":772,"y":257,"width":957,"height":720},"outputName":"DP-3","maximized":false,"visible":true},{"id":"26604bc4-e08c-4c45-82ae-c4bcabc7c38d","pid":253902,"appId":"com.mitchellh.ghostty","title":"π - SeaShot","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":220.89436936676515,"y":244.24504026896034,"width":800,"height":628},"outputName":"DP-3","maximized":false,"visible":true},{"id":"df024682-18e7-4bc0-a44a-10806cd01193","pid":2746,"appId":"qq","title":"图片查看器","activated":true,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":383,"y":115,"width":985,"height":875},"outputName":"DP-3","maximized":false,"visible":true}]}"
+method call time=1792115784.228791 sender=:1.13 -> destination=org.kos.Platform serial=447814 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.279268 sender=:1.13 -> destination=org.kos.Platform serial=447815 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.328793 sender=:1.13 -> destination=org.kos.Platform serial=447816 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.359822 sender=:1.13 -> destination=org.kos.Platform serial=447817 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"type":"snapshot","activeId":"df024682-18e7-4bc0-a44a-10806cd01193","activeDesktop":false,"windows":[{"id":"35d77d6e-0ee7-42a0-a2b1-4e5f6636d598","pid":3218,"appId":"clash-verge","title":"Clash Verge","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":536.582963768418,"y":227.62036761478473,"width":940,"height":700},"outputName":"DP-3","maximized":false,"visible":true},{"id":"01d4f58d-92ae-4e3e-b453-983a4abd547e","pid":5435,"appId":"open-orpheus","title":"等我先说 - 夏天Alex","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":0,"y":0,"width":1920,"height":1080},"outputName":"DP-3","maximized":true,"visible":true},{"id":"7f79715c-b972-4716-bd31-1d3ac206842f","pid":50949,"appId":"cc-switch","title":"","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":151.58904883255664,"y":448.1312879316678,"width":1360,"height":723},"outputName":"DP-3","maximized":false,"visible":true},{"id":"963dd8a0-78ac-41e1-bd25-4ab68b81b6cb","pid":76947,"appId":"dsh-tauri-app","title":"DSH Desktop","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":347.16667833433996,"y":800.9075832979466,"width":1920,"height":1080},"outputName":"DP-3","maximized":false,"visible":true},{"id":"70547f92-fd6d-4353-8735-f4632fb21a25","pid":194975,"appId":"org.kde.dolphin","title":"SeaShot — Dolphin","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":756.6323215915791,"y":175.1758932374064,"width":843,"height":679},"outputName":"DP-3","maximized":false,"visible":true},{"id":"1209843e-8ba9-4a1b-8e6b-39b5707ce4bd","pid":27689,"appId":"org.telegram.desktop","title":"‎⁨豪猪平台⁩ – (6513)","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":296.6434884508258,"y":852.1458697599544,"width":801,"height":594},"outputName":"DP-3","maximized":false,"visible":true},{"id":"228dcb92-c398-4d44-978a-1acf565159d3","pid":50252,"appId":"microsoft-edge","title":"SeaShot - 搜索 和另外 9 个页面 - 个人 - Microsoft​ Edge","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":196.26216330471186,"y":809.4213727620925,"width":993.0000000000001,"height":821},"outputName":"DP-3","maximized":false,"visible":true},{"id":"a4f04ce5-2b84-479b-953e-b6fa14f4d85f","pid":2746,"appId":"qq","title":"QQ","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":772,"y":257,"width":957,"height":720},"outputName":"DP-3","maximized":false,"visible":true},{"id":"26604bc4-e08c-4c45-82ae-c4bcabc7c38d","pid":253902,"appId":"com.mitchellh.ghostty","title":"π - SeaShot","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":220.89436936676515,"y":244.24504026896034,"width":800,"height":628},"outputName":"DP-3","maximized":false,"visible":true},{"id":"df024682-18e7-4bc0-a44a-10806cd01193","pid":2746,"appId":"qq","title":"图片查看器","activated":true,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":380,"y":116,"width":985,"height":875},"outputName":"DP-3","maximized":false,"visible":true}]}"
+method call time=1792115784.379294 sender=:1.13 -> destination=org.kos.Platform serial=447818 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.429318 sender=:1.13 -> destination=org.kos.Platform serial=447819 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.479321 sender=:1.13 -> destination=org.kos.Platform serial=447820 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.529318 sender=:1.13 -> destination=org.kos.Platform serial=447821 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.578899 sender=:1.13 -> destination=org.kos.Platform serial=447822 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.632331 sender=:1.13 -> destination=org.kos.Platform serial=447823 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method return time=1792115784.641628 sender=:1.13 -> destination=:1.24867 serial=447824 reply_serial=16
+   variant       boolean false
+method return time=1792115784.641775 sender=:1.13 -> destination=:1.24867 serial=447825 reply_serial=17
+   variant       boolean false
+method call time=1792115784.678907 sender=:1.13 -> destination=org.kos.Platform serial=447826 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.729363 sender=:1.13 -> destination=org.kos.Platform serial=447827 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.778831 sender=:1.13 -> destination=org.kos.Platform serial=447828 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.829384 sender=:1.13 -> destination=org.kos.Platform serial=447829 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.879383 sender=:1.13 -> destination=org.kos.Platform serial=447830 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.928810 sender=:1.13 -> destination=org.kos.Platform serial=447831 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115784.978814 sender=:1.13 -> destination=org.kos.Platform serial=447832 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.003682 sender=:1.13 -> destination=org.kos.Platform serial=447833 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"type":"snapshot","activeId":"df024682-18e7-4bc0-a44a-10806cd01193","activeDesktop":false,"windows":[{"id":"35d77d6e-0ee7-42a0-a2b1-4e5f6636d598","pid":3218,"appId":"clash-verge","title":"Clash Verge","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":536.582963768418,"y":227.62036761478473,"width":940,"height":700},"outputName":"DP-3","maximized":false,"visible":true},{"id":"01d4f58d-92ae-4e3e-b453-983a4abd547e","pid":5435,"appId":"open-orpheus","title":"等我先说 - 夏天Alex","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":0,"y":0,"width":1920,"height":1080},"outputName":"DP-3","maximized":true,"visible":true},{"id":"7f79715c-b972-4716-bd31-1d3ac206842f","pid":50949,"appId":"cc-switch","title":"","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":151.58904883255664,"y":448.1312879316678,"width":1360,"height":723},"outputName":"DP-3","maximized":false,"visible":true},{"id":"963dd8a0-78ac-41e1-bd25-4ab68b81b6cb","pid":76947,"appId":"dsh-tauri-app","title":"DSH Desktop","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":347.16667833433996,"y":800.9075832979466,"width":1920,"height":1080},"outputName":"DP-3","maximized":false,"visible":true},{"id":"70547f92-fd6d-4353-8735-f4632fb21a25","pid":194975,"appId":"org.kde.dolphin","title":"SeaShot — Dolphin","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":756.6323215915791,"y":175.1758932374064,"width":843,"height":679},"outputName":"DP-3","maximized":false,"visible":true},{"id":"1209843e-8ba9-4a1b-8e6b-39b5707ce4bd","pid":27689,"appId":"org.telegram.desktop","title":"‎⁨豪猪平台⁩ – (6513)","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":296.6434884508258,"y":852.1458697599544,"width":801,"height":594},"outputName":"DP-3","maximized":false,"visible":true},{"id":"228dcb92-c398-4d44-978a-1acf565159d3","pid":50252,"appId":"microsoft-edge","title":"SeaShot - 搜索 和另外 9 个页面 - 个人 - Microsoft​ Edge","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":196.26216330471186,"y":809.4213727620925,"width":993.0000000000001,"height":821},"outputName":"DP-3","maximized":false,"visible":true},{"id":"a4f04ce5-2b84-479b-953e-b6fa14f4d85f","pid":2746,"appId":"qq","title":"QQ","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":772,"y":257,"width":957,"height":720},"outputName":"DP-3","maximized":false,"visible":true},{"id":"26604bc4-e08c-4c45-82ae-c4bcabc7c38d","pid":253902,"appId":"com.mitchellh.ghostty","title":"π - SeaShot","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":220.89436936676515,"y":244.24504026896034,"width":800,"height":628},"outputName":"DP-3","maximized":false,"visible":true},{"id":"df024682-18e7-4bc0-a44a-10806cd01193","pid":2746,"appId":"qq","title":"图片查看器","activated":true,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":376,"y":119,"width":985,"height":875},"outputName":"DP-3","maximized":false,"visible":true}]}"
+method call time=1792115785.029027 sender=:1.13 -> destination=org.kos.Platform serial=447834 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.078896 sender=:1.13 -> destination=org.kos.Platform serial=447835 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.129024 sender=:1.13 -> destination=org.kos.Platform serial=447836 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.178968 sender=:1.13 -> destination=org.kos.Platform serial=447837 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.229133 sender=:1.13 -> destination=org.kos.Platform serial=447838 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.278856 sender=:1.13 -> destination=org.kos.Platform serial=447839 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.329064 sender=:1.13 -> destination=org.kos.Platform serial=447840 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.378924 sender=:1.13 -> destination=org.kos.Platform serial=447841 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.428913 sender=:1.13 -> destination=org.kos.Platform serial=447842 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.478849 sender=:1.13 -> destination=org.kos.Platform serial=447843 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.528767 sender=:1.13 -> destination=org.kos.Platform serial=447844 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.578991 sender=:1.13 -> destination=org.kos.Platform serial=447845 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method return time=1792115785.593320 sender=:1.13 -> destination=:1.22812 serial=447846 reply_serial=35416
+method call time=1792115785.628801 sender=:1.13 -> destination=org.kos.Platform serial=447847 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.679006 sender=:1.13 -> destination=org.kos.Platform serial=447848 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.728789 sender=:1.13 -> destination=org.kos.Platform serial=447849 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.778939 sender=:1.13 -> destination=org.kos.Platform serial=447850 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.828831 sender=:1.13 -> destination=org.kos.Platform serial=447851 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.879088 sender=:1.13 -> destination=org.kos.Platform serial=447852 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.929257 sender=:1.13 -> destination=org.kos.Platform serial=447853 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115785.979063 sender=:1.13 -> destination=org.kos.Platform serial=447854 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.029177 sender=:1.13 -> destination=org.kos.Platform serial=447855 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.078987 sender=:1.13 -> destination=org.kos.Platform serial=447856 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.129235 sender=:1.13 -> destination=org.kos.Platform serial=447857 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.179029 sender=:1.13 -> destination=org.kos.Platform serial=447858 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.229240 sender=:1.13 -> destination=org.kos.Platform serial=447859 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.279042 sender=:1.13 -> destination=org.kos.Platform serial=447860 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.329054 sender=:1.13 -> destination=org.kos.Platform serial=447861 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.379113 sender=:1.13 -> destination=org.kos.Platform serial=447862 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.429059 sender=:1.13 -> destination=org.kos.Platform serial=447863 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.479139 sender=:1.13 -> destination=org.kos.Platform serial=447864 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.529043 sender=:1.13 -> destination=org.kos.Platform serial=447865 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method return time=1792115786.572575 sender=:1.13 -> destination=:1.24869 serial=447866 reply_serial=16
+   variant       boolean false
+method return time=1792115786.572709 sender=:1.13 -> destination=:1.24869 serial=447867 reply_serial=17
+   variant       boolean false
+method call time=1792115786.579276 sender=:1.13 -> destination=org.kos.Platform serial=447868 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.629060 sender=:1.13 -> destination=org.kos.Platform serial=447869 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.679231 sender=:1.13 -> destination=org.kos.Platform serial=447870 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.683570 sender=:1.13 -> destination=org.kos.Platform serial=447871 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"button":1,"timestamp":1792115786683,"type":"global-pointer-press","x":1496.2302954823488,"y":492.69494925334453}"
+method call time=1792115786.728978 sender=:1.13 -> destination=org.kos.Platform serial=447872 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.778992 sender=:1.13 -> destination=org.kos.Platform serial=447873 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.804399 sender=:1.13 -> destination=org.kos.Platform serial=447874 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"type":"snapshot","activeId":"a4f04ce5-2b84-479b-953e-b6fa14f4d85f","activeDesktop":false,"windows":[{"id":"35d77d6e-0ee7-42a0-a2b1-4e5f6636d598","pid":3218,"appId":"clash-verge","title":"Clash Verge","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":536.582963768418,"y":227.62036761478473,"width":940,"height":700},"outputName":"DP-3","maximized":false,"visible":true},{"id":"01d4f58d-92ae-4e3e-b453-983a4abd547e","pid":5435,"appId":"open-orpheus","title":"等我先说 - 夏天Alex","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":0,"y":0,"width":1920,"height":1080},"outputName":"DP-3","maximized":true,"visible":true},{"id":"7f79715c-b972-4716-bd31-1d3ac206842f","pid":50949,"appId":"cc-switch","title":"","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":151.58904883255664,"y":448.1312879316678,"width":1360,"height":723},"outputName":"DP-3","maximized":false,"visible":true},{"id":"963dd8a0-78ac-41e1-bd25-4ab68b81b6cb","pid":76947,"appId":"dsh-tauri-app","title":"DSH Desktop","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":347.16667833433996,"y":800.9075832979466,"width":1920,"height":1080},"outputName":"DP-3","maximized":false,"visible":true},{"id":"70547f92-fd6d-4353-8735-f4632fb21a25","pid":194975,"appId":"org.kde.dolphin","title":"SeaShot — Dolphin","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":756.6323215915791,"y":175.1758932374064,"width":843,"height":679},"outputName":"DP-3","maximized":false,"visible":true},{"id":"1209843e-8ba9-4a1b-8e6b-39b5707ce4bd","pid":27689,"appId":"org.telegram.desktop","title":"‎⁨豪猪平台⁩ – (6513)","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":296.6434884508258,"y":852.1458697599544,"width":801,"height":594},"outputName":"DP-3","maximized":false,"visible":true},{"id":"228dcb92-c398-4d44-978a-1acf565159d3","pid":50252,"appId":"microsoft-edge","title":"SeaShot - 搜索 和另外 9 个页面 - 个人 - Microsoft​ Edge","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":196.26216330471186,"y":809.4213727620925,"width":993.0000000000001,"height":821},"outputName":"DP-3","maximized":false,"visible":true},{"id":"a4f04ce5-2b84-479b-953e-b6fa14f4d85f","pid":2746,"appId":"qq","title":"QQ","activated":true,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":772,"y":257,"width":957,"height":720},"outputName":"DP-3","maximized":false,"visible":true},{"id":"26604bc4-e08c-4c45-82ae-c4bcabc7c38d","pid":253902,"appId":"com.mitchellh.ghostty","title":"π - SeaShot","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":220.89436936676515,"y":244.24504026896034,"width":800,"height":628},"outputName":"DP-3","maximized":false,"visible":true},{"id":"df024682-18e7-4bc0-a44a-10806cd01193","pid":2746,"appId":"qq","title":"图片查看器","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":376,"y":119,"width":985,"height":875},"outputName":"DP-3","maximized":false,"visible":true}]}"
+method call time=1792115786.806870 sender=:1.13 -> destination=org.freedesktop.DBus serial=447875 path=/org/freedesktop/DBus; interface=org.freedesktop.DBus; member=GetConnectionUnixProcessID
+   string ":1.22812"
+method return time=1792115786.811500 sender=:1.13 -> destination=:1.22812 serial=447876 reply_serial=35444
+   array [
+      dict entry(
+         string "format"
+         variant             uint32 6
+      )
+      dict entry(
+         string "height"
+         variant             uint32 961
+      )
+      dict entry(
+         string "scale"
+         variant             double 1
+      )
+      dict entry(
+         string "stride"
+         variant             uint32 4284
+      )
+      dict entry(
+         string "type"
+         variant             string "raw"
+      )
+      dict entry(
+         string "width"
+         variant             uint32 1071
+      )
+      dict entry(
+         string "windowId"
+         variant             string "{df024682-18e7-4bc0-a44a-10806cd01193}"
+      )
+   ]
+method return time=1792115786.812152 sender=:1.13 -> destination=:1.22812 serial=447877 reply_serial=35447
+   array [
+      dict entry(
+         string "available"
+         variant             boolean true
+      )
+      dict entry(
+         string "path"
+         variant             string "/com/canonical/menu/1200011"
+      )
+      dict entry(
+         string "service"
+         variant             string ":1.297"
+      )
+   ]
+method call time=1792115786.829062 sender=:1.13 -> destination=org.kos.Platform serial=447878 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.879005 sender=:1.13 -> destination=org.kos.Platform serial=447879 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.929095 sender=:1.13 -> destination=org.kos.Platform serial=447880 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115786.979028 sender=:1.13 -> destination=org.kos.Platform serial=447881 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.029342 sender=:1.13 -> destination=org.kos.Platform serial=447882 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.079343 sender=:1.13 -> destination=org.kos.Platform serial=447883 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.129556 sender=:1.13 -> destination=org.kos.Platform serial=447884 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.179245 sender=:1.13 -> destination=org.kos.Platform serial=447885 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.229336 sender=:1.13 -> destination=org.kos.Platform serial=447886 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.279102 sender=:1.13 -> destination=org.kos.Platform serial=447887 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.329234 sender=:1.13 -> destination=org.kos.Platform serial=447888 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.379107 sender=:1.13 -> destination=org.kos.Platform serial=447889 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.429122 sender=:1.13 -> destination=org.kos.Platform serial=447890 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.479130 sender=:1.13 -> destination=org.kos.Platform serial=447891 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.529292 sender=:1.13 -> destination=org.kos.Platform serial=447892 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.579558 sender=:1.13 -> destination=org.kos.Platform serial=447893 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.629384 sender=:1.13 -> destination=org.kos.Platform serial=447894 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.679411 sender=:1.13 -> destination=org.kos.Platform serial=447895 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.729359 sender=:1.13 -> destination=org.kos.Platform serial=447896 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.778883 sender=:1.13 -> destination=org.kos.Platform serial=447897 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.828886 sender=:1.13 -> destination=org.kos.Platform serial=447898 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.878845 sender=:1.13 -> destination=org.kos.Platform serial=447899 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.928881 sender=:1.13 -> destination=org.kos.Platform serial=447900 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115787.978865 sender=:1.13 -> destination=org.kos.Platform serial=447901 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.028895 sender=:1.13 -> destination=org.kos.Platform serial=447902 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.078841 sender=:1.13 -> destination=org.kos.Platform serial=447903 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.128944 sender=:1.13 -> destination=org.kos.Platform serial=447904 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.178951 sender=:1.13 -> destination=org.kos.Platform serial=447905 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.228956 sender=:1.13 -> destination=org.kos.Platform serial=447906 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method return time=1792115788.244729 sender=:1.13 -> destination=:1.22812 serial=447907 reply_serial=35482
+   array [
+      dict entry(
+         string "available"
+         variant             boolean true
+      )
+      dict entry(
+         string "path"
+         variant             string "/com/canonical/menu/1200011"
+      )
+      dict entry(
+         string "service"
+         variant             string ":1.297"
+      )
+   ]
+method call time=1792115788.278966 sender=:1.13 -> destination=org.kos.Platform serial=447908 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.328984 sender=:1.13 -> destination=org.kos.Platform serial=447909 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.374186 sender=:1.13 -> destination=org.kos.Platform serial=447910 path=/Platform; interface=org.kos.Platform; member=Publish
+   string "{"type":"snapshot","activeId":"a4f04ce5-2b84-479b-953e-b6fa14f4d85f","activeDesktop":false,"windows":[{"id":"35d77d6e-0ee7-42a0-a2b1-4e5f6636d598","pid":3218,"appId":"clash-verge","title":"Clash Verge","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":536.582963768418,"y":227.62036761478473,"width":940,"height":700},"outputName":"DP-3","maximized":false,"visible":true},{"id":"01d4f58d-92ae-4e3e-b453-983a4abd547e","pid":5435,"appId":"open-orpheus","title":"不配说爱我 - 常艾非","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":0,"y":0,"width":1920,"height":1080},"outputName":"DP-3","maximized":true,"visible":true},{"id":"7f79715c-b972-4716-bd31-1d3ac206842f","pid":50949,"appId":"cc-switch","title":"","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":151.58904883255664,"y":448.1312879316678,"width":1360,"height":723},"outputName":"DP-3","maximized":false,"visible":true},{"id":"963dd8a0-78ac-41e1-bd25-4ab68b81b6cb","pid":76947,"appId":"dsh-tauri-app","title":"DSH Desktop","activated":false,"minimized":true,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":347.16667833433996,"y":800.9075832979466,"width":1920,"height":1080},"outputName":"DP-3","maximized":false,"visible":true},{"id":"70547f92-fd6d-4353-8735-f4632fb21a25","pid":194975,"appId":"org.kde.dolphin","title":"SeaShot — Dolphin","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":756.6323215915791,"y":175.1758932374064,"width":843,"height":679},"outputName":"DP-3","maximized":false,"visible":true},{"id":"1209843e-8ba9-4a1b-8e6b-39b5707ce4bd","pid":27689,"appId":"org.telegram.desktop","title":"‎⁨豪猪平台⁩ – (6513)","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":296.6434884508258,"y":852.1458697599544,"width":801,"height":594},"outputName":"DP-3","maximized":false,"visible":true},{"id":"228dcb92-c398-4d44-978a-1acf565159d3","pid":50252,"appId":"microsoft-edge","title":"SeaShot - 搜索 和另外 9 个页面 - 个人 - Microsoft​ Edge","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":196.26216330471186,"y":809.4213727620925,"width":993.0000000000001,"height":821},"outputName":"DP-3","maximized":false,"visible":true},{"id":"a4f04ce5-2b84-479b-953e-b6fa14f4d85f","pid":2746,"appId":"qq","title":"QQ","activated":true,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":772,"y":257,"width":957,"height":720},"outputName":"DP-3","maximized":false,"visible":true},{"id":"26604bc4-e08c-4c45-82ae-c4bcabc7c38d","pid":253902,"appId":"com.mitchellh.ghostty","title":"π - SeaShot","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":220.89436936676515,"y":244.24504026896034,"width":800,"height":628},"outputName":"DP-3","maximized":false,"visible":true},{"id":"df024682-18e7-4bc0-a44a-10806cd01193","pid":2746,"appId":"qq","title":"图片查看器","activated":false,"minimized":false,"fullscreen":false,"urgent":false,"desktops":["20300043-7b4d-4ca0-a7d7-3c74a6dc31e6"],"onAllDesktops":false,"geometry":{"x":376,"y":119,"width":985,"height":875},"outputName":"DP-3","maximized":false,"visible":true}]}"
+method call time=1792115788.379006 sender=:1.13 -> destination=org.kos.Platform serial=447911 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.428983 sender=:1.13 -> destination=org.kos.Platform serial=447912 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method return time=1792115788.473669 sender=:1.13 -> destination=:1.22812 serial=447913 reply_serial=35490
+method call time=1792115788.478919 sender=:1.13 -> destination=org.kos.Platform serial=447914 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method return time=1792115788.492514 sender=:1.13 -> destination=:1.24871 serial=447915 reply_serial=16
+   variant       boolean false
+method return time=1792115788.492636 sender=:1.13 -> destination=:1.24871 serial=447916 reply_serial=17
+   variant       boolean false
+method call time=1792115788.528918 sender=:1.13 -> destination=org.kos.Platform serial=447917 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.579076 sender=:1.13 -> destination=org.kos.Platform serial=447918 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.629008 sender=:1.13 -> destination=org.kos.Platform serial=447919 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.679208 sender=:1.13 -> destination=org.kos.Platform serial=447920 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.729552 sender=:1.13 -> destination=org.kos.Platform serial=447921 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.778994 sender=:1.13 -> destination=org.kos.Platform serial=447922 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.829113 sender=:1.13 -> destination=org.kos.Platform serial=447923 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.879073 sender=:1.13 -> destination=org.kos.Platform serial=447924 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.929089 sender=:1.13 -> destination=org.kos.Platform serial=447925 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115788.979089 sender=:1.13 -> destination=org.kos.Platform serial=447926 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.028761 sender=:1.13 -> destination=org.kos.Platform serial=447927 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.078758 sender=:1.13 -> destination=org.kos.Platform serial=447928 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.128943 sender=:1.13 -> destination=org.kos.Platform serial=447929 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.178818 sender=:1.13 -> destination=org.kos.Platform serial=447930 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.229071 sender=:1.13 -> destination=org.kos.Platform serial=447931 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.278768 sender=:1.13 -> destination=org.kos.Platform serial=447932 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.329161 sender=:1.13 -> destination=org.kos.Platform serial=447933 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.379186 sender=:1.13 -> destination=org.kos.Platform serial=447934 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.429172 sender=:1.13 -> destination=org.kos.Platform serial=447935 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.479485 sender=:1.13 -> destination=org.kos.Platform serial=447936 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.528847 sender=:1.13 -> destination=org.kos.Platform serial=447937 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.579484 sender=:1.13 -> destination=org.kos.Platform serial=447938 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.629202 sender=:1.13 -> destination=org.kos.Platform serial=447939 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.678791 sender=:1.13 -> destination=org.kos.Platform serial=447940 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.729244 sender=:1.13 -> destination=org.kos.Platform serial=447941 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.779243 sender=:1.13 -> destination=org.kos.Platform serial=447942 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.829298 sender=:1.13 -> destination=org.kos.Platform serial=447943 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.878809 sender=:1.13 -> destination=org.kos.Platform serial=447944 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.928822 sender=:1.13 -> destination=org.kos.Platform serial=447945 path=/Platform; interface=org.kos.Platform; member=TakeCommand
+method call time=1792115789.979476 sender=:1.13 -> destination=org.kos.Platform serial=447946 path=/Platform; interface=org.kos.Platform; member=TakeCommand
