@@ -177,6 +177,11 @@ layer-shell 覆盖层、悬停虚框、单击截窗、拖拽截区、`wl-copy` �
 验收：撤销栈与几何命中的单元测试；导出尺寸 = 原图尺寸；退出未保存不留下半成品文件。
 
 ### Phase 3：配置界面 + 托盘
+
+**状态：已交付（2026-10-16）** —— 验收 7/7 通过，记录见 `docs/acceptance/phase3.md`，
+复现命令 `bash scripts/acceptance-phase3.sh`。新增 CLI：`--settings`、`--set-hotkey`、
+`--hotkey-status`、`--print-config`。
+
 第 2.6 节全部设置项 + 即时生效 + 持久化 + 快捷键冲突提示 + 托盘菜单（截图/GIF/设置/退出）。
 验收：改设置立刻生效、重启后保持、恢复默认、快捷键被占用时给出明确提示。
 

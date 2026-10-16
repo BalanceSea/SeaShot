@@ -43,6 +43,10 @@ seashot --rect 100,200,400,300 --save /tmp/rect.png [--no-copy]
 seashot --window '{uuid}' --save /tmp/window.png
 seashot --overlay-hold 5000          # 显示选择覆盖层 5 秒后退出（调试/验收）
 seashot --open-editor                # 本次截图后直接打开编辑器（覆盖配置）
+seashot --settings                   # 打开配置界面（托盘菜单「设置…」同此）
+seashot --print-config               # 打印生效中的配置（脚本/排查用）
+seashot --set-hotkey "Ctrl+Alt+S"     # 写入并注册全局快捷键（none = 解绑）
+seashot --hotkey-status              # 打印当前实际生效的快捷键
 seashot --backend=x11 --list-windows # 显式选后端（XWayland 冒烟用）
 ```
 
@@ -51,11 +55,14 @@ seashot --backend=x11 --list-windows # 显式选后端（XWayland 冒烟用）
 
 ## 快捷键
 
-PLAN 已定：**默认不注册任何键**（实测 `Ctrl+Alt+A` 已被本机 Spectacle 启动器占用）。
+三种方式（互不冲突）：
 
-- 方式一（推荐）：系统设置 → 快捷键 → 添加命令 → `seashot --capture`
-- 方式二：SeaShot 已通过 KGlobalAccel 注册了名为 `capture` 的 action（无默认绑定），
-  可在「系统设置 → 快捷键 → SeaShot」里给它绑定按键。
+- **SeaShot 配置界面**（`seashot --settings` 或托盘菜单「设置…」）：直接按录快捷键，
+  立即写进 KGlobalAccel 并落盘到 `shortcut/hotkey`；
+- **KDE 系统设置**：系统设置 → 快捷键 → SeaShot → `capture`；
+- **自定义命令**：把 `seashot --capture` 绑成 KDE 自定义快捷键。
+
+PLAN 已定：**默认不注册任何键**（实测 `Ctrl+Alt+A` 已被本机 Spectacle 启动器占用）。
 
 ## 交互约定
 
@@ -83,6 +90,17 @@ PLAN 已定：**默认不注册任何键**（实测 `Ctrl+Alt+A` 已被本机 Sp
 - 「另存为」**弹文件对话框**（不再默默落到默认目录）；「复制」只更新状态文字、不关浮层
 - 浮层用 layer-shell（`LayerOverlay`）实现，所以**全屏应用前面也能看见**
 - 带 `--save` 的脚本化调用（验收/自动化）不弹浮层，交付完就退出
+
+## 配置界面与托盘
+
+```fish
+seashot --settings     # 或常驻后点托盘图标 → 「设置…」
+```
+
+- 配置界面分五组：截图后 / 保存 / 界面 / 全局快捷键 / GIF 录制（Phase 4 生效）
+- **改动即时生效**（不用点保存），落盘到 `~/.config/seashot/seashot.conf`；「恢复默认」= 清空配置
+- 托盘菜单：截图 / 设置… / KDE 快捷键设置… / 退出；按 `ui/trayPersistent` 决定是否常驻
+- 托盘图标需要桌面提供 `StatusNotifierHost`（本机已确认；没有 host 的桌面只会记日志不会崩）
 
 ## 配置
 

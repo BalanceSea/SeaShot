@@ -28,8 +28,7 @@
 | A | `seashot --selftest` 全绿 | **PASS**（9 项检查、0 致命失败） | `evidence/a-selftest.txt` |
 | B | 覆盖层可见时截图不含覆盖层 | **PASS**：平均亮度 175.85 vs 175.99（差 0.14；若覆盖层入镜整屏压暗 47%，亮度会掉约 120） | `evidence/b1-baseline.png`、`b2-with-overlay.png`、`b2-overlay.txt` |
 | B | 覆盖层窗口被 KWin 标记为「排除出截图」 | **PASS**：`--list-windows` 中 `appId=seashot … excluded=1` | `evidence/b2-overlay.txt` |
-| C | 窗口截图与屏幕所见一致（frame 区域） | **PASS**：窗口图 730x558，frame 在图中偏移 (65,53) 与 Phase 0 用品红定位块独立测得的偏移一致；frame 区域 RMSE=**0.020**；负对照（错位 20px）RMSE=0.314 → 指标有区分度 | `evidence/c1-window.png`、`c2-area.png`、`c-analysis.txt` |
-| C | 窗口截图含装饰/阴影 | **PASS**：730x558 = frame 600x428 + 阴影边距（左 65 / 上 53 / 右 65 / 下 77），与 PLAN 决策 2、3 一致 | 同上 |
+| C | 窗口截图与屏幕所见一致（frame 区域） | **PASS**：窗口图 730x558，frame 在图中偏移 (65,53) 与 Phase 0 用品红定位块独立测得的偏移一致；frame 区域 RMSE=**0.020**；负对照（错位 20px）RMSE=0.314 → 指标有区分度 | `evidence/c1-window.png`、`c2-area.png`、`c-analysis.txt` || C | 窗口截图含装饰/阴影 | **PASS**：730x558 = frame 600x428 + 阴影边距（左 65 / 上 53 / 右 65 / 下 77），与 PLAN 决策 2、3 一致 | 同上 |
 | D | 剪贴板在 SeaShot 退出后仍可粘贴 | **PASS**：退出前后 `wl-paste --list-types` 均为 `image/png` | `evidence/d.txt` |
 | E | 连续 20 次区域截图 | **PASS**：20/20，平均 89ms，最慢 97ms（空闲桌面下未出现陈旧帧） | `evidence/e-*.txt`、`e-*.png` |
 | F | X11 后端 selftest（代码级 + XWayland 冒烟） | **PASS** | `evidence/f-x11-selftest.txt` |
@@ -52,7 +51,6 @@ C 段要拿「窗口截图」与「屏幕上同矩形」比像素，前提是**�
 这样「桌面很忙」不会冒充回归，但真问题依然会红。
 
 ## 尚未自动化的项（需你手测）
-
 1. **真实鼠标点击链路**：`seashot --capture` 后用鼠标悬停/单击/拖拽。
    自动化只能覆盖到"覆盖层显示 + 快照 + 命中选择逻辑"（后者有单元测试 `tst_selection`），
    事件投递链路没有做注入测试（本机无 `ydotool` 之类的输入注入工具）。

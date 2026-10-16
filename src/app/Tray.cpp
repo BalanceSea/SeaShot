@@ -24,6 +24,11 @@ Tray::Tray(QObject *parent)
     QAction *captureAction = m_menu->addAction(QStringLiteral("截图"));
     connect(captureAction, &QAction::triggered, this, &Tray::captureRequested);
     m_menu->addSeparator();
+    QAction *settingsAction = m_menu->addAction(QStringLiteral("设置…"));
+    connect(settingsAction, &QAction::triggered, this, &Tray::settingsRequested);
+    QAction *keysAction = m_menu->addAction(QStringLiteral("KDE 快捷键设置…"));
+    connect(keysAction, &QAction::triggered, this, &Tray::shortcutSettingsRequested);
+    m_menu->addSeparator();
     QAction *quitAction = m_menu->addAction(QStringLiteral("退出 SeaShot"));
     connect(quitAction, &QAction::triggered, this, &Tray::quitRequested);
     m_item->setContextMenu(m_menu);
@@ -37,16 +42,31 @@ Tray::Tray(QObject *parent)
 
 Tray::~Tray()
 {
-    delete m_menu;
+    // 不手动 delete m_menu：KF6 的 KStatusNotifierItem 会接管 contextMenu 的所有权，
+    // 手动再删一次就是 double free（实测在 ~Tray 里直接崩到 0x0）。
+    // 这里只把 QObject 父子关系留给 Qt 处理。
+    m_menu = nullptr;
 }
 
-void Tray::setHotkeyLabel(const QString &label)
-{
+void Tray::setHotkeyLabel(const QString &label){
     if (!m_item)
         return;
     m_item->setToolTip(QStringLiteral("camera-photo"), QStringLiteral("SeaShot"),
                        label.isEmpty() ? QStringLiteral("快捷键：未绑定（可在系统设置里绑定）")
                                        : QStringLiteral("快捷键：%1").arg(label));
+}
+
+QStringList Tray::menuActionTexts() const
+{
+    QStringList texts;
+    if (!m_menu)
+        return texts;
+    for (QAction *action : m_menu->actions()) {
+        if (action->isSeparator())
+            continue;
+        texts << action->text();
+    }
+    return texts;
 }
 
 } // namespace seashot

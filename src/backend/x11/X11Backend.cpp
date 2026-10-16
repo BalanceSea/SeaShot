@@ -454,6 +454,15 @@ bool X11Backend::setHotkey(const QKeySequence &sequence, QString *error)
     return grabHotkey(sequence, error);
 }
 
+QString X11Backend::hotkeyStatus() const
+{
+    if (!m_hotkeyGrabbed)
+        return QStringLiteral("(未绑定)");
+    return QStringLiteral("keycode=%1 modifiers=0x%2")
+        .arg(m_hotkeyKeycode)
+        .arg(m_hotkeyModifiers, 0, 16);
+}
+
 bool X11Backend::nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result)
 {
     Q_UNUSED(result)

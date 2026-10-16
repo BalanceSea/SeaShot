@@ -14,6 +14,7 @@ set(SEASHOT_CORE_SOURCES
     editor/AnnotationCanvas.cpp
     editor/EditorWindow.cpp
     app/Settings.cpp
+    app/SettingsDialog.cpp
     app/SelfTest.cpp
     app/Toast.cpp
     app/Tray.cpp
@@ -38,6 +39,7 @@ set(SEASHOT_HEADERS
     editor/AnnotationCanvas.h
     editor/EditorWindow.h
     app/Settings.h
+    app/SettingsDialog.h
     app/SelfTest.h
     app/Toast.h
     app/Tray.h

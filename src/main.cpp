@@ -67,6 +67,15 @@ int main(int argc, char **argv)
     QCommandLineOption openEditorOption(
         QStringLiteral("open-editor"),
         QStringLiteral("本次截图后直接打开编辑器（覆盖配置里的 capture/openEditorAfterCapture）"));
+    QCommandLineOption settingsOption(QStringLiteral("settings"),
+                                      QStringLiteral("打开配置界面"));
+    QCommandLineOption setHotkeyOption(QStringLiteral("set-hotkey"),
+                                       QStringLiteral("写入并注册全局快捷键（none = 解绑）"),
+                                       QStringLiteral("keys"));
+    QCommandLineOption hotkeyStatusOption(QStringLiteral("hotkey-status"),
+                                          QStringLiteral("打印当前实际生效的快捷键"));
+    QCommandLineOption printConfigOption(QStringLiteral("print-config"),
+                                         QStringLiteral("打印生效中的配置"));
 
     parser.addOption(selftestOption);
     parser.addOption(listOption);
@@ -82,6 +91,10 @@ int main(int argc, char **argv)
     parser.addOption(annotateInOption);
     parser.addOption(annotateOutOption);
     parser.addOption(openEditorOption);
+    parser.addOption(settingsOption);
+    parser.addOption(setHotkeyOption);
+    parser.addOption(hotkeyStatusOption);
+    parser.addOption(printConfigOption);
     parser.process(app);
 
     seashot::Options options;
@@ -98,6 +111,10 @@ int main(int argc, char **argv)
     options.annotateIn = parser.value(annotateInOption);
     options.annotateOut = parser.value(annotateOutOption);
     options.openEditor = parser.isSet(openEditorOption);
+    options.settings = parser.isSet(settingsOption);
+    options.setHotkey = parser.value(setHotkeyOption);
+    options.hotkeyStatus = parser.isSet(hotkeyStatusOption);
+    options.printConfig = parser.isSet(printConfigOption);
 
     if (parser.isSet(rectOption)) {
         const QStringList parts = parser.value(rectOption).split(QLatin1Char(','));

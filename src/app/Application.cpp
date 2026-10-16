@@ -2,6 +2,7 @@
 
 #include "app/SelfTest.h"
 #include "app/Settings.h"
+#include "app/SettingsDialog.h"
 #include "app/Toast.h"
 #include "app/Tray.h"
 #include "backend/CaptureBackend.h"
@@ -18,12 +19,14 @@
 #endif
 
 #include <QCoreApplication>
+#include <QDialog>
 #include <QEventLoop>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QLocalServer>
 #include <QLocalSocket>
+#include <QProcess>
 #include <QScreen>
 #include <QSocketNotifier>
 #include <QStandardPaths>
@@ -117,6 +120,9 @@ Application::Application(const Options &options, QObject *parent)
     connect(m_toast.get(), &Toast::copyRequested, this, &Application::copyLast);
     connect(m_toast.get(), &Toast::editRequested, this,
             [this]() { openEditor(m_lastImage, m_lastSavedPath); });
+
+    // 配置变化即时生效（配置界面每次改动都会发这个信号）
+    connect(m_settings.get(), &Settings::changed, this, &Application::applySettings);
 
     // 优雅退出：被 kill/logout 时也把 KWin 助手脚本卸掉（否则会残留成「陈旧脚本」）
     if (::pipe(g_signalFds) == 0) {
@@ -296,25 +302,109 @@ QRect Application::virtualGeometry() const
 
 void Application::startResident()
 {
-    if (m_settings->trayPersistent()) {
+    // 托盘 / 浮层超时 / 阴影边距 / 快捷键 均由 applySettings() 按当前配置建立，
+    // 之后任何配置改动（配置界面里点一下）也会走同一条路径即时生效。
+    if (m_backend) {
+        m_backend->setHotkeyCallback([this]() {
+            SS_INFO() << "[app] 全局快捷键触发截图";
+            startCapture();
+        });
+    }
+    applySettings();
+}
+
+void Application::applySettings()
+{
+    if (m_toast)
+        m_toast->setAutoHideMs(m_settings->toastAutoHideMs());
+
+    if (auto *wayland = dynamic_cast<WaylandBackend *>(m_backend.get()))
+        wayland->setKeepShadowMargin(m_settings->keepShadowMargin());
+
+    // 托盘：跟随「常驻托盘」开关创建/销毁
+    if (m_settings->trayPersistent() && !m_tray) {
         m_tray = std::make_unique<Tray>();
         connect(m_tray.get(), &Tray::captureRequested, this, &Application::startCapture);
+        connect(m_tray.get(), &Tray::settingsRequested, this, &Application::openSettings);
+        connect(m_tray.get(), &Tray::shortcutSettingsRequested, this, [this]() {
+            const QString program = QStandardPaths::findExecutable(QStringLiteral("systemsettings"));
+            if (program.isEmpty()) {
+                SS_WARN() << "[app] 找不到 systemsettings";
+                return;
+            }
+            QProcess::startDetached(program, {QStringLiteral("kcm_keys")});
+        });
         connect(m_tray.get(), &Tray::quitRequested, qApp, &QCoreApplication::quit);
+        SS_INFO() << "[app] 托盘已创建";
+    } else if (!m_settings->trayPersistent() && m_tray) {
+        m_tray.reset();
+        SS_INFO() << "[app] 托盘已移除（配置里关掉了常驻托盘）";
     }
 
+    applyHotkey(m_settings->hotkey());
+}
+
+void Application::applyHotkey(const QString &sequence)
+{
     if (!m_backend)
         return;
+    if (m_hotkeyApplied && sequence == m_appliedHotkey)
+        return; // 配置界面里敲字会频繁触发，避免反复改注册
+    QString error;
+    if (!m_backend->setHotkey(QKeySequence(sequence), &error)) {
+        SS_WARN() << "[app] 快捷键设置失败:" << error;
+        return;
+    }
+    m_appliedHotkey = sequence;
+    m_hotkeyApplied = true;
+    if (m_tray)
+        m_tray->setHotkeyLabel(sequence);
+    SS_INFO() << "[app] 快捷键已更新:" << (sequence.isEmpty() ? QStringLiteral("(未绑定)") : sequence)
+              << "实际生效:" << m_backend->hotkeyStatus();
+}
 
-    m_backend->setHotkeyCallback([this]() {
-        SS_INFO() << "[app] 全局快捷键触发截图";
-        startCapture();
-    });
-    QString hotkeyError;
-    const QKeySequence sequence(m_settings->hotkey());
-    if (!m_backend->setHotkey(sequence, &hotkeyError))
-        SS_WARN() << "[app] 快捷键设置失败:" << hotkeyError;
-    else if (m_tray)
-        m_tray->setHotkeyLabel(sequence.toString(QKeySequence::NativeText));
+void Application::openSettings()
+{
+    if (m_settingsDialog) {
+        m_settingsDialog->show();
+        m_settingsDialog->raise();
+        m_settingsDialog->activateWindow();
+        return;
+    }
+    auto *dialog = new SettingsDialog(m_settings.get(), m_backend.get(), nullptr);
+    dialog->setAttribute(Qt::WA_DeleteOnClose, true);
+    m_settingsDialog = dialog;
+    connect(dialog, &QObject::destroyed, this, [this]() { m_settingsDialog = nullptr; });
+    connect(dialog, &SettingsDialog::hotkeyChanged, this, &Application::applyHotkey);
+    dialog->show();
+    dialog->raise();
+    dialog->activateWindow();
+    QTextStream(stdout) << "SETTINGS_OPENED file=" << m_settings->configFilePath() << "\n";
+    QTextStream(stdout).flush();
+}
+
+int Application::runPrintConfig()
+{
+    // 先把快捷键注册上，hotkeyActual 才是真实生效值
+    applyHotkey(m_settings->hotkey());
+    QTextStream out(stdout);
+    out << "CONFIG file=" << m_settings->configFilePath() << "\n";
+    out << "CONFIG copyAfterCapture=" << (m_settings->copyAfterCapture() ? 1 : 0) << "\n";
+    out << "CONFIG openEditorAfterCapture=" << (m_settings->openEditorAfterCapture() ? 1 : 0) << "\n";
+    out << "CONFIG autoSaveAfterCapture=" << (m_settings->autoSaveAfterCapture() ? 1 : 0) << "\n";
+    out << "CONFIG keepShadowMargin=" << (m_settings->keepShadowMargin() ? 1 : 0) << "\n";
+    out << "CONFIG saveDir=" << m_settings->saveDir() << "\n";
+    out << "CONFIG filenameTemplate=" << m_settings->filenameTemplate() << "\n";
+    out << "CONFIG hotkey=" << (m_settings->hotkey().isEmpty() ? QStringLiteral("(none)")
+                                                               : m_settings->hotkey())
+        << "\n";
+    out << "CONFIG hotkeyActual=" << (m_backend ? m_backend->hotkeyStatus() : QStringLiteral("-")) << "\n";
+    out << "CONFIG gifFps=" << m_settings->gifFps() << "\n";
+    out << "CONFIG toastAutoHideMs=" << m_settings->toastAutoHideMs() << "\n";
+    out << "CONFIG trayPersistent=" << (m_settings->trayPersistent() ? 1 : 0) << "\n";
+    out << "CONFIG backend=" << (m_backend ? m_backend->name() : QStringLiteral("none")) << "\n";
+    out.flush();
+    return 0;
 }
 
 void Application::startCapture()
@@ -604,6 +694,32 @@ int Application::run()
         out << "BACKEND_CHOICE " << m_backendReason << "\n";
         out.flush();
         return runSelfTest();
+    }
+    if (m_options.printConfig)
+        return runPrintConfig();
+    if (m_options.hotkeyStatus) {
+        applyHotkey(m_settings->hotkey());
+        out << "HOTKEY configured="
+            << (m_settings->hotkey().isEmpty() ? QStringLiteral("(none)") : m_settings->hotkey())
+            << " actual=" << (m_backend ? m_backend->hotkeyStatus() : QStringLiteral("-")) << "\n";
+        out.flush();
+        return 0;
+    }
+    if (!m_options.setHotkey.isEmpty()) {
+        const QString sequence = m_options.setHotkey == QLatin1String("none")
+            ? QString()
+            : m_options.setHotkey;
+        m_settings->setHotkey(sequence);
+        applyHotkey(sequence);
+        out << "HOTKEY_SET " << (sequence.isEmpty() ? QStringLiteral("(none)") : sequence)
+            << " actual=" << (m_backend ? m_backend->hotkeyStatus() : QStringLiteral("-")) << "\n";
+        out.flush();
+        return 0;
+    }
+    if (m_options.settings) {
+        // 配置界面独立进程：已有常驻实例时也允许（它只读写配置，不动截图链路）
+        openSettings();
+        return QCoreApplication::exec();
     }
     if (m_options.listWindows)
         return runListWindows();

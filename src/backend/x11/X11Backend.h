@@ -33,6 +33,7 @@ public:
     void captureWindow(const WindowInfo &window, ImageCallback callback) override;
     void captureRect(const QRectF &logicalRect, ImageCallback callback) override;
     bool setHotkey(const QKeySequence &sequence, QString *error) override;
+    QString hotkeyStatus() const override;
     QString limitations() const override;
     QString diagnostics() const override;
 

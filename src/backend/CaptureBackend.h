@@ -66,6 +66,9 @@ public:
     /// 快捷键被按下时的回调（由上层注册）
     void setHotkeyCallback(HotkeyCallback callback) { m_hotkeyCallback = std::move(callback); }
 
+    /// 当前实际生效的快捷键（读回注册后的结果），用于设置界面与自检
+    virtual QString hotkeyStatus() const { return {}; }
+
     /// 路径依赖的说明（X11 下窗口被遮挡等），用于 --selftest 与文档
     virtual QString limitations() const { return {}; }
 

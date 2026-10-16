@@ -23,6 +23,13 @@ private slots:
         QDir().mkpath(m_dir);
     }
 
+    void init()
+    {
+        // 每个用例从干净配置开始（否则前一个用例写下的值会污染默认值断言）
+        QSettings().clear();
+        QSettings().sync();
+    }
+
     void defaultsAreSane()
     {
         Settings settings;
@@ -42,6 +49,8 @@ private slots:
         settings.setAutoSaveAfterCapture(true);
         settings.setKeepShadowMargin(false);
         settings.setGifFps(24);
+        settings.setOpenEditorAfterCapture(true);
+        settings.setToastAutoHideMs(3000);
 
         Settings reloaded;
         QCOMPARE(reloaded.saveDir(), m_dir);
@@ -49,6 +58,25 @@ private slots:
         QVERIFY(reloaded.autoSaveAfterCapture());
         QVERIFY(!reloaded.keepShadowMargin());
         QCOMPARE(reloaded.gifFps(), 24);
+        QVERIFY(reloaded.openEditorAfterCapture());
+        QCOMPARE(reloaded.toastAutoHideMs(), 3000);
+    }
+
+    void clearAllRestoresDefaults()
+    {
+        Settings settings;
+        QVERIFY(!settings.openEditorAfterCapture());   // 默认关
+        QCOMPARE(settings.toastAutoHideMs(), 0);       // 默认不自动消失
+        settings.setOpenEditorAfterCapture(true);
+        settings.setToastAutoHideMs(5000);
+        settings.setGifFps(42);
+
+        settings.clearAll();
+        Settings reread;
+        QVERIFY(!reread.openEditorAfterCapture());
+        QCOMPARE(reread.toastAutoHideMs(), 0);
+        QCOMPARE(reread.gifFps(), 15);
+        QVERIFY(reread.copyAfterCapture());
     }
 
     void defaultSavePathUsesTemplateAndAvoidsOverwrite()

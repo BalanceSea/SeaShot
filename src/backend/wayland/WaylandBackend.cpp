@@ -233,6 +233,19 @@ bool WaylandBackend::setHotkey(const QKeySequence &sequence, QString *error)
     return true;
 }
 
+QString WaylandBackend::hotkeyStatus() const
+{
+    if (!m_hotkeyAction)
+        return QStringLiteral("(未注册)");
+    const QList<QKeySequence> keys = KGlobalAccel::self()->shortcut(m_hotkeyAction);
+    if (keys.isEmpty())
+        return QStringLiteral("(未绑定)");
+    QStringList readable;
+    for (const QKeySequence &key : keys)
+        readable << key.toString(QKeySequence::NativeText);
+    return readable.join(QStringLiteral(", "));
+}
+
 QString WaylandBackend::limitations() const
 {
     return QStringLiteral(

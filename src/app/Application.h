@@ -6,12 +6,14 @@
 
 #include <QImage>
 #include <QObject>
+#include <QPointer>
 #include <QRectF>
 #include <QString>
 
 #include <memory>
 
 class QLocalServer;
+class QWidget;
 
 namespace seashot {
 
@@ -37,6 +39,10 @@ struct Options {
     QString annotateIn; ///< --annotate-demo 的输入图
     QString annotateOut; ///< --annotate-demo 的输出图
     bool openEditor = false; ///< --open-editor：本次截图后直接打开编辑器（覆盖设置）
+    bool settings = false; ///< --settings：打开配置界面
+    QString setHotkey; ///< --set-hotkey <seq>：写入并注册快捷键后退出
+    bool hotkeyStatus = false; ///< --hotkey-status：打印当前绑定的快捷键
+    bool printConfig = false; ///< --print-config：打印生效中的配置
 };
 
 class Application : public QObject
@@ -53,6 +59,12 @@ public:
 private:
     /// 打开编辑器（截图结果浮层上的「编辑」按钮、以及 --edit 都走这里）
     void openEditor(const QImage &image, const QString &sourcePath);
+    /// 打开配置界面（托盘菜单与 --settings 共用）
+    void openSettings();
+    /// 配置变化后重新应用（浮层超时/托盘/阴影/快捷键）
+    void applySettings();
+    void applyHotkey(const QString &sequence);
+
     void startResident();
     void startCapture();
     void handleSelection(const SelectionResult &result);
@@ -65,6 +77,7 @@ private:
     int runNonInteractiveCapture();
     int showOverlayAndHold();
     int runAnnotateDemo();
+    int runPrintConfig();
     QRect virtualGeometry() const;
     bool isOneShot() const;
 
@@ -79,6 +92,9 @@ private:
     std::unique_ptr<Overlay> m_overlay;
     std::unique_ptr<Toast> m_toast;
     std::unique_ptr<Tray> m_tray;
+    QPointer<QWidget> m_settingsDialog;
+    QString m_appliedHotkey;
+    bool m_hotkeyApplied = false;
     QLocalServer *m_server = nullptr;
     QString m_backendError;
     QString m_backendReason;

@@ -49,6 +49,9 @@ public:
 
     QString configFilePath() const;
 
+    /// 恢复默认（删掉所有键，下次读取就是默认值）
+    void clearAll();
+
     /// 按模板生成默认保存路径（应用 saveDir + filenameTemplate；不覆盖同名文件）
     QString defaultSavePath(const QString &suffix = QStringLiteral("png")) const;
     /// 保存图像到指定路径（PNG），失败写 *error

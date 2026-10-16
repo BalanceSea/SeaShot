@@ -20,8 +20,13 @@ public:
     void setHotkeyLabel(const QString &label);
     bool available() const { return m_available; }
 
+    /// 托盘菜单项文字（测试与验收用）
+    QStringList menuActionTexts() const;
+
 signals:
     void captureRequested();
+    void settingsRequested();
+    void shortcutSettingsRequested();
     void quitRequested();
 
 private:

@@ -1,0 +1,1 @@
+HOTKEY_SET Ctrl+Shift+F9 actual=Ctrl+Shift+F9

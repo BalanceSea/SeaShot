@@ -146,6 +146,14 @@ void Settings::setToastAutoHideMs(int value)
     emit changed();
 }
 
+void Settings::clearAll()
+{
+    QSettings settings;
+    settings.clear();
+    settings.sync();
+    emit changed();
+}
+
 QString Settings::uniquePath(const QString &directory, const QString &baseName,
                              const QString &suffix) const
 {
