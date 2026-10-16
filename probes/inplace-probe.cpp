@@ -141,11 +141,15 @@ public:
         m_surface = surfaceGeometry();
         resize(m_surface.size());
         move(m_surface.topLeft());
+        // ⚠️ 必须在 show() **之前**设定 shell：一旦表面按普通 toplevel 创建，
+        //    再设 layer-shell 就会失败并报
+        //    "Cannot set shell integration while there's already a shell surface created"
+        //    主项目的 Toast 之所以正常，就是因为它经由 reposition() 在 show() 之前调用了这里。
+        ensureLayerShell();
         show();
         raise();
         activateWindow();
         setFocus(Qt::OtherFocusReason);
-        ensureLayerShell();
         QTextStream out(stdout);
         out << "PROBE_BEGIN surface=" << m_surface.width() << "x" << m_surface.height()
             << " frozen=" << m_frozen.width() << "x" << m_frozen.height()

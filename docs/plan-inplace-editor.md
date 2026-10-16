@@ -125,4 +125,30 @@ Idle → Selecting（拖框/悬停高亮窗口）
 
 **Phase A 之前先做一件事**：为"就地编辑"写一个 Phase 0 式的**可行性探针**——
 验证 layer-shell 覆盖层上能否稳定地做「1:1 绘制 + 自绘工具条 + 连续鼠标交互」而不引入输入/合成问题。
-这是整条路的地基，用探针先验掉，比直接在主链路上改安全得多。
+
+### ✅ Phase 0 探针结论（已完成，全部判据通过）
+
+探针：`probes/inplace-probe.cpp`（独立程序，不碰主链路）
+
+| 判据 | 实测 | 结论 |
+| --- | --- | --- |
+| 1:1 绘制 | `surface=1920x1080 frozen=1920x1080` | ✅ 无缩放 |
+| 连续拖拽流畅度 | `avgMoveGapMs=1.5531`（≈645 次/秒） | ✅ 流畅 |
+| 自绘工具条命中 | `toolbarHits=13`，index 0–9 **全部命中** | ✅ 无漏点 |
+| 工具条不误触发标注 | 5 次 `ANNOTATION_DONE` 全在工具条外 | ✅ 点击穿透策略成立 |
+| layer-shell 真生效 | 全屏应用前面仍在最前（用户目视确认） | ✅ |
+| 是否真丢帧 | 唯一一次 `maxMoveGapMs=134` 经用户确认是**手动停顿** | ✅ 无丢帧 |
+
+**过程中发现并修掉的一个真 bug（对主链路也有参考价值）**：
+探针起初报
+```
+layershellqt: QWidgetWindow(...) already has a shell integration.
+qt.qpa.wayland: Cannot set shell integration while there's already a shell surface created
+```
+原因是调用顺序写反了：先 `show()`（表面已按普通 toplevel 创建）再 `ensureLayerShell()` → 设置太晚。
+`layerShell=1` 只表示 `get()` 返回非空，**不代表真的生效** —— 这类"假成功"很容易被骗过去。
+修正为 `ensureLayerShell()` 先于 `show()`（主项目的 `Toast` 正是经由 `reposition()` 在 show 之前调用，
+所以一直正常）。修正后警告消失。
+
+**结论：Phase A 的性质是"把已有件搬进覆盖层"，而不是"先解决一堆底层问题"** —— 底层地基已验证可用。
+但要记住上述顺序要求：**任何 layer-shell 表面都必须在 show() 之前设定 shell**。
