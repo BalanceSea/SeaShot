@@ -385,15 +385,25 @@ void Toast::rebuildCache()
     QPainter painter(&m_cache);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    // 阴影：卡片外一圈逐渐变淡的圆角矩形（先画，后面所有坐标都是卡片本地坐标）
-    for (int i = kShadowMargin; i >= 1; --i) {
-        const int alpha = int(80.0 * (1.0 - double(i - 1) / kShadowMargin));
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(0, 0, 0, alpha));
+    // 一律用卡片本地坐标：阴影会画到卡片外面（缓存已经比卡片大一圈），
+    // 所以必须先把坐标系移到卡片原点，否则阴影会整体偏到左上 ✗
+    // （上一版就是先画阴影、后 translate，实测左、上多出一条黑边，右、下没有。）
+    painter.translate(kShadowMargin, kShadowMargin);
+
+    // 阴影：卡片外一圈渐渐变淡的圆角矩形。
+    // ⚠️ 必须画成"1px 描边环"而不是"填充矩形叠层"：填充会互相重叠、
+    //    alpha 逐层累加，靠近卡片处会积到接近纯黑，变成一条硬黑边
+    //    （实测边缘处背景从 (22,29,43) 被压到 (2,2,3)，看起来就像加了黑框）。
+    painter.setBrush(Qt::NoBrush);
+    for (int i = 1; i <= kShadowMargin; ++i) {
+        const double fade = 1.0 - double(i) / double(kShadowMargin + 1);
+        const int alpha = int(72.0 * fade * fade);
+        if (alpha <= 0)
+            continue;
+        painter.setPen(QPen(QColor(0, 0, 0, alpha), 1));
         painter.drawRoundedRect(QRectF(card).adjusted(-i, -i + 3, i, i + 3),
                                 ui::spec::cardRadius + i, ui::spec::cardRadius + i);
     }
-    painter.translate(kShadowMargin, kShadowMargin);
 
     const ui::CardColors colors = ui::cardColors(palette());
     const QColor window = colors.card;
