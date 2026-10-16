@@ -1,5 +1,6 @@
 // SeaShot 入口：命令行解析 + 应用元数据
 #include "app/Application.h"
+#include "ui/Theme.h"
 
 #include <QApplication>
 #include <QCommandLineOption>
@@ -20,6 +21,7 @@ int main(int argc, char **argv)
     // app_id → KWin 侧 resourceClass；自排除与 --selftest 的 Exec 比对都依赖它
     QGuiApplication::setDesktopFileName(QStringLiteral("seashot"));
     QGuiApplication::setApplicationDisplayName(QStringLiteral("SeaShot"));
+    QGuiApplication::setWindowIcon(seashot::ui::appIcon());
 
     // layer-shell 必须在创建窗口前启用（Phase 0 已实测可用）
     if (QGuiApplication::platformName().startsWith(QLatin1String("wayland")))

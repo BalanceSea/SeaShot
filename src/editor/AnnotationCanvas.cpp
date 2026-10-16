@@ -6,6 +6,8 @@
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QMouseEvent>
+#include <QScrollBar>
+#include <QWheelEvent>
 #include <QPainter>
 
 namespace seashot {
@@ -31,7 +33,75 @@ void AnnotationCanvas::setImage(const QImage &image)
     m_selected = -1;
     m_draft = Annotation();
     m_document.reset({});
+    m_fitToWindow = true; // 新图默认适应窗口
+    updateGeometryForZoom();
+    emit zoomChanged(zoom());
+}
+
+double AnnotationCanvas::fitScale() const
+{
+    if (m_image.isNull())
+        return 1.0;
+    const double sx = double(width()) / double(m_image.width());
+    const double sy = double(height()) / double(m_image.height());
+    return qBound(0.02, qMin(sx, sy), 1.0); // 不放大，避免糊
+}
+
+double AnnotationCanvas::zoom() const
+{
+    return m_fitToWindow ? fitScale() : m_zoom;
+}
+
+void AnnotationCanvas::setZoom(double zoomLevel)
+{
+    m_fitToWindow = false;
+    m_zoom = qBound(0.05, zoomLevel, 8.0);
+    updateGeometryForZoom();
+    emit zoomChanged(this->zoom());
+}
+
+void AnnotationCanvas::setFitToWindow(bool fit)
+{
+    if (m_fitToWindow == fit)
+        return;
+    m_fitToWindow = fit;
+    updateGeometryForZoom();
+    emit zoomChanged(zoom());
+}
+
+void AnnotationCanvas::zoomIn()
+{
+    setZoom(zoom() * 1.25);
+}
+
+void AnnotationCanvas::zoomOut()
+{
+    setZoom(zoom() / 1.25);
+}
+
+void AnnotationCanvas::updateGeometryForZoom()
+{
+    if (m_image.isNull())
+        return;
+    // 缩放后画布至少要容纳整张图（外层 QScrollArea 会自动出现滚动条）；
+    // 图比视口小时，滚动区会把画布拉到视口大小，绘制时再居中。
+    const QSize scaled = (QSizeF(m_image.size()) * zoom()).toSize();
+    setMinimumSize(scaled);
+    updateGeometry();
     update();
+}
+
+void AnnotationCanvas::wheelEvent(QWheelEvent *event)
+{
+    if (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier)) {
+        if (event->angleDelta().y() > 0)
+            zoomIn();
+        else if (event->angleDelta().y() < 0)
+            zoomOut();
+        event->accept();
+        return;
+    }
+    event->ignore(); // 不按 Ctrl 就交给外层滚动区滚动
 }
 
 void AnnotationCanvas::setTool(ToolKind tool)
@@ -58,15 +128,6 @@ void AnnotationCanvas::setStrokeWidth(int width)
 QImage AnnotationCanvas::renderedImage() const
 {
     return renderAnnotations(m_image, m_document.items());
-}
-
-double AnnotationCanvas::zoom() const
-{
-    if (m_image.isNull())
-        return 1.0;
-    const double sx = double(width()) / double(m_image.width());
-    const double sy = double(height()) / double(m_image.height());
-    return qBound(0.02, qMin(sx, sy), 1.0); // 不放大，避免糊
 }
 
 QRectF AnnotationCanvas::imageDisplayRect() const
@@ -133,6 +194,12 @@ void AnnotationCanvas::handleMousePress(const QPointF &widgetPos, Qt::MouseButto
 {
     if (m_image.isNull())
         return;
+    if (button == Qt::MiddleButton) {
+        m_panning = true;
+        m_panLastPos = widgetPos.toPoint();
+        setCursor(Qt::ClosedHandCursor);
+        return;
+    }
     const QPointF imagePos = widgetToImage(widgetPos);
     m_pressImagePos = imagePos;
 
@@ -184,6 +251,12 @@ void AnnotationCanvas::handleMouseMove(const QPointF &widgetPos)
 {
     if (m_image.isNull())
         return;
+    if (m_panning) {
+        const QPoint now = widgetPos.toPoint();
+        emit panRequested(now - m_panLastPos);
+        m_panLastPos = now;
+        return;
+    }
     const QPointF imagePos = widgetToImage(widgetPos);
 
     if (m_drawing) {
@@ -212,6 +285,11 @@ void AnnotationCanvas::handleMouseMove(const QPointF &widgetPos)
 
 void AnnotationCanvas::handleMouseRelease(const QPointF &widgetPos, Qt::MouseButton button)
 {
+    if (button == Qt::MiddleButton && m_panning) {
+        m_panning = false;
+        setCursor(m_tool == ToolKind::Select ? Qt::ArrowCursor : Qt::CrossCursor);
+        return;
+    }
     if (button != Qt::LeftButton)
         return;
     const QPointF imagePos = widgetToImage(widgetPos);
@@ -442,6 +520,10 @@ void AnnotationCanvas::resizeEvent(QResizeEvent *event)
     QWidget::resizeEvent(event);
     if (m_textEditing)
         cancelTextEditing();
+    if (m_fitToWindow) {
+        updateGeometryForZoom();
+        emit zoomChanged(zoom()); // 适应窗口时缩放比随视口变化，要让工具栏标签跟上
+    }
 }
 
 bool AnnotationCanvas::eventFilter(QObject *watched, QEvent *event)

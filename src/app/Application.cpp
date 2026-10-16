@@ -23,6 +23,7 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <cmath>
+#include <cstdio>
 #include <sys/resource.h>
 #include <QDialog>
 #include <QElapsedTimer>
@@ -253,6 +254,18 @@ void Application::openEditor(const QImage &image, const QString &sourcePath)
         return;
     }
     auto *editor = new EditorWindow(image, sourcePath);
+    if (!qEnvironmentVariable("SEASHOT_EDITOR_GRAB").isEmpty()) {
+        editor->show();
+        QTimer::singleShot(400, this, [editor]() {
+            const QString path = qEnvironmentVariable("SEASHOT_EDITOR_GRAB");
+            editor->grab().save(path);
+            QTextStream(stdout) << "UI_GRAB " << path << " size=" << editor->width() << "x"
+                                << editor->height() << "\n";
+            QTextStream(stdout).flush();
+            QCoreApplication::quit();
+        });
+        return;
+    }
     editor->show();
     editor->raise();
     editor->activateWindow();
@@ -1023,7 +1036,11 @@ int Application::runToastDragBench(int durationMs)
         });
         child->start();
     });
-    timer->start(stepMs);
+    if (!qEnvironmentVariableIsSet("SEASHOT_BENCH_STATIC"))
+        timer->start(stepMs);
+    else
+        QTextStream(stdout) << "DRAGBENCH_STATIC 只显示合成卡片（验收对照用）\n";
+        std::fflush(stdout);
 
     QTimer::singleShot(durationMs + 2000, this, [=]() {
         timer->stop();

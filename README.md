@@ -122,7 +122,8 @@ seashot --settings     # 或常驻后点托盘图标 → 「设置…」
 
 ## 配置
 
-`~/.config/seashot/seashot.conf`（改动即时生效）：
+`seashot --settings` 打开**左侧导航 + 右侧页面**的配置界面（图标来自项目内嵌资源）。
+配置文件：`~/.config/seashot/seashot.conf`（改动即时生效）：
 
 | 键 | 默认 | 说明 |
 | --- | --- | --- |

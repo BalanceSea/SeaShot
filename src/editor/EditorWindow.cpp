@@ -16,6 +16,8 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPixmap>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QSpinBox>
 #include <QTextStream>
 #include <QToolBar>
@@ -69,11 +71,24 @@ EditorWindow::EditorWindow(const QImage &image, const QString &sourcePath, QWidg
     connect(m_canvas, &AnnotationCanvas::selectionChanged, this, [this](int) { refreshActions(); });
     connect(m_canvas, &AnnotationCanvas::statusMessage, this,
             [this](const QString &message) { m_status->setText(message); });
+    connect(m_canvas, &AnnotationCanvas::zoomChanged, this, [this](double) { updateZoomUi(); });
+    connect(m_canvas, &AnnotationCanvas::panRequested, this, [this](const QPoint &delta) {
+        if (!m_scroll)
+            return;
+        // 中键拖动平移 = 反向拨动滚动条
+        if (QScrollBar *bar = m_scroll->horizontalScrollBar())
+            bar->setValue(bar->value() - delta.x());
+        if (QScrollBar *bar = m_scroll->verticalScrollBar())
+            bar->setValue(bar->value() - delta.y());
+    });
 
     setTool(ToolKind::Rectangle);
+    updateZoomUi();
     refreshActions();
     updateTitle();
-    resize(qMin(1280, qMax(900, image.width() + 80)), qMin(860, qMax(600, image.height() + 140)));
+    // 工具栏（工具 + 颜色/粗细 + 撤销重做删除 + 复制保存另存为 + 缩放组）在窄窗口里会被折叠到
+    // 右侧的 ">" 溢出菜单里，所以默认给一个够宽的尺寸。
+    resize(qMin(1600, qMax(1180, image.width() + 120)), qMin(980, qMax(760, image.height() + 160)));
 }
 
 void EditorWindow::buildUi()
@@ -81,6 +96,7 @@ void EditorWindow::buildUi()
     auto *toolbar = new QToolBar(this);
     toolbar->setMovable(false);
     toolbar->setIconSize(QSize(18, 18));
+    toolbar->setMovable(false);
 
     auto *group = new QButtonGroup(this);
     group->setExclusive(true);
@@ -156,14 +172,44 @@ void EditorWindow::buildUi()
                                                &EditorWindow::saveAs);
     saveAsAction->setShortcuts({QKeySequence(QStringLiteral("Ctrl+Shift+S"))});
 
+    toolbar->addSeparator();
+    m_fitAction = toolbar->addAction(ui::icon({QStringLiteral("zoom-fit-best")}),
+                                     QStringLiteral("适应窗口"), this,
+                                     [this]() { m_canvas->zoomToFit(); });
+    m_fitAction->setCheckable(true);
+    m_fitAction->setChecked(true);
+    m_fitAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+0")));
+    QAction *zoomOutAction = toolbar->addAction(ui::icon({QStringLiteral("zoom-out")}),
+                                                QStringLiteral("缩小"), this,
+                                                [this]() { m_canvas->zoomOut(); });
+    zoomOutAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+-")));
+    m_zoomLabel = new QLabel(this);
+    m_zoomLabel->setMinimumWidth(56);
+    m_zoomLabel->setAlignment(Qt::AlignCenter);
+    toolbar->addWidget(m_zoomLabel);
+    QAction *zoomInAction = toolbar->addAction(ui::icon({QStringLiteral("zoom-in")}),
+                                               QStringLiteral("放大"), this,
+                                               [this]() { m_canvas->zoomIn(); });
+    zoomInAction->setShortcuts({QKeySequence(QStringLiteral("Ctrl+=")),
+                                QKeySequence(QStringLiteral("Ctrl++"))});
+    QAction *hundredAction = toolbar->addAction(QStringLiteral("100%"), this,
+                                                [this]() { m_canvas->zoomTo100(); });
+    hundredAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+1")));
+
     m_status = new QLabel(this);
     m_status->setText(QStringLiteral("就绪"));
 
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
+    m_scroll = new QScrollArea(this);
+    m_scroll->setWidget(m_canvas);
+    m_scroll->setWidgetResizable(true);
+    m_scroll->setAlignment(Qt::AlignCenter);
+    m_scroll->setFrameShape(QFrame::NoFrame);
+
     layout->addWidget(toolbar);
-    layout->addWidget(m_canvas, 1);
+    layout->addWidget(m_scroll, 1);
     layout->addWidget(m_status);
 
     m_canvas->setFocus();
@@ -187,6 +233,14 @@ void EditorWindow::chooseColor()
         return;
     m_canvas->setColor(picked);
     m_colorButton->setIcon(swatchIcon(picked));
+}
+
+void EditorWindow::updateZoomUi()
+{
+    if (m_zoomLabel)
+        m_zoomLabel->setText(QStringLiteral("%1%").arg(qRound(m_canvas->zoom() * 100)));
+    if (m_fitAction)
+        m_fitAction->setChecked(m_canvas->fitToWindow());
 }
 
 void EditorWindow::refreshActions()

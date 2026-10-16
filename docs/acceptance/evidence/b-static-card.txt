@@ -1,0 +1,12 @@
+[info] [wayland] ScreenShot2 Version = 5 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-476212" id= 1 run方式= Script<N>.run 
+[warn] [wayland] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：跳过自排除 
+[warn] [app] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：本次不排除自己的窗口 
+[info] [toast] layer-shell role 已应用 （铺满输出的固定表面） 
+TOAST image=400x300 display=400x300 scaled=0 anchor=300,200 400x300 card=400x334 cardTopLeft=300,502 fixedSurface=1 autoHide=0
+[info] [toast] visible= true layerShell= true cardTopLeft= QPoint(300,502) autoHideMs= 0 
+DRAGBENCH_START startX=300 stepMs=16 stepPx=1 durationMs=9000 captureEvery=20
+DRAGBENCH_STATIC 只显示合成卡片（验收对照用）
+[info] [app] 收到退出信号，正在收尾（卸载 KWin 助手脚本） 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-476212" 

@@ -4,6 +4,7 @@
 #include "editor/AnnotationRenderer.h"
 
 #include <QLineEdit>
+#include <QWheelEvent>
 #include <QtTest>
 
 using namespace seashot;
@@ -354,6 +355,71 @@ private slots:
         QCOMPARE(canvas.document().at(0).text, QStringLiteral("改过的文字"));
         QVERIFY(canvas.document().undo());
         QCOMPARE(canvas.document().at(0).text, QStringLiteral("标注文字"));
+    }
+
+    void canvasZoomScalesCoordinateMapping()
+    {
+        AnnotationCanvas canvas;
+        canvas.resize(400, 400);
+        canvas.setImage(QImage(200, 200, QImage::Format_ARGB32));
+        QVERIFY(canvas.fitToWindow()); // 新图默认适应窗口
+
+        canvas.setZoom(2.0);
+        QVERIFY(!canvas.fitToWindow());
+        QCOMPARE(canvas.zoom(), 2.0);
+        const QPointF origin = canvas.imageToWidgetForTest(QPointF(0, 0));
+        const QPointF ten = canvas.imageToWidgetForTest(QPointF(10, 10));
+        QCOMPARE(ten.x() - origin.x(), 20.0); // 1 图像像素 = 2 控件像素
+        QCOMPARE(ten.y() - origin.y(), 20.0);
+
+        // 缩放后**标注坐标仍是图像坐标**（导出与命中不受缩放影响）
+        canvas.setTool(ToolKind::Rectangle);
+        canvas.handleMousePress(canvas.imageToWidgetForTest(QPointF(20, 30)), Qt::LeftButton);
+        canvas.handleMouseRelease(canvas.imageToWidgetForTest(QPointF(120, 130)), Qt::LeftButton);
+        QCOMPARE(canvas.document().count(), 1);
+        QCOMPARE(canvas.document().at(0).points.at(0), QPointF(20, 30));
+        QVERIFY(qAbs(canvas.document().at(0).points.at(1).x() - 120) <= 1.0);
+
+        canvas.zoomTo100();
+        QCOMPARE(canvas.zoom(), 1.0);
+        canvas.zoomToFit();
+        QVERIFY(canvas.fitToWindow());
+    }
+
+    void canvasWheelZoomNeedsControl()
+    {
+        AnnotationCanvas canvas;
+        canvas.resize(400, 400);
+        canvas.setImage(QImage(200, 200, QImage::Format_ARGB32));
+        const double before = canvas.zoom();
+
+        QWheelEvent plain(QPointF(100, 100), QPointF(100, 100), QPoint(0, 0), QPoint(0, 120),
+                          Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+        QCoreApplication::sendEvent(&canvas, &plain);
+        QCOMPARE(canvas.zoom(), before); // 不按 Ctrl 不缩放（交给滚动区）
+
+        QWheelEvent withCtrl(QPointF(100, 100), QPointF(100, 100), QPoint(0, 0), QPoint(0, 120),
+                             Qt::NoButton, Qt::ControlModifier, Qt::NoScrollPhase, false);
+        QCoreApplication::sendEvent(&canvas, &withCtrl);
+        QVERIFY(canvas.zoom() > before);
+        QVERIFY(!canvas.fitToWindow());
+    }
+
+    void canvasMiddleDragRequestsPan()
+    {
+        AnnotationCanvas canvas;
+        canvas.resize(400, 400);
+        canvas.setImage(QImage(200, 200, QImage::Format_ARGB32));
+        QSignalSpy panSpy(&canvas, &AnnotationCanvas::panRequested);
+
+        canvas.handleMousePress(QPointF(100, 100), Qt::MiddleButton);
+        canvas.handleMouseMove(QPointF(130, 90));
+        canvas.handleMouseRelease(QPointF(130, 90), Qt::MiddleButton);
+
+        QCOMPARE(panSpy.count(), 1);
+        const QPoint delta = panSpy.first().at(0).toPoint();
+        QCOMPARE(delta, QPoint(30, -10));
+        QCOMPARE(canvas.document().count(), 0); // 平移不会画上标注
     }
 
     void canvasRenderedImageHasAnnotations()

@@ -40,36 +40,74 @@ else
 fi
 
 ### B) 覆盖层自排除 ----------------------------------------------------------
-# 失败模式是「覆盖层入镜」：整屏压暗 ~47% → 平均亮度掉约 94~120。
-# 但桌面在动时（用户正在切窗口）两次截图的自然差异也能到 ~35，所以这里：
-#   1) 判定用平均亮度差，阈值 25（仍比真失败小 4 倍）；
-#   2) 最多重试 3 轮 —— 环境抖动不该冒充回归，真泄漏则会每轮都红。
-B_OK=0
-B_DETAIL=""
-for round in 1 2 3; do
-    "$SEASHOT" --rect 0,0,480,300 --save "$OUT/b1-baseline.png" --no-copy > "$OUT/b1.txt" 2>&1
-    "$SEASHOT" --overlay-hold 4000 > "$OUT/b2-overlay.txt" 2>&1 &
-    OVERLAY_PID=$!
-    sleep 2
-    "$SEASHOT" --rect 0,0,480,300 --save "$OUT/b2-with-overlay.png" --no-copy > "$OUT/b2.txt" 2>&1
-    "$SEASHOT" --list-windows > "$OUT/b2-list-windows.txt" 2>&1
-    wait "$OVERLAY_PID" 2>/dev/null
+# 判定思路（历次迭代的教训）：
+#   - 用"整屏平均亮度"太脆：你桌面在动时两次截图自然差异能到 ~35；
+#   - 用我们自己的卡片当对照也不行：自排除是按 appId 生效的，卡片同属 seashot，一起被排除；
+#   - 所以用**外部程序的稳定内容**当对照：全屏纯白窗口（gwenview 显示白图）。
+#     覆盖层若入镜，白底会被压暗 47%（255 → ~135），RMSE 立刻到 0.3 以上；
+#     正确排除时两次截图几乎逐像素相同。
+WHITE=$(mktemp /tmp/seashot-white-XXXX.png)
+magick -size 1920x1080 xc:white "$WHITE"
+gwenview "$WHITE" > /dev/null 2>&1 &
+VIEWER_PID=$!
+sleep 3
+cat > /tmp/seashot-fullscreen-ref.js <<'EOF'
+const all = workspace.windowList();
+for (let i = 0; i < all.length; i++) {
+    const w = all[i];
+    if (w && !w.deleted && String(w.resourceClass || "").toLowerCase().indexOf("gwenview") >= 0) {
+        w.fullScreen = true;
+        workspace.activeWindow = w;
+    }
+}
+EOF
+qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript /tmp/seashot-fullscreen-ref.js "seashot-ref" >/dev/null 2>&1
+qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.start >/dev/null 2>&1
+sleep 1.5
+qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript "seashot-ref" >/dev/null 2>&1
+sleep 1
 
-    if [ ! -f "$OUT/b1-baseline.png" ] || [ ! -f "$OUT/b2-with-overlay.png" ]; then
-        B_DETAIL="第 $round 轮：缺少截图产物"
-        continue
-    fi
-    M1=$(magick "$OUT/b1-baseline.png" -format '%[fx:mean*255]' info:)
-    M2=$(magick "$OUT/b2-with-overlay.png" -format '%[fx:mean*255]' info:)
-    DELTA=$(python3 -c "print(abs(float('$M1') - float('$M2')))")
-    B_DETAIL="第 $round 轮：平均亮度 $M1 vs $M2（差 $DELTA）"
-    if python3 -c "import sys; sys.exit(0 if float('$DELTA') < 25 else 1)"; then
-        B_OK=1
-        break
-    fi
+# 等白屏真的画完（gwenview 载入/全屏动画期间拍到的基线会偏暗，导致后面假红）
+BASE_MEAN=0
+for attempt in 1 2 3 4 5 6; do
     sleep 1
+    # 只截上方 900px：底部 147px 是桌面停靠栏（会动，之前它冒充成了差异）
+    "$SEASHOT" --rect 0,0,1920,900 --save "$OUT/b1-white-baseline.png" --no-copy > "$OUT/b1.txt" 2>&1
+    BASE_MEAN=$(magick "$OUT/b1-white-baseline.png" -format '%[fx:mean*255]' info: 2>/dev/null || echo 0)
+    python3 -c "import sys; sys.exit(0 if float('${BASE_MEAN:-0}') > 250 else 1)" && break
 done
-report "B. 覆盖层自排除(像素)" "$B_OK" "$B_DETAIL（阈值 25；真失败掉 94~120）"
+echo "白屏基线均值=$BASE_MEAN（第 $attempt 次尝试）" >> "$OUT/b1.txt"
+"$SEASHOT" --overlay-hold 5000 > "$OUT/b2-overlay.txt" 2>&1 &
+OVERLAY_PID=$!
+sleep 2
+"$SEASHOT" --rect 0,0,1920,900 --save "$OUT/b2-white-with-overlay.png" --no-copy > "$OUT/b2.txt" 2>&1
+"$SEASHOT" --list-windows > "$OUT/b2-list-windows.txt" 2>&1
+wait "$OVERLAY_PID" 2>/dev/null
+kill "$VIEWER_PID" 2>/dev/null
+rm -f "$WHITE"
+
+if [ -f "$OUT/b1-white-baseline.png" ] && [ -f "$OUT/b2-white-with-overlay.png" ]; then
+    B_RMSE=$(magick compare -metric RMSE "$OUT/b1-white-baseline.png" "$OUT/b2-white-with-overlay.png" null: 2>&1 \
+                 | sed -nE 's/^[0-9.]+ \(([0-9.]+)\).*/\1/p')
+    B_OK=$(python3 -c "
+rmse = float('${B_RMSE:-1}')
+mean = float('${BASE_MEAN:-0}')
+# 基线本身要够亮（说明白屏参照真的铺上了），否则这次测量无意义 → 跳过
+print(1 if (mean > 250 and rmse < 0.03) else (2 if mean <= 250 else 0))")
+    if [ "$B_OK" = 1 ]; then
+        report "B. 覆盖层自排除(像素)" 1 \
+            "全屏白底参照（基线均值 $BASE_MEAN）两次截图 RMSE=$B_RMSE（<0.03；覆盖层入镜会到 0.4+）"
+    elif [ "$B_OK" = 2 ]; then
+        printf 'SKIP  %-36s %s\n' "B. 覆盖层自排除(像素)" \
+            "白屏参照没稳定（基线均值 $BASE_MEAN ≤ 250），本次无法判定"
+        SKIPPED=$((SKIPPED + 1))
+    else
+        report "B. 覆盖层自排除(像素)" 0 \
+            "白底参照下 RMSE=$B_RMSE（≥0.03，覆盖层可能入镜；基线均值 $BASE_MEAN）"
+    fi
+else
+    report "B. 覆盖层自排除(像素)" 0 "缺少截图产物"
+fi
 if grep -q 'excluded=1' "$OUT/b2-list-windows.txt"; then
     report "B. 覆盖层窗口标记" 1 "见 $OUT/b2-list-windows.txt（appId=seashot … excluded=1）"
 else

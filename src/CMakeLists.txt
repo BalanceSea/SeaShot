@@ -76,6 +76,7 @@ qt_add_resources(seashot_core "kwinscript"
     PREFIX "/seashot"
     BASE "${CMAKE_SOURCE_DIR}"
     FILES "${CMAKE_SOURCE_DIR}/resources/seashot-kwin.js"
+          "${CMAKE_SOURCE_DIR}/resources/icons/seashot.png"
 )
 
 add_executable(seashot main.cpp)

@@ -32,6 +32,17 @@ public:
     void setStrokeWidth(int width);
     int strokeWidth() const { return m_width; }
 
+    // ── 缩放 / 平移 ──────────────────────────────────────────
+    /// 1.0 = 100%；设置后自动退出"适应窗口"模式
+    void setZoom(double zoom);
+    void setFitToWindow(bool fit);
+    bool fitToWindow() const { return m_fitToWindow; }
+    double zoom() const;
+    void zoomIn();
+    void zoomOut();
+    void zoomToFit() { setFitToWindow(true); }
+    void zoomTo100() { setZoom(1.0); }
+
     AnnotationDocument &document() { return m_document; }
     int selectedIndex() const { return m_selected; }
     void selectAnnotation(int index);
@@ -49,6 +60,9 @@ public:
 
 signals:
     void documentChanged();
+    void zoomChanged(double zoom);
+    /// 中键拖动平移：由外层滚动区消费（画布不直接管滚动条）
+    void panRequested(const QPoint &deltaPixels);
     void selectionChanged(int index);
     void statusMessage(const QString &message);
 
@@ -59,11 +73,13 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseDoubleClickEvent(QMouseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
-    double zoom() const;
+    double fitScale() const;
+    void updateGeometryForZoom();
     QRectF imageDisplayRect() const;
     QPointF widgetToImage(const QPointF &widgetPos) const;
     QPointF imageToWidget(const QPointF &imagePos) const;
@@ -76,6 +92,10 @@ private:
 
     QImage m_image;
     AnnotationDocument m_document;
+    double m_zoom = 1.0;
+    bool m_fitToWindow = true;
+    bool m_panning = false;
+    QPoint m_panLastPos;
     ToolKind m_tool = ToolKind::Rectangle;
     QColor m_color{255, 64, 64};
     int m_width = 4;

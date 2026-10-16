@@ -9,18 +9,18 @@
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFileDialog>
-#include <QFontMetrics>
 #include <QFormLayout>
 #include <QFrame>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QKeySequenceEdit>
 #include <QLabel>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QPalette>
 #include <QProcess>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QStackedWidget>
 #include <QStandardPaths>
 #include <QTextStream>
 #include <QToolButton>
@@ -44,29 +44,35 @@ QLabel *hintLabel(const QString &text, QWidget *parent)
     return label;
 }
 
-QGroupBox *makeGroup(const QString &title, QWidget *parent, QFormLayout **formOut = nullptr)
+/// 一页 = 标题 + 可选说明 + 表单区（按导航切换）
+QWidget *makePage(const QString &title, const QString &subtitle, QWidget *parent,
+                  QFormLayout **formOut)
 {
-    auto *group = new QGroupBox(title, parent);
-    auto *form = new QFormLayout(group);
-    form->setContentsMargins(ui::spec::cardPadding, ui::spec::cardPadding, ui::spec::cardPadding,
-                             ui::spec::cardPadding);
+    auto *page = new QWidget(parent);
+    auto *layout = new QVBoxLayout(page);
+    layout->setContentsMargins(ui::spec::cardPadding + 4, ui::spec::cardPadding,
+                               ui::spec::cardPadding, ui::spec::cardPadding);
+    layout->setSpacing(ui::spec::gap + 2);
+
+    auto *heading = new QLabel(title, page);
+    QFont headingFont = heading->font();
+    headingFont.setBold(true);
+    heading->setFont(headingFont);
+    layout->addWidget(heading);
+    if (!subtitle.isEmpty())
+        layout->addWidget(hintLabel(subtitle, page));
+
+    auto *form = new QFormLayout();
+    form->setContentsMargins(0, ui::spec::gap, 0, 0);
     form->setHorizontalSpacing(ui::spec::cardPadding);
     form->setVerticalSpacing(ui::spec::gap + 2);
     form->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
     form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+    layout->addLayout(form);
+    layout->addStretch(1);
     if (formOut)
         *formOut = form;
-    return group;
-}
-
-QToolButton *iconOnlyButton(const QIcon &icon, const QString &text, QWidget *parent)
-{
-    auto *button = new QToolButton(parent);
-    button->setIcon(icon);
-    button->setIconSize(QSize(ui::spec::iconSize, ui::spec::iconSize));
-    button->setToolTip(text);
-    button->setAutoRaise(false);
-    return button;
+    return page;
 }
 
 } // namespace
@@ -77,7 +83,7 @@ SettingsDialog::SettingsDialog(Settings *settings, CaptureBackend *backend, QWid
     , m_backend(backend)
 {
     setWindowTitle(QStringLiteral("SeaShot 设置"));
-    setMinimumWidth(620);
+    setMinimumSize(780, 620);
     buildUi();
     loadFromSettings();
 }
@@ -89,13 +95,13 @@ void SettingsDialog::buildUi()
                                ui::spec::cardPadding + 4, ui::spec::cardPadding + 4);
     layout->setSpacing(ui::spec::cardPadding);
 
-    // ── 头部：图标 + 标题 + 一句说明 ─────────────────────────
+    // ── 头部：应用图标 + 标题 + 一句说明 ─────────────────────
     auto *header = new QHBoxLayout();
     header->setSpacing(ui::spec::cardPadding);
     auto *logo = new QLabel(this);
-    const QIcon appIcon = ui::iconCapture();
-    if (!appIcon.isNull())
-        logo->setPixmap(appIcon.pixmap(32, 32));
+    const QPixmap logoPixmap = ui::appIconPixmap(40);
+    if (!logoPixmap.isNull())
+        logo->setPixmap(logoPixmap);
     header->addWidget(logo, 0, Qt::AlignTop);
     auto *titleBox = new QVBoxLayout();
     titleBox->setSpacing(2);
@@ -109,24 +115,38 @@ void SettingsDialog::buildUi()
     header->addLayout(titleBox, 1);
     layout->addLayout(header);
 
-    // ── 截图后 ──────────────────────────────────────────────
+    // ── 左侧导航 + 右侧页面 ─────────────────────────────────
+    auto *nav = new QListWidget(this);
+    nav->setObjectName(QStringLiteral("nav"));
+    nav->setFixedWidth(190);
+    nav->setIconSize(QSize(ui::spec::iconSize, ui::spec::iconSize));
+    nav->setFrameShape(QFrame::NoFrame);
+    nav->setUniformItemSizes(true);
+
+    auto *pages = new QStackedWidget(this);
+
+    // 页 1：截图后
     QFormLayout *afterForm = nullptr;
-    auto *afterGroup = makeGroup(QStringLiteral("截图后"), this, &afterForm);
-    m_copyBox = new QCheckBox(QStringLiteral("自动复制到剪贴板"), afterGroup);
+    QWidget *afterPage = makePage(QStringLiteral("截图后"),
+                                  QStringLiteral("截完图之后 SeaShot 自动做什么（这三项互不冲突）"),
+                                  pages, &afterForm);
+    m_copyBox = new QCheckBox(QStringLiteral("自动复制到剪贴板"), afterPage);
     m_copyBox->setObjectName(QStringLiteral("copyAfterCapture"));
     afterForm->addRow(QString(), m_copyBox);
-    m_openEditorBox = new QCheckBox(QStringLiteral("直接打开编辑器（不再弹结果浮层）"), afterGroup);
+    m_openEditorBox = new QCheckBox(QStringLiteral("直接打开编辑器（不再弹结果浮层）"), afterPage);
     m_openEditorBox->setObjectName(QStringLiteral("openEditorAfterCapture"));
     afterForm->addRow(QString(), m_openEditorBox);
-    m_autoSaveBox = new QCheckBox(QStringLiteral("自动保存一份到默认目录"), afterGroup);
+    m_autoSaveBox = new QCheckBox(QStringLiteral("自动保存一份到默认目录"), afterPage);
     m_autoSaveBox->setObjectName(QStringLiteral("autoSaveAfterCapture"));
     afterForm->addRow(QString(), m_autoSaveBox);
-    layout->addWidget(afterGroup);
+    pages->addWidget(afterPage);
 
-    // ── 保存 ────────────────────────────────────────────────
+    // 页 2：保存
     QFormLayout *saveForm = nullptr;
-    auto *saveGroup = makeGroup(QStringLiteral("保存"), this, &saveForm);
-    auto *dirRow = new QWidget(saveGroup);
+    QWidget *savePage = makePage(QStringLiteral("保存"),
+                                 QStringLiteral("默认落盘位置与命名规则；「另存为」始终会弹对话框让你选"), pages,
+                                 &saveForm);
+    auto *dirRow = new QWidget(savePage);
     auto *dirLayout = new QHBoxLayout(dirRow);
     dirLayout->setContentsMargins(0, 0, 0, 0);
     dirLayout->setSpacing(ui::spec::gap);
@@ -134,90 +154,115 @@ void SettingsDialog::buildUi()
     m_dirEdit->setObjectName(QStringLiteral("saveDir"));
     m_dirEdit->setClearButtonEnabled(true);
     dirLayout->addWidget(m_dirEdit, 1);
-    auto *browseButton = iconOnlyButton(
-        ui::icon({QStringLiteral("folder-open"), QStringLiteral("document-open")}),
-        QStringLiteral("选择保存目录"), dirRow);
+    auto *browseButton = new QToolButton(dirRow);
     browseButton->setObjectName(QStringLiteral("browseSaveDir"));
+    browseButton->setIcon(ui::icon({QStringLiteral("folder-open"), QStringLiteral("document-open")}));
+    browseButton->setIconSize(QSize(ui::spec::iconSize, ui::spec::iconSize));
+    browseButton->setToolTip(QStringLiteral("选择保存目录"));
     dirLayout->addWidget(browseButton);
     saveForm->addRow(QStringLiteral("默认保存目录"), dirRow);
 
-    m_templateEdit = new QLineEdit(saveGroup);
+    m_templateEdit = new QLineEdit(savePage);
     m_templateEdit->setObjectName(QStringLiteral("filenameTemplate"));
     m_templateEdit->setClearButtonEnabled(true);
     saveForm->addRow(QStringLiteral("文件名模板"), m_templateEdit);
-    saveForm->addRow(QString(),
-                     hintLabel(QStringLiteral("%1 = 时间戳（yyyyMMdd_HHmmss）　%d = 日期　%t = 时间；"
-                                              "同名自动加序号，不覆盖"),
-                                saveGroup));
+    saveForm->addRow(QString(), hintLabel(QStringLiteral("%1 = 时间戳（yyyyMMdd_HHmmss）　%d = 日期　"
+                                                         "%t = 时间；同名自动加序号，不覆盖"),
+                                          savePage));
 
-    m_keepShadowBox = new QCheckBox(QStringLiteral("窗口截图保留阴影/装饰边距"), saveGroup);
+    m_keepShadowBox = new QCheckBox(QStringLiteral("窗口截图保留阴影/装饰边距"), savePage);
     m_keepShadowBox->setObjectName(QStringLiteral("keepShadowMargin"));
     saveForm->addRow(QString(), m_keepShadowBox);
-    layout->addWidget(saveGroup);
+    pages->addWidget(savePage);
 
-    // ── 界面 ────────────────────────────────────────────────
+    // 页 3：界面
     QFormLayout *uiForm = nullptr;
-    auto *uiGroup = makeGroup(QStringLiteral("界面"), this, &uiForm);
-    m_toastSpin = new QSpinBox(uiGroup);
+    QWidget *uiPage = makePage(QStringLiteral("界面"),
+                               QStringLiteral("结果浮层按原尺寸显示、贴在截图框左下角，可以按住拖动"), pages,
+                               &uiForm);
+    m_toastSpin = new QSpinBox(uiPage);
     m_toastSpin->setObjectName(QStringLiteral("toastAutoHideMs"));
     m_toastSpin->setRange(0, 60000);
     m_toastSpin->setSingleStep(500);
     m_toastSpin->setSuffix(QStringLiteral(" ms"));
     m_toastSpin->setSpecialValueText(QStringLiteral("不自动消失"));
     uiForm->addRow(QStringLiteral("结果浮层自动消失"), m_toastSpin);
-    m_trayBox = new QCheckBox(QStringLiteral("常驻托盘"), uiGroup);
+    m_trayBox = new QCheckBox(QStringLiteral("常驻托盘"), uiPage);
     m_trayBox->setObjectName(QStringLiteral("trayPersistent"));
     uiForm->addRow(QString(), m_trayBox);
-    layout->addWidget(uiGroup);
+    pages->addWidget(uiPage);
 
-    // ── 全局快捷键 ──────────────────────────────────────────
-    auto *keyGroup = new QGroupBox(QStringLiteral("全局快捷键"), this);
-    auto *keyLayout = new QVBoxLayout(keyGroup);
-    keyLayout->setContentsMargins(ui::spec::cardPadding, ui::spec::cardPadding, ui::spec::cardPadding,
-                                  ui::spec::cardPadding);
-    keyLayout->setSpacing(ui::spec::gap + 2);
-    auto *keyRow = new QHBoxLayout();
-    keyRow->setSpacing(ui::spec::gap);
-    keyRow->addWidget(new QLabel(QStringLiteral("截取屏幕："), keyGroup));
-    m_hotkeyEdit = new QKeySequenceEdit(keyGroup);
+    // 页 4：全局快捷键
+    QFormLayout *keyForm = nullptr;
+    QWidget *keyPage = makePage(QStringLiteral("全局快捷键"),
+                                QStringLiteral("录制中按同一个键 = 停止录制"), pages, &keyForm);
+    auto *keyRow = new QWidget(keyPage);
+    auto *keyLayout = new QHBoxLayout(keyRow);
+    keyLayout->setContentsMargins(0, 0, 0, 0);
+    keyLayout->setSpacing(ui::spec::gap);
+    m_hotkeyEdit = new QKeySequenceEdit(keyRow);
     m_hotkeyEdit->setObjectName(QStringLiteral("hotkey"));
     m_hotkeyEdit->setMaximumSequenceLength(1);
-    keyRow->addWidget(m_hotkeyEdit, 1);
-    auto *clearButton = new QPushButton(QStringLiteral("清除"), keyGroup);
+    keyLayout->addWidget(m_hotkeyEdit, 1);
+    auto *clearButton = new QPushButton(QStringLiteral("清除"), keyRow);
     clearButton->setObjectName(QStringLiteral("clearHotkey"));
     clearButton->setIcon(ui::icon({QStringLiteral("edit-clear"), QStringLiteral("edit-clear-history")}));
-    keyRow->addWidget(clearButton);
-    keyLayout->addLayout(keyRow);
+    keyLayout->addWidget(clearButton);
+    keyForm->addRow(QStringLiteral("截取屏幕"), keyRow);
 
-    m_hotkeyStatus = new QLabel(keyGroup);
+    m_hotkeyStatus = new QLabel(keyPage);
     m_hotkeyStatus->setObjectName(QStringLiteral("hotkeyStatus"));
     m_hotkeyStatus->setWordWrap(true);
-    keyLayout->addWidget(m_hotkeyStatus);
+    keyForm->addRow(QString(), m_hotkeyStatus);
 
-    auto *kdeButton = new QPushButton(QStringLiteral("打开 KDE 快捷键设置…"), keyGroup);
+    auto *kdeButton = new QPushButton(QStringLiteral("打开 KDE 快捷键设置…"), keyPage);
     kdeButton->setObjectName(QStringLiteral("openKdeKeys"));
     kdeButton->setIcon(ui::iconSettings());
     kdeButton->setToolTip(QStringLiteral("在「系统设置 → 快捷键」里给 SeaShot 的 capture 动作绑定/改键"));
     auto *kdeRow = new QHBoxLayout();
     kdeRow->addWidget(kdeButton);
     kdeRow->addStretch(1);
-    keyLayout->addLayout(kdeRow);
-    layout->addWidget(keyGroup);
+    keyForm->addRow(QString(), kdeRow);
+    pages->addWidget(keyPage);
 
-    // ── 录制（Phase 4 已生效） ───────────────────────────────
+    // 页 5：GIF 录制
     QFormLayout *recordForm = nullptr;
-    auto *recordGroup = makeGroup(QStringLiteral("GIF 录制"), this, &recordForm);
-    m_fpsSpin = new QSpinBox(recordGroup);
+    QWidget *recordPage = makePage(QStringLiteral("GIF 录制"),
+                                   QStringLiteral("只录选定区域；不设时长与体积上限"), pages, &recordForm);
+    m_fpsSpin = new QSpinBox(recordPage);
     m_fpsSpin->setObjectName(QStringLiteral("gifFps"));
     m_fpsSpin->setRange(1, 60);
     m_fpsSpin->setSuffix(QStringLiteral(" fps"));
     recordForm->addRow(QStringLiteral("帧率"), m_fpsSpin);
-    recordForm->addRow(QString(),
-                       hintLabel(QStringLiteral("只录选定区域；不设时长与体积上限；录制中按快捷键即停止"),
-                                 recordGroup));
-    layout->addWidget(recordGroup);
+    recordForm->addRow(QString(), hintLabel(QStringLiteral("托盘菜单「录制 GIF…」或快捷键开始；"
+                                                           "录制中按快捷键 / 点指示器上的「停止」结束"),
+                                            recordPage));
+    pages->addWidget(recordPage);
 
-    layout->addStretch(1);
+    // 导航项与页面一一对应
+    const struct {
+        QString label;
+        QIcon icon;
+    } entries[] = {
+        {QStringLiteral("截图后"), ui::iconCapture()},
+        {QStringLiteral("保存"), ui::iconSave()},
+        {QStringLiteral("界面"), ui::iconSettings()},
+        {QStringLiteral("全局快捷键"),
+         ui::icon({QStringLiteral("input-keyboard"), QStringLiteral("preferences-desktop-keyboard")})},
+        {QStringLiteral("GIF 录制"), ui::iconRecord()},
+    };
+    for (const auto &entry : entries) {
+        auto *item = new QListWidgetItem(entry.icon, entry.label, nav);
+        item->setSizeHint(QSize(0, ui::spec::buttonHeight + ui::spec::gap * 2));
+    }
+    nav->setCurrentRow(0);
+    connect(nav, &QListWidget::currentRowChanged, pages, &QStackedWidget::setCurrentIndex);
+
+    auto *content = new QHBoxLayout();
+    content->setSpacing(ui::spec::cardPadding);
+    content->addWidget(nav);
+    content->addWidget(pages, 1);
+    layout->addLayout(content, 1);
 
     // ── 底部：配置文件路径 + 右对齐按钮 ─────────────────────
     auto *footer = new QHBoxLayout();

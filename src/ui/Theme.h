@@ -15,6 +15,7 @@
 #include <QColor>
 #include <QIcon>
 #include <QPalette>
+#include <QPixmap>
 #include <QString>
 #include <QStringList>
 
@@ -72,6 +73,10 @@ QIcon iconRedo();
 QIcon iconDelete();
 QIcon iconSave();
 QIcon iconRefresh();
+
+/// 应用图标（内嵌在资源里；取不到时回退到主题的 camera-photo）
+QPixmap appIconPixmap(int size);
+QIcon appIcon();
 
 /// 编辑器工具图标
 QIcon iconToolSelect();

@@ -1,9 +1,9 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-434400" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-481681" id= 1 run方式= Script<N>.run 
 [info] [overlay] layer-shell role 已应用（LayerOverlay，四边锚定） 
-[info] [app] 选择模式已启动，窗口快照 19 个； "覆盖层: layer-shell=已应用, 快照窗口数=19, 虚拟几何=1920x1080+0+0" 
-OVERLAY_SHOWN 覆盖层: layer-shell=已应用, 快照窗口数=19, 虚拟几何=1920x1080+0+0
-OVERLAY_WINDOWS 19
+[info] [app] 选择模式已启动，窗口快照 24 个； "覆盖层: layer-shell=已应用, 快照窗口数=24, 虚拟几何=1920x1080+0+0" 
+OVERLAY_SHOWN 覆盖层: layer-shell=已应用, 快照窗口数=24, 虚拟几何=1920x1080+0+0
+OVERLAY_WINDOWS 24
 OVERLAY_EXCLUDED 1
-[info] [kwin] 脚本已卸载 pluginName= "seashot-434400" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-481681" 

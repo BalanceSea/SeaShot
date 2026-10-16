@@ -1,5 +1,6 @@
 #include "app/Tray.h"
 
+#include "ui/Theme.h"
 #include "util/Log.h"
 
 #include <QAction>
@@ -15,10 +16,9 @@ Tray::Tray(QObject *parent)
     m_item = new KStatusNotifierItem(this);
     m_item->setCategory(KStatusNotifierItem::ApplicationStatus);
     m_item->setStatus(KStatusNotifierItem::Active);
-    m_item->setIconByName(QStringLiteral("camera-photo"));
+    m_item->setIconByPixmap(ui::appIconPixmap(64)); // 应用自带的图标（内嵌资源）
     m_item->setTitle(QStringLiteral("SeaShot"));
-    m_item->setToolTip(QStringLiteral("camera-photo"), QStringLiteral("SeaShot"),
-                       QStringLiteral("截图工具"));
+    m_item->setToolTip(ui::appIcon(), QStringLiteral("SeaShot"), QStringLiteral("截图工具"));
 
     m_menu = new QMenu();
     QAction *captureAction = m_menu->addAction(QStringLiteral("截图"));
@@ -53,7 +53,7 @@ Tray::~Tray()
 void Tray::setHotkeyLabel(const QString &label){
     if (!m_item)
         return;
-    m_item->setToolTip(QStringLiteral("camera-photo"), QStringLiteral("SeaShot"),
+    m_item->setToolTip(ui::appIcon(), QStringLiteral("SeaShot"),
                        label.isEmpty() ? QStringLiteral("快捷键：未绑定（可在系统设置里绑定）")
                                        : QStringLiteral("快捷键：%1").arg(label));
 }

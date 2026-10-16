@@ -38,6 +38,29 @@ CardColors cardColors(const QPalette &palette)
     return colors;
 }
 
+QPixmap appIconPixmap(int size)
+{
+    static QPixmap source;
+    static bool loaded = false;
+    if (!loaded) {
+        loaded = true;
+        source.load(QStringLiteral(":/seashot/resources/icons/seashot.png"));
+    }
+    if (source.isNull()) {
+        const QIcon fallback = iconCapture();
+        return fallback.isNull() ? QPixmap() : fallback.pixmap(size, size);
+    }
+    return source.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+}
+
+QIcon appIcon()
+{
+    const QPixmap pixmap = appIconPixmap(256);
+    if (pixmap.isNull())
+        return iconCapture();
+    return QIcon(pixmap);
+}
+
 QIcon iconEdit()
 {
     return icon({QStringLiteral("document-edit"), QStringLiteral("edit-entry"),

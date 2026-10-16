@@ -9,6 +9,7 @@
 
 class QAction;
 class QLabel;
+class QScrollArea;
 class QSpinBox;
 class QToolButton;
 
@@ -45,11 +46,15 @@ private:
     void copyToClipboard();
     void setTool(ToolKind tool);
     void updateTitle();
+    void updateZoomUi();
 
     AnnotationCanvas *m_canvas = nullptr;
     QHash<int, QToolButton *> m_toolButtons;
     QToolButton *m_colorButton = nullptr;
     QSpinBox *m_widthBox = nullptr;
+    QScrollArea *m_scroll = nullptr;
+    QAction *m_fitAction = nullptr;
+    QLabel *m_zoomLabel = nullptr;
     QAction *m_undoAction = nullptr;
     QAction *m_redoAction = nullptr;
     QLabel *m_status = nullptr;

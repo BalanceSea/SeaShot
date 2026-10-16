@@ -1,6 +1,6 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-433840" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-485062" id= 1 run方式= Script<N>.run 
 [info] [tray] KStatusNotifierItem 已创建 
 [info] [app] 托盘已创建 
 [info] [hotkey] 当前绑定: "(未绑定)" 
@@ -8,24 +8,18 @@
 SEASHOT_READY backend=wayland hotkey=(未绑定)
 [info] [app] 收到实例间命令: "record-rect 300,200,256,192" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
-[info] [record] 编码器已启动 QSize(256, 192) 15 fps → "/tmp/seashot-record-433840.mkv" 
-[info] [record] 开始录制 QRectF(300,200 256x192) 15 fps 帧尺寸 QSize(256, 192) 输出 "/home/balancesea/Pictures/Screenshots/seashot_20261016_130039.gif" 
+[info] [shot2] "CaptureArea" ok 4 ms 256 x 192 "" 
+[info] [record] 编码器已启动 QSize(256, 192) 15 fps → "/tmp/seashot-record-485062.mkv" 
+[info] [record] 开始录制 QRectF(300,200 256x192) 15 fps 帧尺寸 QSize(256, 192) 输出 "/home/balancesea/Pictures/Screenshots/seashot_20261016_135605.gif" 
 [info] [record] 指示器已套 layer-shell 
 RECORDING_INDICATOR_GEOMETRY x=300 y=154 w=300 h=40 regionTop=200 regionBottom=392
-RECORDING_INDICATOR region=300,200 256x192 fps=15 output=/home/balancesea/Pictures/Screenshots/seashot_20261016_130039.gif
+RECORDING_INDICATOR region=300,200 256x192 fps=15 output=/home/balancesea/Pictures/Screenshots/seashot_20261016_135605.gif
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 4 ms 256 x 192 "" 
+[info] [shot2] "CaptureArea" ok 5 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 4 ms 256 x 192 "" 
+[info] [shot2] "CaptureArea" ok 7 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
+[info] [shot2] "CaptureArea" ok 2 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
 [info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
@@ -39,13 +33,7 @@ RECORDING_INDICATOR region=300,200 256x192 fps=15 output=/home/balancesea/Pictur
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
 [info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 4 ms 256 x 192 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
 [info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 2 ms 256 x 192 "" 
-[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 2 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
 [info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
@@ -59,7 +47,11 @@ RECORDING_INDICATOR region=300,200 256x192 fps=15 output=/home/balancesea/Pictur
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
 [info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 2 ms 256 x 192 "" 
+[info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
+[info] [shot2] "CaptureArea" ok 4 ms 256 x 192 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
+[info] [shot2] "CaptureArea" ok 4 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
 [info] [shot2] "CaptureArea" ok 5 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
@@ -69,20 +61,28 @@ RECORDING_INDICATOR region=300,200 256x192 fps=15 output=/home/balancesea/Pictur
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
 [info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
+[info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
 [info] [shot2] "CaptureArea" ok 4 ms 256 x 192 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
+[info] [shot2] "CaptureArea" ok 4 ms 256 x 192 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
+[info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
+[info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
+[info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
 [info] [shot2] "CaptureArea" ok 2 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
 [info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(300,200 256x192) 
-[info] [shot2] "CaptureArea" ok 2 ms 256 x 192 "" 
+[info] [shot2] "CaptureArea" ok 3 ms 256 x 192 "" 
 [info] [app] 收到实例间命令: "stop-record" 
 RECORD_STOP requested
-[info] [record] 停止采集：请求 32 帧 / 采到 32 / 丢 0 / 失败 0 用时 2068 ms 
-[info] [record] GIF 完成 "/home/balancesea/Pictures/Screenshots/seashot_20261016_130039.gif" 32 帧 61509 字节 
-RECORD ok path=/home/balancesea/Pictures/Screenshots/seashot_20261016_130039.gif frames=32 dropped=0 failed=0 elapsedMs=2068 fps=15.47
+[info] [record] 停止采集：请求 32 帧 / 采到 32 / 丢 0 / 失败 0 用时 2083 ms 
+[info] [record] GIF 完成 "/home/balancesea/Pictures/Screenshots/seashot_20261016_135605.gif" 32 帧 80154 字节 
+RECORD ok path=/home/balancesea/Pictures/Screenshots/seashot_20261016_135605.gif frames=32 dropped=0 failed=0 elapsedMs=2083 fps=15.36
 [info] [toast] layer-shell role 已应用 （铺满输出的固定表面） 
 TOAST image=256x192 display=256x192 scaled=0 anchor=300,200 256x192 card=260x226 cardTopLeft=300,394 fixedSurface=1 autoHide=0
 [info] [toast] visible= true layerShell= true cardTopLeft= QPoint(300,394) autoHideMs= 0 
 [info] [app] 收到退出信号，正在收尾（卸载 KWin 助手脚本） 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-433840" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-485062" 
