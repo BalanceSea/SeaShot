@@ -17,3 +17,6 @@ target_link_libraries(testwindow PRIVATE Qt6::Widgets)
 
 add_executable(overlayprobe ../overlayprobe.cpp)
 target_link_libraries(overlayprobe PRIVATE Qt6::Widgets LayerShellQt::Interface)
+
+add_executable(inplace-probe ../inplace-probe.cpp)
+target_link_libraries(inplace-probe PRIVATE Qt6::Widgets LayerShellQt::Interface)
