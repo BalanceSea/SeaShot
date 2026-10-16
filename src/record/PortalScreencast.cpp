@@ -28,6 +28,51 @@ constexpr const char *kRequestIface = "org.freedesktop.portal.Request";
 constexpr uint kSourceTypeMonitor = 1;
 // 光标模式：0=隐藏 1=嵌入 2=元数据
 constexpr uint kCursorModeEmbedded = 1;
+
+// 本应用对 portal 自报的 app id（与 ~/.local/share/applications/seashot.desktop 同名）
+constexpr const char *kHostAppId = "seashot";
+
+// portal 的 app id 关联是**按 D-Bus 连接**的，而且一条连接一生只能被关联一次：
+// 用默认连接时 portal 已自动猜了一个 id，显式 Register 会被拒：
+//   "Connection already associated with an application ID"
+// 所以这里开一条**私有连接**，让它上面的第一个调用就是 Register —— 身份就确定了。
+// （实测：身份不确定时 KDE 会整段短路持久化：既不 Lookup 也不 SetPermission，
+//   于是 restoreToken 永远为空、每次都弹窗。）
+struct PortalIdentity {
+    // QDBusConnection 没有默认构造，先用默认连接占位，再换成私有连接
+    QDBusConnection connection = QDBusConnection::sessionBus();
+    bool registered = false;
+    QString error;
+};
+
+PortalIdentity &portalIdentity()
+{
+    static PortalIdentity identity = [] {
+        PortalIdentity id;
+        id.connection = QDBusConnection::connectToBus(QDBusConnection::SessionBus,
+                                                      QStringLiteral("seashot-portal"));
+        if (!id.connection.isConnected()) {
+            id.error = QStringLiteral("无法建立私有 D-Bus 连接");
+            return id;
+        }
+        QDBusMessage msg = QDBusMessage::createMethodCall(
+            QString::fromLatin1(kPortalService), QString::fromLatin1(kPortalPath),
+            QStringLiteral("org.freedesktop.host.portal.Registry"), QStringLiteral("Register"));
+        msg << QString::fromLatin1(kHostAppId) << QVariantMap {};
+        const QDBusMessage reply = id.connection.call(msg, QDBus::Block, 5000);
+        id.registered = reply.type() != QDBusMessage::ErrorMessage;
+        if (!id.registered)
+            id.error = reply.errorMessage();
+        return id;
+    }();
+    return identity;
+}
+
+/// 所有 portal 调用都走这条私有连接（含 baseService，用于预测回执路径）
+QDBusConnection portalConnection()
+{
+    return portalIdentity().connection;
+}
 } // namespace
 
 QString PortalScreencast::newToken(const QString &prefix)
@@ -45,7 +90,7 @@ QString PortalScreencast::requestPathFor(const QString &token)
     // ⚠️ 实测（dbus-monitor）：portal 对唯一名的处理是**去掉开头的 ':'**，再把 '.' 换成 '_'
     //    —— ":1.50529" → "1_50529"；如果按"把 ':' 也换成 '_'"来猜（"_1_50529"）就会订阅错路径，
     //    于是 portal 发了 Response 也收不到（表现为一直挂着）。
-    QString sender = QDBusConnection::sessionBus().baseService();
+    QString sender = portalConnection().baseService();
     if (sender.startsWith(QLatin1Char(':')))
         sender.remove(0, 1);
     sender.replace(QLatin1Char('.'), QLatin1Char('_'));
@@ -82,7 +127,7 @@ int PortalScreencast::portalVersion()
         QString::fromLatin1(kPortalService), QString::fromLatin1(kPortalPath),
         QStringLiteral("org.freedesktop.DBus.Properties"), QStringLiteral("Get"));
     msg << QString::fromLatin1(kScreenCastIface) << QStringLiteral("version");
-    const QDBusMessage reply = QDBusConnection::sessionBus().call(msg, QDBus::Block, 3000);
+    const QDBusMessage reply = portalConnection().call(msg, QDBus::Block, 3000);
     if (reply.type() == QDBusMessage::ErrorMessage || reply.arguments().isEmpty())
         return -1;
     return reply.arguments().first().value<QDBusVariant>().variant().toInt();
@@ -119,7 +164,7 @@ void PortalScreencast::callWithResponse(
 
     // 先订阅应答（应答可能比方法返回更早；这是规范建议的顺序）
     m_responseHandler = callback;
-    QDBusConnection::sessionBus().connect(QString::fromLatin1(kPortalService), path,
+    portalConnection().connect(QString::fromLatin1(kPortalService), path,
                                           QString::fromLatin1(kRequestIface),
                                           QStringLiteral("Response"), this,
                                           SLOT(onPortalResponse(uint, QVariantMap)));
@@ -138,7 +183,7 @@ void PortalScreencast::callWithResponse(
     diag << "PORTAL_SCREENCAST_REQUEST " << method << " predictedPath=" << path << "\n";
     diag.flush();
 
-    auto *watcher = new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(msg, 30000), this);
+    auto *watcher = new QDBusPendingCallWatcher(portalConnection().asyncCall(msg, 30000), this);
     QObject::connect(watcher, &QDBusPendingCallWatcher::finished, this,
                      [this, watcher, method](QDBusPendingCallWatcher *) {
                          const QDBusMessage reply = watcher->reply();
@@ -171,23 +216,22 @@ void PortalScreencast::callWithResponse(
 QString PortalScreencast::hostAppId()
 {
     // 与桌面文件名保持一致：~/.local/share/applications/seashot.desktop → "seashot"
-    return QStringLiteral("seashot");
+    return QString::fromLatin1(kHostAppId);
 }
 
 bool PortalScreencast::registerHostAppId(const QString &appId, QString *error)
 {
-    QDBusMessage msg = QDBusMessage::createMethodCall(
-        QString::fromLatin1(kPortalService), QString::fromLatin1(kPortalPath),
-        QStringLiteral("org.freedesktop.host.portal.Registry"), QStringLiteral("Register"));
-    msg << appId << QVariantMap {};
-    // 用同步调用 + 超时，避免又出现"挂死"（这个接口在旧版 portal 上不存在）
-    const QDBusMessage reply = QDBusConnection::sessionBus().call(msg, QDBus::Block, 5000);
-    if (reply.type() == QDBusMessage::ErrorMessage) {
+    // 真实注册发生在私有连接创建时（portalIdentity() 里，那条连接上的第一个调用）。
+    // 这里只是取回结果。
+    const PortalIdentity &identity = portalIdentity();
+    if (appId != QString::fromLatin1(kHostAppId)) {
         if (error)
-            *error = reply.errorMessage();
+            *error = QStringLiteral("只支持注册 %1").arg(QString::fromLatin1(kHostAppId));
         return false;
     }
-    return true;
+    if (!identity.registered && error)
+        *error = identity.error;
+    return identity.registered;
 }
 
 void PortalScreencast::start(const QString &restoreToken, uint persistMode, Callback callback,
@@ -332,7 +376,7 @@ int PortalScreencast::openPipeWireRemote(QString *error)
                                                       QString::fromLatin1(kScreenCastIface),
                                                       QStringLiteral("OpenPipeWireRemote"));
     msg << QVariant::fromValue(QDBusObjectPath(m_sessionPath)) << QVariantMap();
-    const QDBusMessage reply = QDBusConnection::sessionBus().call(msg, QDBus::Block, 10000);
+    const QDBusMessage reply = portalConnection().call(msg, QDBus::Block, 10000);
     if (reply.type() == QDBusMessage::ErrorMessage || reply.arguments().isEmpty()) {
         if (error)
             *error = reply.type() == QDBusMessage::ErrorMessage
@@ -357,7 +401,7 @@ void PortalScreencast::closeSession()
                                                       m_sessionPath,
                                                       QString::fromLatin1(kSessionIface),
                                                       QStringLiteral("Close"));
-    QDBusConnection::sessionBus().call(msg, QDBus::NoBlock);
+    portalConnection().call(msg, QDBus::NoBlock);
     m_sessionPath.clear();
 }
 
