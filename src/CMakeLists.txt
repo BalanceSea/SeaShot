@@ -61,6 +61,16 @@ if(XCB_FOUND)
     list(APPEND SEASHOT_HEADERS backend/x11/Ewmh.h backend/x11/X11Backend.h)
 endif()
 
+if(PIPEWIRE_FOUND)
+    list(APPEND SEASHOT_CORE_SOURCES record/PipeWireFrameSource.cpp)
+    list(APPEND SEASHOT_HEADERS record/PipeWireFrameSource.h)
+else()
+    # 依赖缺失时也要能编译：让 PipeWireFrameSource 以"不可用"形态存在，
+    # 上层据此回退到 ScreenShot2 轮询（避免到处写 #ifdef）
+    list(APPEND SEASHOT_CORE_SOURCES record/PipeWireFrameSource.cpp)
+    list(APPEND SEASHOT_HEADERS record/PipeWireFrameSource.h)
+endif()
+
 add_library(seashot_core STATIC ${SEASHOT_CORE_SOURCES} ${SEASHOT_HEADERS})
 target_include_directories(seashot_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(seashot_core PUBLIC
@@ -68,6 +78,11 @@ target_link_libraries(seashot_core PUBLIC
     KF6::GlobalAccel KF6::StatusNotifierItem
     LayerShellQt::Interface
 )
+if(PIPEWIRE_FOUND)
+    target_link_libraries(seashot_core PUBLIC PkgConfig::PIPEWIRE)
+    target_compile_definitions(seashot_core PUBLIC SEASHOT_HAVE_PIPEWIRE=1)
+endif()
+
 if(XCB_FOUND)
     target_link_libraries(seashot_core PUBLIC PkgConfig::XCB)
     target_compile_definitions(seashot_core PUBLIC SEASHOT_WITH_X11=1)

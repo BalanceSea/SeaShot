@@ -105,6 +105,10 @@ int main(int argc, char **argv)
         QStringLiteral("probe-pipewire-out"),
         QStringLiteral("（诊断）接帧落盘目录"),
         QStringLiteral("dir"), QStringLiteral("/tmp/seashot-pipewire"));
+    QCommandLineOption probePipewireLibOption(
+        QStringLiteral("probe-pipewire-lib"),
+        QStringLiteral("（诊断）用 libpipewire 直连取 N 帧（与录制器同一套代码），落盘并报帧率"),
+        QStringLiteral("count"), QStringLiteral("0"));
     QCommandLineOption portalTokenOption(
         QStringLiteral("portal-token-file"),
         QStringLiteral("（诊断）存/取 ScreenCast restore token 的文件"),
@@ -141,6 +145,7 @@ int main(int argc, char **argv)
     parser.addOption(probePortalNoStartOption);
     parser.addOption(probePipewireFramesOption);
     parser.addOption(probePipewireOutOption);
+    parser.addOption(probePipewireLibOption);
     parser.addOption(portalTokenOption);
     parser.addOption(benchCaptureOption);
     parser.process(app);
@@ -173,6 +178,7 @@ int main(int argc, char **argv)
     options.probePortalNoStart = parser.isSet(probePortalNoStartOption);
     options.probePipewireFrames = parser.value(probePipewireFramesOption).toInt();
     options.probePipewireOut = parser.value(probePipewireOutOption);
+    options.probePipewireLib = parser.value(probePipewireLibOption).toInt();
 
     if (parser.isSet(rectOption)) {
         const QStringList parts = parser.value(rectOption).split(QLatin1Char(','));

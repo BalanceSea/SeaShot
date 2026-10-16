@@ -48,6 +48,14 @@ public:
     ~GifRecorder() override;
 
     bool start(CaptureBackend *backend, const QRectF &logicalRect, int fps, QString *error);
+
+    /// 帧来源：PipeWire 路径用它替换"后端轮询截图"。同步返回"当前最新一帧"，
+    /// 返回空图表示还没出帧（算丢帧）。
+    using FrameProvider = std::function<QImage()>;
+    /// 推送式帧源（PipeWire）的录制入口：
+    /// 与 start() 的区别只有"帧从哪来"与"首帧已知尺寸"，其余逻辑（编码/统计/停止）完全共用。
+    bool startFromProvider(FrameProvider provider, const QSize &frameSize,
+                           const QRectF &logicalRect, int fps, QString *error);
     void stop();  ///< 停止采集 → 异步编码 → finished
     void abort(); ///< 丢弃当前录制
 
@@ -70,10 +78,12 @@ signals:
 
 private:
     void tick();
+    bool beginRecording(const QImage &firstFrame, QString *error);
     void onFrame(const CaptureImage &image);
     void finishEncoding();
 
     CaptureBackend *m_backend = nullptr;
+    FrameProvider m_frameProvider; ///< 非空则走推送式帧源
     QTimer m_timer;
     std::unique_ptr<GifEncoder> m_encoder;
     QRectF m_region;

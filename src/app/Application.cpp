@@ -13,6 +13,7 @@
 #include "editor/EditorWindow.h"
 #include "overlay/Overlay.h"
 #include "record/GifRecorder.h"
+#include "record/PipeWireFrameSource.h"
 #include "record/PortalScreencast.h"
 #include "record/RecordingIndicator.h"
 #include "util/Clipboard.h"
@@ -46,6 +47,7 @@
 #include <QSocketNotifier>
 #include <QStandardPaths>
 #include <QTextStream>
+#include <QThread>
 #include <QtTest/QTest>
 #include <QTimer>
 
@@ -416,10 +418,19 @@ void Application::beginRecording(const SelectionResult &selection)
     m_recorder->setOutputPath(path);
 
     QString error;
-    if (!m_recorder->start(m_backend.get(), region, m_settings->gifFps(), &error)) {
-        SS_WARN() << "[app] 录制启动失败:" << error;
-        QTextStream(stdout) << "RECORD_ERROR " << error << "\n";
-        return;
+    // 优先 PipeWire（真正的视频流）；不可用时回退到 ScreenShot2 轮询。
+    // 回退是常态而不是异常：没有 token、没编译 libpipewire、或显式要求轮询时都会走到。
+    if (startPipeWireRecording(region, m_settings->gifFps(), &error)) {
+        // 已由 PipeWire 路径启动
+    } else {
+        SS_INFO() << "[app] PipeWire 帧源不可用，回退轮询：" << error;
+        QTextStream(stdout) << "RECORD_SOURCE polling (" << error << ")\n";
+        QTextStream(stdout).flush();
+        if (!m_recorder->start(m_backend.get(), region, m_settings->gifFps(), &error)) {
+            SS_WARN() << "[app] 录制启动失败:" << error;
+            QTextStream(stdout) << "RECORD_ERROR " << error << "\n";
+            return;
+        }
     }
     m_recordingIndicator->showFor(region, m_recorder->fps(), path);
     if (m_tray)
@@ -432,6 +443,119 @@ void Application::beginRecording(const SelectionResult &selection)
     }
 }
 
+bool Application::startPipeWireRecording(const QRectF &region, int fps, QString *error)
+{
+    if (!m_backend) {
+        *error = QStringLiteral("没有可用的截图后端");
+        return false;
+    }
+    if (!PipeWireFrameSource::isAvailable()) {
+        *error = QStringLiteral("编译时没有 libpipewire-0.3");
+        return false;
+    }
+    // 强制走轮询（A/B 对比与排障用）
+    if (qEnvironmentVariableIsSet("SEASHOT_RECORD_POLLING")) {
+        *error = QStringLiteral("SEASHOT_RECORD_POLLING 已置位");
+        return false;
+    }
+
+    // 需要 restore token：有它才能静默建会话（否则会弹授权对话框，不适合录制场景）
+    QString token;
+    {
+        QFile file(m_options.portalTokenFile);
+        if (file.open(QIODevice::ReadOnly))
+            token = QString::fromUtf8(file.readAll()).trimmed();
+    }
+    if (token.isEmpty()) {
+        *error = QStringLiteral("没有 restore token（先跑一次 --probe-portal-screencast 授权）");
+        return false;
+    }
+
+    // 选区落在哪个输出上（PipeWire 给的是整屏，得知道怎么裁）
+    const QVector<OutputInfo> outputs = m_backend->outputs();
+    if (outputs.isEmpty()) {
+        *error = QStringLiteral("拿不到输出信息");
+        return false;
+    }
+    OutputInfo monitor = outputs.first();
+    qint64 best = -1;
+    for (const OutputInfo &info : outputs) {
+        const QRect overlap = QRectF(info.logicalGeometry).intersected(region).toRect();
+        const qint64 area = qint64(overlap.width()) * overlap.height();
+        if (area > best) {
+            best = area;
+            monitor = info;
+        }
+    }
+    if (best <= 0) {
+        *error = QStringLiteral("选区不在任何输出内");
+        return false;
+    }
+    const double scale = monitor.scale > 0 ? monitor.scale : 1.0;
+    const QSize frameSize(qMax(2, qRound(region.width() * scale)),
+                          qMax(2, qRound(region.height() * scale)));
+
+    m_recordingPortal = std::make_unique<PortalScreencast>();
+    PortalScreencast::Result result;
+    {
+        QEventLoop loop;
+        QTimer::singleShot(20000, &loop, &QEventLoop::quit);
+        m_recordingPortal->start(token, /*persistMode=*/2,
+                                 [&](const PortalScreencast::Result &r) {
+                                     result = r;
+                                     loop.quit();
+                                 });
+        loop.exec();
+    }
+    if (!result.ok || result.streams.isEmpty()) {
+        *error = result.error.isEmpty() ? QStringLiteral("portal 没有返回流") : result.error;
+        stopPipeWireRecording();
+        return false;
+    }
+    m_recordingPipeWireFd = m_recordingPortal->openPipeWireRemote(error);
+    if (m_recordingPipeWireFd < 0) {
+        stopPipeWireRecording();
+        return false;
+    }
+
+    m_pipeWireSource = std::make_shared<PipeWireFrameSource>();
+    m_pipeWireSource->setTargetFps(fps);
+    if (!m_pipeWireSource->start(m_recordingPipeWireFd, result.streams.first().nodeId,
+                                 QRectF(monitor.logicalGeometry), region, error)) {
+        stopPipeWireRecording();
+        return false;
+    }
+
+    const auto source = m_pipeWireSource;
+    if (!m_recorder->startFromProvider([source] { return source->latestFrame(); }, frameSize,
+                                       region, fps, error)) {
+        stopPipeWireRecording();
+        return false;
+    }
+    QTextStream(stdout) << "RECORD_SOURCE pipewire node=" << result.streams.first().nodeId
+                        << " format=\"" << m_pipeWireSource->negotiatedFormat() << "\" frameSize="
+                        << frameSize.width() << "x" << frameSize.height() << "\n";
+    QTextStream(stdout).flush();
+    SS_INFO() << "[app] 录制帧源 = PipeWire" << m_pipeWireSource->negotiatedFormat();
+    return true;
+}
+
+void Application::stopPipeWireRecording()
+{
+    if (m_pipeWireSource) {
+        m_pipeWireSource->stop();
+        m_pipeWireSource.reset();
+    }
+    if (m_recordingPortal) {
+        m_recordingPortal->closeSession();
+        m_recordingPortal.reset();
+    }
+    if (m_recordingPipeWireFd >= 0) {
+        ::close(m_recordingPipeWireFd);
+        m_recordingPipeWireFd = -1;
+    }
+}
+
 void Application::stopRecording()
 {
     if (!m_recorder || !m_recorder->isRecording()) {
@@ -441,6 +565,7 @@ void Application::stopRecording()
     QTextStream(stdout) << "RECORD_STOP requested\n";
     QTextStream(stdout).flush();
     m_recorder->stop();
+    stopPipeWireRecording(); // 必须在 recorder->stop() 之后：拉动帧的计时器已停
     m_recordingIndicator->hideIndicator();
     if (m_tray)
         m_tray->setRecording(false);
@@ -1227,6 +1352,10 @@ int Application::runPortalScreencastProbe(const QString &tokenFile)
         out.flush();
         // 接帧验证：把 fd 交给 gst-launch 去真的取几帧。
         // 注意必须在 closeSession() 之前做 —— 会话一关流就没了。
+        if (fd >= 0 && m_options.probePipewireLib > 0) {
+            runPipeWireLibProbe(fd, result.streams.isEmpty() ? 0 : result.streams.first().nodeId,
+                                m_options.probePipewireLib, m_options.probePipewireOut);
+        }
         if (fd >= 0 && m_options.probePipewireFrames > 0) {
             uint nodeId = 0;
             if (!result.streams.isEmpty())
@@ -1400,6 +1529,79 @@ int Application::runPipeWireFrameProbe(int fd, int frameCount, const QString &ou
     out.flush();
     ::close(childFd);
     return frames > 0 ? 0 : 1;
+}
+
+int Application::runPipeWireLibProbe(int fd, uint nodeId, int frameCount, const QString &outDir)
+{
+    QTextStream out(stdout);
+    if (!PipeWireFrameSource::isAvailable()) {
+        out << "PIPEWIRE_LIB_UNAVAILABLE 编译时没有 libpipewire-0.3\n";
+        out.flush();
+        return 4;
+    }
+    // 挑一个输出（取第一个）。区域取该输出的中间 1/2：能直观看出裁剪位置对不对。
+    QRectF monitor;
+    if (m_backend) {
+        const QVector<OutputInfo> outputs = m_backend->outputs();
+        if (!outputs.isEmpty())
+            monitor = QRectF(outputs.first().logicalGeometry);
+    }
+    if (monitor.isEmpty()) {
+        out << "PIPEWIRE_LIB_ERROR 拿不到输出几何，无法把帧裁到选区\n";
+        out.flush();
+        return 5;
+    }
+    const QRectF region(monitor.x() + monitor.width() / 4, monitor.y() + monitor.height() / 4,
+                        monitor.width() / 2, monitor.height() / 2);
+    out << "PIPEWIRE_LIB_REGION monitor=" << monitor.width() << "x" << monitor.height()
+        << " region=" << region.width() << "x" << region.height() << "\n";
+    out.flush();
+
+    PipeWireFrameSource source;
+    source.setTargetFps(15); // 与录制器一致：流按刷新率推帧，这里只留 15fps
+    QString startError;
+    if (!source.start(fd, nodeId, monitor, region, &startError)) {
+        out << "PIPEWIRE_LIB_START_FAILED " << startError << "\n";
+        out.flush();
+        return 6;
+    }
+
+    QElapsedTimer timer;
+    timer.start();
+    qint64 firstFrameMs = -1;
+    quint64 seen = 0;
+    while (timer.elapsed() < 15000) {
+        const quint64 got = source.receivedFrames();
+        if (got != seen) {
+            seen = got;
+            if (firstFrameMs < 0)
+                firstFrameMs = timer.elapsed();
+            if (frameCount > 0 && int(got) >= frameCount)
+                break;
+        }
+        if (!source.error().isEmpty())
+            break;
+        QThread::msleep(5);
+    }
+    const QImage frame = source.latestFrame();
+    const QString format = source.negotiatedFormat();
+    const QString streamError = source.error();
+    source.stop();
+
+    const double seconds = qMax(0.001, double(timer.elapsed()) / 1000.0);
+    out << "PIPEWIRE_LIB frames=" << seen << " firstFrameMs=" << firstFrameMs
+        << " elapsedMs=" << timer.elapsed() << " fps=" << QString::number(double(seen) / seconds, 'f', 2)
+        << " format=\"" << format << "\" image=" << frame.width() << "x" << frame.height() << "\n";
+    if (!streamError.isEmpty())
+        out << "PIPEWIRE_LIB_STREAM_ERROR " << streamError << "\n";
+    if (!frame.isNull() && !outDir.isEmpty()) {
+        QDir().mkpath(outDir);
+        const QString path = outDir + QStringLiteral("/lib-last-frame.png");
+        if (frame.save(path, "PNG"))
+            out << "PIPEWIRE_LIB_SAVED " << path << "\n";
+    }
+    out.flush();
+    return seen > 0 ? 0 : 1;
 }
 
 int Application::run()

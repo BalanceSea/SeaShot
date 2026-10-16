@@ -16,6 +16,14 @@ find_package(KF6StatusNotifierItem REQUIRED)
 find_package(LayerShellQt REQUIRED)
 find_package(PkgConfig REQUIRED)
 
+# PipeWire 取帧：libpipewire-0.3。缺失时只关掉该路径（录制回退到 ScreenShot2 轮询）。
+pkg_check_modules(PIPEWIRE IMPORTED_TARGET libpipewire-0.3)
+if(PIPEWIRE_FOUND)
+    message(STATUS "SeaShot: PipeWire 取帧启用（libpipewire ${PIPEWIRE_libpipewire_0_3_VERSION}）")
+else()
+    message(WARNING "SeaShot: 未找到 libpipewire-0.3，录制的 PipeWire 路径将被编译关闭")
+endif()
+
 # X11 后端：xcb + xcb-ewmh。缺失时只关掉 X11 后端，不让整体构建失败。
 pkg_check_modules(XCB IMPORTED_TARGET xcb xcb-shm xcb-ewmh)
 if(XCB_FOUND)

@@ -4,6 +4,8 @@
 #include "record/GifEncoder.h"
 #include "util/Log.h"
 
+#include <QCoreApplication>
+#include <QThread>
 #include <QTimer>
 
 namespace seashot {
@@ -18,6 +20,83 @@ GifRecorder::GifRecorder(QObject *parent)
 GifRecorder::~GifRecorder()
 {
     abort();
+}
+
+bool GifRecorder::startFromProvider(FrameProvider provider, const QSize &frameSize,
+                                  const QRectF &logicalRect, int fps, QString *error)
+{
+    if (m_recording) {
+        if (error)
+            *error = QStringLiteral("已经在录制中");
+        return false;
+    }
+    if (!provider) {
+        if (error)
+            *error = QStringLiteral("没有可用的帧来源");
+        return false;
+    }
+    if (frameSize.width() < 2 || frameSize.height() < 2) {
+        if (error)
+            *error = QStringLiteral("帧尺寸无效");
+        return false;
+    }
+
+    m_backend = nullptr;
+    m_frameProvider = std::move(provider);
+    m_region = logicalRect;
+    m_fps = qBound(1, fps, 60);
+    m_stats = Stats();
+    m_frameSize = frameSize;
+    m_lastFrame = QImage();
+    m_inFlight = false;
+    m_finishing = false;
+
+    // 等第一帧（流刚从 portal 起来时可能有几十毫秒延迟）
+    QImage first;
+    QElapsedTimer wait;
+    wait.start();
+    while (wait.elapsed() < 8000) {
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+        first = m_frameProvider();
+        if (!first.isNull())
+            break;
+        QThread::msleep(10);
+    }
+    if (first.isNull()) {
+        m_frameProvider = nullptr;
+        if (error)
+            *error = QStringLiteral("等待 PipeWire 首帧超时");
+        return false;
+    }
+    if (!beginRecording(first, error)) {
+        m_frameProvider = nullptr;
+        return false;
+    }
+    SS_INFO() << "[record] 开始录制（PipeWire 帧源）" << m_region << m_fps << "fps 帧尺寸"
+              << m_frameSize;
+    return true;
+}
+
+bool GifRecorder::beginRecording(const QImage &firstFrame, QString *error)
+{
+    m_encoder = std::make_unique<GifEncoder>();
+    if (!m_encoder->start(m_frameSize, m_fps, error)) {
+        m_encoder.reset();
+        return false;
+    }
+    if (!m_encoder->writeFrame(firstFrame, error)) {
+        m_encoder->abort();
+        m_encoder.reset();
+        return false;
+    }
+    m_stats.requested = 1;
+    m_stats.captured = 1;
+    m_lastFrame = firstFrame;
+    m_elapsed.start();
+    m_recording = true;
+    m_timer.start(1000 / m_fps);
+    emit started(m_region, m_fps);
+    return true;
 }
 
 bool GifRecorder::start(CaptureBackend *backend, const QRectF &logicalRect, int fps, QString *error)
@@ -105,6 +184,17 @@ void GifRecorder::tick()
         return;
     }
     m_inFlight = true;
+    if (m_frameProvider) {
+        // PipeWire：帧由流推送，这里按自己的帧率拉"最新一帧"。
+        // 同步返回，所以直接把结果喂给 onFrame —— 后面的统计/编码逻辑一行都不用改。
+        CaptureImage frame;
+        frame.image = m_frameProvider();
+        frame.scale = 1.0;
+        if (frame.image.isNull())
+            frame.error = QStringLiteral("PipeWire 尚未出帧");
+        onFrame(frame);
+        return;
+    }
     m_backend->captureRect(m_region, [this](const CaptureImage &image) { onFrame(image); });
 }
 

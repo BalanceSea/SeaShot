@@ -55,6 +55,7 @@ struct Options {
     bool probePortalNoStart = false; ///< 只走到 SelectSources（不弹授权对话框）
     int probePipewireFrames = 0;     ///< >0 时：从 portal 的 PipeWire fd 消费这么多帧（接帧验证）
     QString probePipewireOut;        ///< 接帧落盘目录
+    int probePipewireLib = 0;        ///< >0 时：用 libpipewire 直连取这么多帧（与录制器同一套代码）
 };
 
 class Application : public QObject
@@ -107,6 +108,12 @@ private:
     /// 接帧验证：把 portal 给的 PipeWire fd 交给 gst-launch-1.0 取 frameCount 帧并落盘。
     /// 返回 0 = 真的出帧了。不改现有录制路径，纯诊断。
     int runPipeWireFrameProbe(int fd, int frameCount, const QString &outDir, uint nodeId);
+    /// 用 libpipewire 直连取帧（与录制器同一套代码的独立验证入口）
+    int runPipeWireLibProbe(int fd, uint nodeId, int frameCount, const QString &outDir);
+    /// 尝试用 PipeWire 帧源开始录制（需要已有 restore token）。
+    /// 失败时把原因写进 error，调用方回退到轮询路径。
+    bool startPipeWireRecording(const QRectF &region, int fps, QString *error);
+    void stopPipeWireRecording();
     /// ISSUE-001 诊断：程序化拖拽浮层 + 截屏定位，量出「目标位置 vs 实见位置」的偏差
     int runToastDragBench(int durationMs);
     QRect virtualGeometry() const;
@@ -138,6 +145,10 @@ private:
     QImage m_lastImage;
     QString m_lastSavedPath;
     QRect m_lastAnchorRect; ///< 上一次截图的源矩形（全局坐标），结果浮层贴它左下角
+    /// PipeWire 录制期间的资源：帧源 + 会话 + fd（顺序销毁很关键）
+    std::shared_ptr<class PipeWireFrameSource> m_pipeWireSource;
+    std::unique_ptr<class PortalScreencast> m_recordingPortal;
+    int m_recordingPipeWireFd = -1;
     bool m_keepAliveForToast = false; ///< 一次性 CLI 下：等浮层消失再退出进程
     bool m_editorOpened = false; ///< 开过编辑器（一次性 CLI 下要等它关掉再退）
     SelectionResult m_pendingSelection;
