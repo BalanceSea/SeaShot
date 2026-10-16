@@ -1,24 +1,28 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 4 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-483331" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-528915" id= 1 run方式= Script<N>.run 
 [warn] [wayland] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：跳过自排除 
 [warn] [app] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：本次不排除自己的窗口 
 [info] [toast] layer-shell role 已应用 （铺满输出的固定表面） 
-TOAST image=400x300 display=400x300 scaled=0 anchor=300,200 400x300 card=400x334 cardTopLeft=300,502 fixedSurface=1 autoHide=0
+TOAST image=400x300 display=400x300 scaled=0 anchor=300,200 400x300 card=400x348 cardTopLeft=300,502 fixedSurface=1 autoHide=0
 [info] [toast] visible= true layerShell= true cardTopLeft= QPoint(300,502) autoHideMs= 0 
-DRAGBENCH_START startX=300 stepMs=16 stepPx=1 durationMs=2000 captureEvery=20
-DRAGBENCH_RELEASE expected=516 final=516 startWas=300 ok=1
-DRAGBENCH_SAMPLE step=38 observed=323 targetAtFrame=324 lagPx=1 lagMs=16 applyUs=95 magenta=2898
-DRAGBENCH_SAMPLE step=58 observed=344 targetAtFrame=345 lagPx=1 lagMs=16 applyUs=68 magenta=2898
-DRAGBENCH_SAMPLE step=77 observed=363 targetAtFrame=364 lagPx=1 lagMs=16 applyUs=117 magenta=2898
-DRAGBENCH_SAMPLE step=97 observed=383 targetAtFrame=384 lagPx=1 lagMs=16 applyUs=98 magenta=2898
-DRAGBENCH_SAMPLE step=118 observed=403 targetAtFrame=404 lagPx=1 lagMs=16 applyUs=72 magenta=2898
-DRAGBENCH_SAMPLE step=138 observed=423 targetAtFrame=424 lagPx=1 lagMs=16 applyUs=128 magenta=2898
-DRAGBENCH_SAMPLE step=158 observed=443 targetAtFrame=444 lagPx=1 lagMs=16 applyUs=70 magenta=2898
-DRAGBENCH_SAMPLE step=177 observed=463 targetAtFrame=464 lagPx=1 lagMs=16 applyUs=100 magenta=2898
-DRAGBENCH_SAMPLE step=197 observed=483 targetAtFrame=484 lagPx=1 lagMs=16 applyUs=62 magenta=2898
-DRAGBENCH samples=9 lagPxAvg=1 lagPxMax=1 lagMsAvg=16
-DRAGBENCH_CPU userMs=498.3 sysMs=35.988
-DRAGBENCH_CADENCE commits=216 avgGapMs=17.5581 minGapMs=14 maxGapMs=58 jitterStddevMs=7.41119
-DRAGBENCH_CHURN steps=216 commits=216 elapsedMs=2000 commitsPerSec=108
-[info] [kwin] 脚本已卸载 pluginName= "seashot-483331" 
+DRAGBENCH_START startX=300 stepMs=16 stepPx=1 durationMs=3000 captureEvery=20
+DRAGBENCH_RELEASE expected=580 final=580 startWas=300 ok=1
+DRAGBENCH_SAMPLE step=34 observed=323 targetAtFrame=324 lagPx=1 lagMs=16 applyUs=77 magenta=2954
+DRAGBENCH_SAMPLE step=54 observed=343 targetAtFrame=344 lagPx=1 lagMs=16 applyUs=61 magenta=2954
+DRAGBENCH_SAMPLE step=74 observed=363 targetAtFrame=364 lagPx=1 lagMs=16 applyUs=67 magenta=2954
+DRAGBENCH_SAMPLE step=95 observed=383 targetAtFrame=384 lagPx=1 lagMs=16 applyUs=70 magenta=2954
+DRAGBENCH_SAMPLE step=114 observed=403 targetAtFrame=404 lagPx=1 lagMs=16 applyUs=76 magenta=2954
+DRAGBENCH_SAMPLE step=134 observed=423 targetAtFrame=424 lagPx=1 lagMs=16 applyUs=58 magenta=2954
+DRAGBENCH_SAMPLE step=154 observed=443 targetAtFrame=444 lagPx=1 lagMs=16 applyUs=66 magenta=2954
+DRAGBENCH_SAMPLE step=174 observed=463 targetAtFrame=464 lagPx=1 lagMs=16 applyUs=181 magenta=2954
+DRAGBENCH_SAMPLE step=195 observed=483 targetAtFrame=484 lagPx=1 lagMs=16 applyUs=77 magenta=2954
+DRAGBENCH_SAMPLE step=215 observed=503 targetAtFrame=504 lagPx=1 lagMs=16 applyUs=71 magenta=2954
+DRAGBENCH_SAMPLE step=235 observed=523 targetAtFrame=524 lagPx=1 lagMs=16 applyUs=84 magenta=2954
+DRAGBENCH_SAMPLE step=254 observed=543 targetAtFrame=544 lagPx=1 lagMs=16 applyUs=77 magenta=2954
+DRAGBENCH_SAMPLE step=274 observed=563 targetAtFrame=564 lagPx=1 lagMs=16 applyUs=72 magenta=2954
+DRAGBENCH samples=13 lagPxAvg=1 lagPxMax=1 lagMsAvg=16
+DRAGBENCH_CPU userMs=639.904 sysMs=47.97
+DRAGBENCH_CADENCE commits=280 avgGapMs=17.4946 minGapMs=15 maxGapMs=55 jitterStddevMs=6.73027
+DRAGBENCH_CHURN steps=280 commits=280 elapsedMs=3000 commitsPerSec=93.3333
+[info] [kwin] 脚本已卸载 pluginName= "seashot-528915" 

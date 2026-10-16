@@ -89,6 +89,8 @@ private:
     void performCapture();
     void finishCapture(const CaptureImage &image);
     void saveAs();
+    /// 保存到设置里的默认目录（按文件名模板命名，不弹对话框）
+    void saveToDefault();
     void copyLast();
     int runSelfTest();
     int runListWindows();

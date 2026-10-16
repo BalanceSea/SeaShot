@@ -60,6 +60,7 @@ public:
 
 signals:
     void editRequested();
+    void saveRequested();   ///< 保存到设置里的默认目录（不弹对话框）
     void saveAsRequested();
     void copyRequested();
     void dismissed();
@@ -76,16 +77,33 @@ protected:
     void changeEvent(QEvent *event) override;
 
 private:
-    enum class Button { None, Edit, SaveAs, Copy, Close };
+    enum class Button { None, Edit, Save, SaveAs, Copy, Close };
 
     // ── 几何 ──────────────────────────────────────────────
     QRect cardRect() const { return QRect(QPoint(0, 0), m_cardSize); } ///< 卡片本地坐标
+    /// 卡片 + 阴影外扩后的范围（缓存/脏区用；卡片本身仍是 cardRect，图片仍 1:1）
+    QRect shadowRect() const
+    {
+        return cardRect().adjusted(-kShadowMargin, -kShadowMargin, kShadowMargin, kShadowMargin);
+    }
     int barHeight() const;
     QRect barRect() const;
     QVector<QPair<Button, QRect>> buttons() const;
     Button buttonAt(const QPoint &position) const;
     QPoint cardTopLeftGlobal() const;                  ///< 卡片左上角（全局）
     QRect surfaceGeometry() const;                     ///< 表面覆盖的输出矩形
+
+    /// 按钮文案/图标（集中在这里；Button 是私有枚举，所以做成静态成员而不是自由函数）
+    static QString labelFor(Button button);
+    static QIcon iconFor(Button button);
+    /// 执行某个按钮的动作（鼠标点击与诊断模拟点击共用同一条路径）
+    void activate(Button button);
+
+    /// 诊断/验收用：在浮层显示后自动触发某个按钮（不经过鼠标事件）
+    void scheduleAutoClick();
+
+    /// 阴影外扩量：缓存与脏区都比卡片大一圈（卡片内仍严格是 1:1 图片）
+    static constexpr int kShadowMargin = 14;
 
     // ── 生命周期 ──────────────────────────────────────────
     void rebuildCache();

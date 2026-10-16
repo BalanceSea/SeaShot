@@ -19,24 +19,36 @@
 namespace seashot {
 
 namespace {
-constexpr int kBarHeight = 34;
 constexpr int kScreenMargin = 16;
 constexpr int kAnchorGap = 3;
-constexpr int kButtonHeight = 24;
 constexpr int kButtonPadding = 12;
-
-QString buttonLabel(int id)
-{
-    // Button 枚举里 None 是 0，所以这里用 1..4
-    switch (id) {
-    case 1: return QStringLiteral("编辑");
-    case 2: return QStringLiteral("另存为");
-    case 3: return QStringLiteral("复制");
-    case 4: return QStringLiteral("关闭");
-    default: return QString();
-    }
-}
 } // namespace
+
+QString Toast::labelFor(Button button)
+{
+    switch (button) {
+    case Button::Edit: return QStringLiteral("编辑");
+    case Button::Save: return QStringLiteral("保存");
+    case Button::SaveAs: return QStringLiteral("另存为");
+    case Button::Copy: return QStringLiteral("复制");
+    case Button::Close: return QStringLiteral("关闭");
+    case Button::None: break;
+    }
+    return QString();
+}
+
+QIcon Toast::iconFor(Button button)
+{
+    switch (button) {
+    case Button::Edit: return ui::iconEdit();
+    case Button::Save: return ui::iconSave();
+    case Button::SaveAs: return ui::iconSaveAs();
+    case Button::Copy: return ui::iconCopy();
+    case Button::Close: return ui::iconClose();
+    case Button::None: break;
+    }
+    return QIcon();
+}
 
 Toast::Toast(QWidget *parent)
     : QWidget(parent)
@@ -49,13 +61,19 @@ Toast::Toast(QWidget *parent)
     setWindowTitle(QStringLiteral("seashot-toast"));
     m_fixedSurface = !qEnvironmentVariableIsSet("SEASHOT_TOAST_MOVING_SURFACE");
 
+    // 用户反馈字号偏小：在系统字号基础上加一点（“按钮和字号都放大”）
+    QFont toastFont = font();
+    if (toastFont.pointSizeF() > 0)
+        toastFont.setPointSizeF(toastFont.pointSizeF() + ui::spec::fontDelta);
+    setFont(toastFont);
+
     m_autoHide.setSingleShot(true);
     connect(&m_autoHide, &QTimer::timeout, this, &Toast::closeAndNotify);
 }
 
 int Toast::barHeight() const
 {
-    return kBarHeight;
+    return ui::spec::barHeight;
 }
 
 void Toast::setEditEnabled(bool enabled)
@@ -132,12 +150,13 @@ void Toast::showResult(const QImage &image, const QString &savedPath, const QStr
         : image.scaled(display, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
     // 2) 卡片 == 图片尺寸（按钮条浮在图片上），但至少留够按钮宽度
+    // 4) 按钮条 + 卡片最小尺寸（按钮变多变大后，卡片可能比图片宽）
     m_cardSize = display; // 先按图片尺寸算，下面按按钮再放宽
     const int buttonsWidth = buttons().isEmpty() ? 0 : (buttons().last().second.right() + 1);
     m_cardSize.setWidth(qMax(m_cardSize.width(), buttonsWidth + kButtonPadding));
     m_cardSize.setHeight(m_cardSize.height() + barHeight());
-    m_cardSize.setWidth(qMax(m_cardSize.width(), 260));
-    m_cardSize.setHeight(qMax(m_cardSize.height(), 120));
+    m_cardSize.setWidth(qMax(m_cardSize.width(), 320));
+    m_cardSize.setHeight(qMax(m_cardSize.height(), 150));
 
     // 3) 表面：固定模式铺满输出；旧模式就是卡片本身
     if (m_fixedSurface) {
@@ -161,6 +180,7 @@ void Toast::showResult(const QImage &image, const QString &savedPath, const QStr
         << " anchor=" << anchorGlobalRect.x() << "," << anchorGlobalRect.y() << " "
         << anchorGlobalRect.width() << "x" << anchorGlobalRect.height()
         << " card=" << m_cardSize.width() << "x" << m_cardSize.height()
+        << " bar=" << barHeight() << " buttons=" << buttons().size()
         << " cardTopLeft=" << cardTopLeftGlobal().x() << "," << cardTopLeftGlobal().y()
         << " fixedSurface=" << (m_fixedSurface ? 1 : 0)
         << " autoHide=" << m_autoHideMs << "\n";
@@ -169,6 +189,7 @@ void Toast::showResult(const QImage &image, const QString &savedPath, const QStr
               << "cardTopLeft=" << cardTopLeftGlobal() << "autoHideMs=" << m_autoHideMs;
 
     maybeStartAutoHide();
+    scheduleAutoClick();
 }
 
 void Toast::updateStatus(const QString &message, const QString &savedPath, const QString &copyError)
@@ -205,8 +226,8 @@ QRect Toast::barRect() const
 
 QVector<QPair<Toast::Button, QRect>> Toast::buttons() const
 {
-    const QVector<Button> order{m_editEnabled ? Button::Edit : Button::None, Button::SaveAs,
-                                Button::Copy, Button::Close};
+    const QVector<Button> order{m_editEnabled ? Button::Edit : Button::None, Button::Save,
+                                Button::SaveAs, Button::Copy, Button::Close};
     QVector<QPair<Button, QRect>> result;
     const QFontMetrics metrics(font());
     const int width = qMax(260, m_cardSize.width());
@@ -215,15 +236,8 @@ QVector<QPair<Toast::Button, QRect>> Toast::buttons() const
     for (auto it = order.crbegin(); it != order.crend(); ++it) {
         if (*it == Button::None)
             continue;
-        const QIcon ic = [it]() {
-            switch (*it) {
-            case Button::Edit: return ui::iconEdit();
-            case Button::SaveAs: return ui::iconSaveAs();
-            case Button::Copy: return ui::iconCopy();
-            default: return ui::iconClose();
-            }
-        }();
-        const int textWidth = metrics.horizontalAdvance(buttonLabel(int(*it)));
+        const QIcon ic = iconFor(*it);
+        const int textWidth = metrics.horizontalAdvance(labelFor(*it));
         const int iconPart = ic.isNull() ? 0 : ui::spec::iconSize + ui::spec::gap / 2;
         const int buttonWidth = textWidth + iconPart + ui::spec::buttonPadX * 2;
         x -= buttonWidth;
@@ -356,19 +370,30 @@ void Toast::applyPosition(const QPoint &globalTopLeft)
     for (const QRect &rect : std::as_const(m_recentCardRects))
         damage = damage.isNull() ? rect : damage.united(rect);
     Q_UNUSED(oldCard)
-    update(damage);
+    // 脏区要含阴影外扩部分，否则拖动时阴影会留下残影
+    update(damage.adjusted(-kShadowMargin, -kShadowMargin, kShadowMargin, kShadowMargin));
 }
 
 void Toast::rebuildCache()
 {
     const QRect card = cardRect();
     const qreal dpr = devicePixelRatioF();
-    m_cache = QPixmap(card.size() * dpr);
+    m_cache = QPixmap(shadowRect().size() * dpr);
     m_cache.setDevicePixelRatio(dpr);
     m_cache.fill(Qt::transparent);
 
     QPainter painter(&m_cache);
     painter.setRenderHint(QPainter::Antialiasing, true);
+
+    // 阴影：卡片外一圈逐渐变淡的圆角矩形（先画，后面所有坐标都是卡片本地坐标）
+    for (int i = kShadowMargin; i >= 1; --i) {
+        const int alpha = int(80.0 * (1.0 - double(i - 1) / kShadowMargin));
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(0, 0, 0, alpha));
+        painter.drawRoundedRect(QRectF(card).adjusted(-i, -i + 3, i, i + 3),
+                                ui::spec::cardRadius + i, ui::spec::cardRadius + i);
+    }
+    painter.translate(kShadowMargin, kShadowMargin);
 
     const ui::CardColors colors = ui::cardColors(palette());
     const QColor window = colors.card;
@@ -382,7 +407,7 @@ void Toast::rebuildCache()
     const QRectF cardF = QRectF(card).adjusted(0.5, 0.5, -0.5, -0.5);
     painter.setPen(Qt::NoPen);
     painter.setBrush(window);
-    painter.drawRoundedRect(cardF, 8, 8);
+    painter.drawRoundedRect(cardF, ui::spec::cardRadius, ui::spec::cardRadius);
 
     // 图片（原尺寸或等比缩小）
     if (!m_display.isNull()) {
@@ -437,15 +462,8 @@ void Toast::rebuildCache()
         painter.drawRoundedRect(QRectF(rect).adjusted(0.5, 0.5, -0.5, -0.5), ui::spec::buttonRadius,
                                 ui::spec::buttonRadius);
 
-        const QIcon ic = [&entry]() {
-            switch (entry.first) {
-            case Button::Edit: return ui::iconEdit();
-            case Button::SaveAs: return ui::iconSaveAs();
-            case Button::Copy: return ui::iconCopy();
-            default: return ui::iconClose();
-            }
-        }();
-        const QString label = buttonLabel(int(entry.first));
+        const QIcon ic = iconFor(entry.first);
+        const QString label = labelFor(entry.first);
         const int textWidth = painter.fontMetrics().horizontalAdvance(label);
         const int iconPart = ic.isNull() ? 0 : ui::spec::iconSize + ui::spec::gap / 2;
         const int contentWidth = textWidth + iconPart;
@@ -483,7 +501,8 @@ void Toast::rebuildCache()
 
 void Toast::paintEvent(QPaintEvent *event)
 {
-    if (m_cacheDirty || m_cache.size() != (QSizeF(m_cardSize) * devicePixelRatioF()).toSize())
+    if (m_cacheDirty
+        || m_cache.size() != (QSizeF(shadowRect().size()) * devicePixelRatioF()).toSize())
         rebuildCache();
 
     QPainter painter(this);
@@ -505,7 +524,8 @@ void Toast::paintEvent(QPaintEvent *event)
     m_frameBuffer.fill(Qt::transparent);
     {
         QPainter framePainter(&m_frameBuffer);
-        framePainter.drawPixmap(m_cardOffset - damage.topLeft(), m_cache);
+        framePainter.drawPixmap(m_cardOffset - QPoint(kShadowMargin, kShadowMargin) - damage.topLeft(),
+                                m_cache);
     }
     painter.drawPixmap(damage.topLeft(), m_frameBuffer);
 }
@@ -533,18 +553,11 @@ void Toast::mousePressEvent(QMouseEvent *event)
     }
     switch (hit) {
     case Button::Edit:
-        hide();
-        emit editRequested();
-        emit dismissed();
-        break;
+    case Button::Save:
     case Button::SaveAs:
-        emit saveAsRequested();
-        break;
     case Button::Copy:
-        emit copyRequested();
-        break;
     case Button::Close:
-        closeAndNotify();
+        activate(hit);
         break;
     case Button::None:
         break;
@@ -567,6 +580,57 @@ void Toast::mouseMoveEvent(QMouseEvent *event)
     // 逐事件提交：固定表面模式下每次只是「弄脏旧位置 + 新位置两块矩形 + 更新输入区域」，
     // 没有图层重排，也没有整块缓冲重传，所以不需要节流。
     applyPosition(event->globalPosition().toPoint() - m_dragOrigin);
+}
+
+void Toast::activate(Button button)
+{
+    switch (button) {
+    case Button::Edit:
+        hide();
+        emit editRequested();
+        emit dismissed();
+        break;
+    case Button::Save:
+        emit saveRequested();
+        break;
+    case Button::SaveAs:
+        emit saveAsRequested();
+        break;
+    case Button::Copy:
+        emit copyRequested();
+        break;
+    case Button::Close:
+        closeAndNotify();
+        break;
+    case Button::None:
+        break;
+    }
+}
+
+void Toast::scheduleAutoClick()
+{
+    // 验收用：SEASHOT_TOAST_AUTOCLICK=save|saveas|copy|edit|close
+    // 走 activate()，与真实鼠标点击完全同一条路径。
+    const QString name = qEnvironmentVariable("SEASHOT_TOAST_AUTOCLICK").toLower();
+    if (name.isEmpty())
+        return;
+    Button target = Button::None;
+    if (name == QLatin1String("save"))
+        target = Button::Save;
+    else if (name == QLatin1String("saveas"))
+        target = Button::SaveAs;
+    else if (name == QLatin1String("copy"))
+        target = Button::Copy;
+    else if (name == QLatin1String("edit"))
+        target = Button::Edit;
+    else if (name == QLatin1String("close"))
+        target = Button::Close;
+    else {
+        SS_WARN() << "[toast] 未知的 SEASHOT_TOAST_AUTOCLICK=" << name;
+        return;
+    }
+    SS_INFO() << "[toast] 诊断：将在 500ms 后自动触发按钮" << name;
+    QTimer::singleShot(500, this, [this, target] { activate(target); });
 }
 
 void Toast::mouseReleaseEvent(QMouseEvent *)

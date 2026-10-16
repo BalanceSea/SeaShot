@@ -11,4 +11,4 @@ X11 后端：窗口枚举用 EWMH（_NET_CLIENT_LIST_STACKING/_NET_FRAME_EXTENTS
 WINDOWS 3
 320000f appId=MinecraftConnectTool pid=278780 active=0 normal=1 min=1 visible=0 stack=0 frame=587,274 1080x720 excluded=0 title=Minecraft Connect Tool
 2200004 appId=Chatgpt pid=233663 active=0 normal=1 min=0 visible=1 stack=1 frame=309,858 1090x760 excluded=0 title=ChatGPT
-1200011 appId=QQ pid=2746 active=1 normal=1 min=0 visible=1 stack=2 frame=963,263 957x720 excluded=0 title=QQ
+1200011 appId=QQ pid=545306 active=1 normal=1 min=0 visible=1 stack=2 frame=1013,284 957x720 excluded=0 title=QQ

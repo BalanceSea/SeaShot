@@ -6,10 +6,14 @@
 //  - 图标统一从系统图标主题取（Breeze），带候选回退；取不到就退回纯文字，不崩不空。
 //
 // 规格表（对应用户可读的 docs/ui-spec.md）：
-//   卡片圆角 8px / 按钮圆角 4px / 卡片内边距 12px / 元素间距 6px
-//   底部操作条高 34px / 按钮高 24px / 按钮左右内边距 10px / 图标 16px
+//   卡片圆角 12px / 按钮圆角 8px / 卡片内边距 16px / 元素间距 10px
+//   底部操作条高 48px / 按钮高 32px / 按钮左右内边距 16px / 图标 20px
+//   字号相对系统默认 +1pt
 //   卡片描边：外圈 2px 深色(α100) + 内圈 2px 主题高亮 —— 保证浅色与深色背景都能一眼找到
 //   交互态：hover = 底色提亮 8%，pressed = 底色压暗 15%，disabled = 文字降到 50% 透明度
+//
+// 2026-10-16 整体放大：用户反馈“太小太挤”，所以按钮/图标/间距/字号统一上调约 30%。
+// 上一版是 16px 图标 + 24px 按钮 + 6px 间距（在现代显示器上偏小）。
 #pragma once
 
 #include <QColor>
@@ -22,14 +26,16 @@
 namespace seashot::ui {
 
 namespace spec {
-inline constexpr int cardRadius = 8;
-inline constexpr int buttonRadius = 4;
-inline constexpr int cardPadding = 12;
-inline constexpr int gap = 6;
-inline constexpr int barHeight = 34;
-inline constexpr int buttonHeight = 24;
-inline constexpr int buttonPadX = 10;
-inline constexpr int iconSize = 16;
+inline constexpr int cardRadius = 12;
+inline constexpr int buttonRadius = 8;
+inline constexpr int cardPadding = 16;
+inline constexpr int gap = 10;
+inline constexpr int barHeight = 48;
+inline constexpr int buttonHeight = 32;
+inline constexpr int buttonPadX = 16;
+inline constexpr int iconSize = 20;
+/// 字号相对系统默认的增量（pt）。取 0 以外的值前请确认 pointSizeF() > 0。
+inline constexpr qreal fontDelta = 1.0;
 inline constexpr int frameOuterWidth = 2;
 inline constexpr int frameInnerWidth = 2;
 inline constexpr int frameOuterAlpha = 100;

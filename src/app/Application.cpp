@@ -136,6 +136,7 @@ Application::Application(const Options &options, QObject *parent)
     m_toast = std::make_unique<Toast>();
     m_toast->setAutoHideMs(m_settings->toastAutoHideMs());    m_toast->setEditEnabled(true);
     connect(m_toast.get(), &Toast::saveAsRequested, this, &Application::saveAs);
+    connect(m_toast.get(), &Toast::saveRequested, this, &Application::saveToDefault);
     connect(m_toast.get(), &Toast::copyRequested, this, &Application::copyLast);
     connect(m_toast.get(), &Toast::editRequested, this,
             [this]() { openEditor(m_lastImage, m_lastSavedPath); });
@@ -737,9 +738,10 @@ void Application::finishCapture(const CaptureImage &image)
             // 一次性 CLI 且没弹编辑器：浮层是用户唯一能操作的界面 →
             // 等它自动消失或用户点「关闭」再退出（否则刚显示的浮层会随进程一起消失，
             // 「编辑 / 另存为」按钮形同虚设）
+            // 只需记个标记：真正的等待在 run() 里用**局部 QEventLoop** 做。
+            // 不要在这里 connect 到 QCoreApplication::quit：那会把退出标记全局置位，
+            // 而浮层点「编辑」时也会发 dismissed → 会顺手把刚打开的编辑器一起带走。
             m_keepAliveForToast = true;
-            connect(m_toast.get(), &Toast::dismissed, qApp, &QCoreApplication::quit,
-                    Qt::UniqueConnection);
         }
     }
 }
@@ -771,6 +773,35 @@ void Application::saveAs()
         else
             m_toast->showResult(m_lastImage, path, message, QString(), m_lastAnchorRect);
         // 保存完就让它退场：短价展示后消失（你的要求：操作后消失）
+        m_toast->dismissAfter(1200);
+        out << "SAVED " << path << "\n";
+    } else {
+        const QString message = QStringLiteral("保存失败");
+        if (m_toast->isVisible())
+            m_toast->updateStatus(message, QString(), error);
+        else
+            m_toast->showResult(m_lastImage, QString(), message, error, m_lastAnchorRect);
+        out << "SAVE_ERROR " << error << "\n";
+    }
+    out.flush();
+}
+
+void Application::saveToDefault()
+{
+    QTextStream out(stdout);
+    if (m_lastImage.isNull())
+        return;
+
+    // 与「另存为」的区别：直接落到设置里的保存目录 + 文件名模板，不弹对话框
+    const QString path = m_settings->defaultSavePath();
+    QString error;
+    if (Settings::saveImage(path, m_lastImage, &error)) {
+        m_lastSavedPath = path;
+        const QString message = QStringLiteral("已保存 %1").arg(sizeText(m_lastImage));
+        if (m_toast->isVisible())
+            m_toast->updateStatus(message, path, QString());
+        else
+            m_toast->showResult(m_lastImage, path, message, QString(), m_lastAnchorRect);
         m_toast->dismissAfter(1200);
         out << "SAVED " << path << "\n";
     } else {
@@ -1303,8 +1334,27 @@ int Application::run()
     }
     if (m_options.captureScreen || m_options.hasRect || !m_options.windowHandle.isEmpty()) {
         const int code = runNonInteractiveCapture();
-        // 浮层还在 / 编辑器还开着：别急着退（quitOnLastWindowClosed 会在窗口关掉时收尾）
-        if (m_keepAliveForToast || m_editorOpened)
+        // 编辑器还开着：继续跑事件循环，等它关掉
+        if (m_editorOpened)
+            return QCoreApplication::exec();
+        // 浮层还在：等它被关闭或自动消失。
+        // ⚠️ 两层保险，缺一个都会挂住：
+        //   1) 进循环前先看 isVisible()：浮层可能已经在上一段（runNonInteractiveCapture
+        //      内部的）嵌套循环里被关掉了（例如点「保存」后 dismissAfter(1200)），
+        //      那时再等就没人来叫醒；
+        //   2) 用**局部 QEventLoop** 而不是 QCoreApplication::exec()：后者在这种
+        //      “外部已经退过一次循环”的场景下实测不会真正返回（进程永远 poll 着），
+        //      局部循环的 quit 目标明确，行为可预测。
+        if (m_keepAliveForToast && m_toast && m_toast->isVisible()) {
+            QEventLoop wait;
+            connect(m_toast.get(), &Toast::dismissed, &wait, &QEventLoop::quit);
+            if (m_toast->isVisible())
+                wait.exec();
+        }
+        // ⚠️ 等待期间用户可能点了「编辑」——编辑器是那一瞬才打开的，所以必须重新判断。
+        //    否则浮层消失后直接 return code，进程退出会把刚打开的编辑器一起带走
+        //    （实测日志：先“等浮层关闭”，再“EDITOR_OPEN”，再“直接返回”。）
+        if (m_editorOpened)
             return QCoreApplication::exec();
         return code;
     }
