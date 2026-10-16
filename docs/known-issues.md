@@ -5,7 +5,7 @@
 
 ## 待修
 
-### ISSUE-008 串流路径（portal ScreenCast + PipeWire）—— 免弹窗已达成，接帧未验证
+### ISSUE-008 串流路径（portal ScreenCast + PipeWire）—— 已全部验证
 
 - **背景**：你问过"录 GIF 能否不要授权弹窗"。Wayland 下客户端拿不到屏幕内容，除非
   用户批准过一次（没有任何客户端能绕过）；能免弹窗的机制是 portal 的 restore token。
@@ -70,7 +70,9 @@ PIPEWIRE_PROBE frames=10 firstFrameMs=301 elapsedMs=1471 bytes=8678871
 
 **仍未验证（下一步的真正风险点）**
 
-- `OpenPipeWireRemote` 拿到了 fd（`fd=22`），但**从未消费过帧**。KDE portal 日志里每次都有：
+- ✅ **接帧已验证**（见 ISSUE-009）：`frames=10 firstFrameMs=301`，抽出的第一帧是 1920x1080 真实画面。
+  下面这段是当时未验证时的记录，保留作为排查线索：
+  当时 `OpenPipeWireRemote` 拿到了 fd 但从未消费帧，KDE portal 日志里每次都有：
   ```
   Stream error:  target not found
   PipeWire remote error: -2 target not found
@@ -78,7 +80,8 @@ PIPEWIRE_PROBE frames=10 firstFrameMs=301 elapsedMs=1471 bytes=8678871
   无法确定这是"探测程序拿到 fd 就 close 导致的拆卸噪音"，还是"流本身建不起来"。
   **结论：现在还谈不上"录 GIF 改走 PipeWire"** —— 必须先做接帧验证（GStreamer/pipewiresrc
   连 fd + node id，看是否出帧），否则现有 ScreenShot2 轮询实现不动。
-- 流参数（node id）目前**故意不解析**：手工迭代 `a(ua{sv})` 会让 Qt 直接 abort
+- ✅ 已解决：node id 改用注册元类型 + `qdbus_cast` 解析（`node=88`）。
+  当时记的坑：手工迭代 `a(ua{sv})` 会让 Qt 直接 abort
   （`QDBusArgument: write from a read-only object` + SIGABRT，已实测）。接帧时必须用
   `qdbus_cast` / 注册元类型的正规做法。
 
@@ -145,8 +148,8 @@ GIF 体积（60fps 4s）：PipeWire **2.87MB** vs 轮询 **5.43MB**（帧更少�
 **⚠️ 已知代价：中间文件很大（无损 FFV1）**
 实测全屏 1920x1080：**12 秒 = 110.8 MB → ≈554 MB/分钟**（10 分钟约 5.5 GB，落在 /tmp）。
 - 脚本式（`--save`）转码后立即删除，无残留；
-- 交互式（等用户在工具栏选格式）会保留到你选择为止 —— 长时间录制需注意 /tmp 空间。
-- 未做上限/超时清理，需要的话可以加（例如超过 N 分钟自动转 MP4 并清理）。
+- 交互式（等用户在工具栏选格式）会保留到你选择为止。
+- ✅ **清理策略已做**（见 ISSUE-011）：中间文件改落磁盘、启动清理残留、录制中 <2GB 自动停。
 
 **验证方式**
 ```fish
@@ -156,6 +159,28 @@ SEASHOT_TOAST_AUTOCLICK=mp4 seashot --record --rect 500,300,600,400 --seconds 2
 # 脚本式按扩展名直接产出
 seashot --record --rect X,Y,W,H --seconds 3 --save /tmp/x.mp4
 ```
+
+### ISSUE-011 中间文件位置与清理策略（修掉一个内存隐患）
+
+- **状态**：**已完成**。
+
+**发现的安全隐患（重要）**：本机 `/tmp` 是 **tmpfs（内存盘，7.8G）**，
+而无损中间文件实测 **≈554MB/分钟** —— 全屏录制约 13 分钟就会写满 `/tmp`、
+**吃掉 7.8G 内存**并触发 OOM，影响整个系统而不只是本应用。
+
+**三处修改**
+1. 中间文件改到**磁盘**：`~/.cache/seashot/recording`（btrfs，可用 851G）
+   - 顺带纠正一个错判：原以为 `QStandardPaths::CacheLocation` 就是 `~/.cache/seashot`，
+     实测不是（取决于应用名/组织名）→ 清理与写入跑去了别的目录，排查了一轮。
+     改为与 restore token 同一套确定性路径。
+2. **启动清理残留**：删掉上次崩溃/被 kill 留下的 `seashot-record-<pid>.*`，
+   按 PID 判断进程是否存活 —— 只删"进程已不在"的，不误伤正在录制的另一个实例。
+3. **录制中监控空间**：每秒查一次可用空间，低于 **2GB** 立即停止采集并发
+   `stoppedForSpace` 信号（无损 554MB/分钟 → 2GB 约 3.6 分钟余量），宁可提前停也不写满。
+
+**实测**：录制中中间文件确实落在磁盘目录（实见 14M）；造一个死 PID 的假残留，启动后 ✅ 被删除。
+
+**另外提供规避手段**：配置界面「录制格式」选 MP4，中间文件小得多（见 ISSUE-010）。
 
 ## 已修（留档，避免回归）
 
