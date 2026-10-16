@@ -203,14 +203,20 @@ void EditorWindow::buildUi()
                                                &EditorWindow::saveAs);
     saveAsAction->setShortcuts({QKeySequence(QStringLiteral("Ctrl+Shift+S"))});
 
-    toolbar->addSeparator();
-    m_fitAction = toolbar->addAction(ui::icon({QStringLiteral("zoom-fit-best")}),
+    // 缩放组放**底部状态栏**而不是顶部工具栏：顶部内容已接近屏幕宽度上限
+    // （实测 1860px 窗口仍差一点），继续塞就会被折进 ">" 溢出菜单、缩放直接不可见。
+    auto *zoomBar = new QToolBar(this);
+    zoomBar->setMovable(false);
+    zoomBar->setIconSize(QSize(ui::spec::iconSize, ui::spec::iconSize));
+    zoomBar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+
+    m_fitAction = zoomBar->addAction(ui::icon({QStringLiteral("zoom-fit-best")}),
                                      QStringLiteral("适应窗口"), this,
                                      [this]() { m_canvas->zoomToFit(); });
     m_fitAction->setCheckable(true);
     m_fitAction->setChecked(true);
     m_fitAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+0")));
-    QAction *zoomOutAction = toolbar->addAction(ui::icon({QStringLiteral("zoom-out")}),
+    QAction *zoomOutAction = zoomBar->addAction(ui::icon({QStringLiteral("zoom-out")}),
                                                 QStringLiteral("缩小"), this,
                                                 [this]() { m_canvas->zoomOut(); });
     zoomOutAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+-")));
@@ -218,12 +224,12 @@ void EditorWindow::buildUi()
     m_zoomLabel->setMinimumWidth(56);
     m_zoomLabel->setAlignment(Qt::AlignCenter);
     toolbar->addWidget(m_zoomLabel);
-    QAction *zoomInAction = toolbar->addAction(ui::icon({QStringLiteral("zoom-in")}),
+    QAction *zoomInAction = zoomBar->addAction(ui::icon({QStringLiteral("zoom-in")}),
                                                QStringLiteral("放大"), this,
                                                [this]() { m_canvas->zoomIn(); });
     zoomInAction->setShortcuts({QKeySequence(QStringLiteral("Ctrl+=")),
                                 QKeySequence(QStringLiteral("Ctrl++"))});
-    QAction *hundredAction = toolbar->addAction(QStringLiteral("100%"), this,
+    QAction *hundredAction = zoomBar->addAction(QStringLiteral("100%"), this,
                                                 [this]() { m_canvas->zoomTo100(); });
     hundredAction->setShortcut(QKeySequence(QStringLiteral("Ctrl+1")));
 
@@ -239,9 +245,18 @@ void EditorWindow::buildUi()
     m_scroll->setAlignment(Qt::AlignCenter);
     m_scroll->setFrameShape(QFrame::NoFrame);
 
+    // 底部一行：左侧状态提示，右侧缩放控件
+    auto *bottom = new QWidget(this);
+    auto *bottomLayout = new QHBoxLayout(bottom);
+    bottomLayout->setContentsMargins(8, 0, 4, 0);
+    bottomLayout->setSpacing(ui::spec::gap);
+    bottomLayout->addWidget(m_status);
+    bottomLayout->addStretch(1);
+    bottomLayout->addWidget(zoomBar);
+
     layout->addWidget(toolbar);
     layout->addWidget(m_scroll, 1);
-    layout->addWidget(m_status);
+    layout->addWidget(bottom);
 
     m_canvas->setFocus();
 }
