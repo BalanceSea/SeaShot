@@ -27,6 +27,9 @@ SUMMARY=$(grep '^DRAGBENCH samples=' "$OUT/issue001-drag-bench.txt" | tail -1)
 LAG_AVG=$(echo "$SUMMARY" | sed -nE 's/.*lagPxAvg=([0-9.]+).*/\1/p')
 LAG_MAX=$(echo "$SUMMARY" | sed -nE 's/.*lagPxMax=([0-9.-]+).*/\1/p')
 LAG_MS=$(echo "$SUMMARY" | sed -nE 's/.*lagMsAvg=([0-9.]+).*/\1/p')
+RELEASE=$(grep '^DRAGBENCH_RELEASE' "$OUT/issue001-drag-bench.txt" | tail -1)
+RELEASE_OK=$(echo "$RELEASE" | sed -nE 's/.*ok=([01]).*/\1/p')
+echo "落点: $RELEASE"
 
 echo "样本数: $SAMPLES"
 echo "$SUMMARY"
@@ -38,12 +41,19 @@ if [ -z "${LAG_MAX:-}" ]; then
 fi
 
 # 允许 8px（两帧）；用整数比较避免 shell 小数问题
-if [ "${LAG_MAX%.*}" -le 8 ]; then
-    echo "PASS  拖动跟随：lagPxAvg=$LAG_AVG lagPxMax=$LAG_MAX lagMsAvg=$LAG_MS（阈值 8px ≈ 32ms）"
-    RESULT=0
-else
+RESULT=0
+if [ "${LAG_MAX%.*}" -gt 8 ]; then
     echo "FAIL  拖动仍然滞后：lagPxAvg=$LAG_AVG lagPxMax=$LAG_MAX（阈值 8px）"
     RESULT=1
+else
+    echo "PASS  拖动跟随：lagPxAvg=$LAG_AVG lagPxMax=$LAG_MAX lagMsAvg=$LAG_MS（阈值 8px ≈ 32ms）"
+fi
+# 松手落点：必须停在拖到的位置（曾经因为没同步 pending 位置而瞬移回原位）
+if [ "${RELEASE_OK:-0}" != "1" ]; then
+    echo "FAIL  松手落点不对（$RELEASE）—— 检查 mouseMove 是否同步了 pending 位置"
+    RESULT=1
+else
+    echo "PASS  松手落点正确：$RELEASE"
 fi
 echo "证据: $OUT/issue001-drag-bench.txt"
 pkill -x seashot 2>/dev/null

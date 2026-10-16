@@ -141,3 +141,40 @@ CPU（同一台机器、2.5 秒基准、240Hz 模拟）：user 532ms / sys 40ms�
 2. 拖动期间改用普通窗口 + `startSystemMove()`（合成器自己搬窗口，最顺）；
    代价是这段时间浮层会落到全屏应用之后（ISSUE-002 的老问题），且普通窗口在 Wayland
    上无法由客户端定位 —— 只能作为"拖动中"的临时替身。
+
+## 第四轮（反馈"无法移动 / 松手瞬移回原位 / 还会闪烁"）—— 我引入的回归
+
+第三轮去掉节流时，我把 `mouseMoveEvent` 写成：
+
+```cpp
+const QPoint target = event->globalPosition().toPoint() - m_dragOrigin;
+if (target != m_lastAppliedTopLeft)
+    applyPosition(target);      // ← 只提交，没同步 m_pendingTopLeft
+```
+
+而 `mouseReleaseEvent` 会 `flushPendingPosition()` —— 它用的是 `m_pendingTopLeft`，
+那个值只在 `mousePressEvent` 里设过一次（按下时的位置）。于是：
+**拖动过程中位置正常，一松手就被拽回按下时的原位**（用户看到的就是"无法移动 + 瞬移 + 闪"）。
+
+修法：`mouseMoveEvent` 里同时同步 `m_pendingTopLeft = target`。
+
+### 为什么基准没抓到这个 bug
+
+早先的基准是用 `Toast::dragTo()`（诊断入口）直接驱动定位的，**绕过了
+mousePress/Move/Release 整条路径**，所以"松手落点"这类问题根本不在它的覆盖范围内。
+
+现在基准改为发送真实的合成鼠标事件（`QMouseEvent` press → move… → release，
+经 `QCoreApplication::sendEvent` 交给浮层），并在松手后断言：
+
+```
+DRAGBENCH_RELEASE expected=1357 final=1357 startWas=300 ok=1
+```
+
+`expected` 是拖到的位置、`startWas` 是按下时的位置；两者不同且 `final == expected`
+才算通过。这条断言已经进了 `scripts/benchmark-toast-drag.sh`（FAIL 会直接报
+"松手落点不对 —— 检查 mouseMove 是否同步了 pending 位置"）。
+
+### 教训（写进这里避免再犯）
+
+诊断入口（`dragTo`）不能替代真实事件路径。凡是"用户手感"相关的判据，
+基准必须走真实事件链路；否则测的只是我想测的那一半。

@@ -435,7 +435,10 @@ void Toast::mouseMoveEvent(QMouseEvent *event)
     // 每次提交只标 1px 脏区（见 applyPosition 注释），所以 11ms 的合并不会带来额外重传。
     // 逐事件提交：每次只改边距 + 标 1px 脏区（见 applyPosition），
     // 实测 240Hz 输入下提交开销 ~70µs、lagPx ≤ 1；不节流是为了保证"跟手"。
+    // ⚠️ 必须同时更新 m_pendingTopLeft：mouseReleaseEvent 会 flush 它，
+    //     只调用 applyPosition 而不同步 pending，松手就会瞬移回按下时的位置。
     const QPoint target = event->globalPosition().toPoint() - m_dragOrigin;
+    m_pendingTopLeft = target;
     if (target != m_lastAppliedTopLeft)
         applyPosition(target);
 }

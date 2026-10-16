@@ -920,13 +920,26 @@ int Application::runToastDragBench(int durationMs)
         << " durationMs=" << durationMs << " captureEvery=" << captureEvery << "\n";
     out.flush();
 
+    // 走真实鼠标路径（press → move → move ... → release）：早先直接用 dragTo()
+    // 绕过了 mousePress/Move/Release，结果漏掉了"松手瞬移回原位"的 bug。
+    const QPoint startGlobal(m_toast->currentGeometry().x(), m_toast->currentGeometry().y());
+    const QPoint pressPos = startGlobal + QPoint(40, 20);
+    QMouseEvent pressEvent(QEvent::MouseButtonPress, QPointF(40, 20),
+                           QPointF(pressPos), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier);
+    QCoreApplication::sendEvent(m_toast.get(), &pressEvent);
+
     connect(timer, &QTimer::timeout, this, [=]() {
         ++(*step);
         const int targetX = *startX + (*step) * stepPx;
         trajectory->append({QDateTime::currentMSecsSinceEpoch(), targetX});
         QElapsedTimer applyTimer;
         applyTimer.start();
-        m_toast->dragTo(QPoint(targetX, m_toast->currentGeometry().y()));
+        // 鼠标相对按下点的位移 = 目标位移
+        const QPointF local(40 + (*step) * stepPx, 20);
+        const QPointF global(pressPos.x() + (*step) * stepPx, pressPos.y());
+        QMouseEvent moveEvent(QEvent::MouseMove, local, global, Qt::NoButton, Qt::LeftButton,
+                              Qt::NoModifier);
+        QCoreApplication::sendEvent(m_toast.get(), &moveEvent);
         const qint64 applyUs = applyTimer.nsecsElapsed() / 1000;
 
         if ((*step) % captureEvery != 0)
@@ -992,6 +1005,18 @@ int Application::runToastDragBench(int durationMs)
     QTimer::singleShot(durationMs + 2000, this, [=]() {
         timer->stop();
         QTextStream summary(stdout);
+
+        // 松手：走真实的 release，并断言落点没有回到按下时的位置
+        const int expectedX = *startX + (*step) * stepPx;
+        const QPointF releaseLocal(40 + (*step) * stepPx, 20);
+        const QPointF releaseGlobal(pressPos.x() + (*step) * stepPx, pressPos.y());
+        QMouseEvent releaseEvent(QEvent::MouseButtonRelease, releaseLocal, releaseGlobal,
+                                 Qt::LeftButton, Qt::NoButton, Qt::NoModifier);
+        QCoreApplication::sendEvent(m_toast.get(), &releaseEvent);
+        const int finalX = m_toast->currentGeometry().x();
+        const bool releaseOk = qAbs(finalX - expectedX) <= 2;
+        summary << "DRAGBENCH_RELEASE expected=" << expectedX << " final=" << finalX
+                << " startWas=" << *startX << " ok=" << (releaseOk ? 1 : 0) << "\n";
         int lagSum = 0;
         int lagMax = 0;
         int valid = 0;
