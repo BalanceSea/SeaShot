@@ -5,6 +5,7 @@
 #include <QApplication>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
+#include <QDir>
 #include <QLoggingCategory>
 #include <QRegularExpression>
 #include <QTextStream>
@@ -90,6 +91,14 @@ int main(int argc, char **argv)
         QStringLiteral("toast-drag-bench"),
         QStringLiteral("（诊断）程序化拖动结果浮层 MS 毫秒，量出目标位置与实见位置的偏差"),
         QStringLiteral("ms"));
+    QCommandLineOption probePortalOption(
+        QStringLiteral("probe-portal-screencast"),
+        QStringLiteral("（诊断）建立 portal ScreenCast 会话，验证授权持久化（首次弹窗、之后静默）"));
+    QCommandLineOption portalTokenOption(
+        QStringLiteral("portal-token-file"),
+        QStringLiteral("（诊断）存/取 ScreenCast restore token 的文件"),
+        QStringLiteral("path"),
+        QDir::homePath() + QStringLiteral("/.cache/seashot/screencast.token"));
     QCommandLineOption benchCaptureOption(
         QStringLiteral("bench-capture"),
         QStringLiteral("（诊断）抓一帧全屏存盘并打印帧时间戳，给拖动基准当观测者"),
@@ -117,6 +126,8 @@ int main(int argc, char **argv)
     parser.addOption(recordStopOption);
     parser.addOption(secondsOption);
     parser.addOption(dragBenchOption);
+    parser.addOption(probePortalOption);
+    parser.addOption(portalTokenOption);
     parser.addOption(benchCaptureOption);
     parser.process(app);
 
@@ -143,6 +154,8 @@ int main(int argc, char **argv)
     options.seconds = parser.value(secondsOption).toInt();
     options.toastDragBenchMs = parser.value(dragBenchOption).toInt();
     options.benchCapturePath = parser.value(benchCaptureOption);
+    options.probePortal = parser.isSet(probePortalOption);
+    options.portalTokenFile = parser.value(portalTokenOption);
 
     if (parser.isSet(rectOption)) {
         const QStringList parts = parser.value(rectOption).split(QLatin1Char(','));

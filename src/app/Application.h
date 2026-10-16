@@ -50,6 +50,8 @@ struct Options {
     int seconds = 0; ///< --seconds N：录制 N 秒后自动停（0 = 手动停）
     int toastDragBenchMs = 0; ///< --toast-drag-bench MS：诊断拖动延迟（ISSUE-001）
     QString benchCapturePath; ///< --bench-capture PATH：截全屏存盘并打印帧时间戳（给基准测试当观测者）
+    bool probePortal = false; ///< --probe-portal-screencast：验证 portal 授权持久化
+    QString portalTokenFile;  ///< 存/取 ScreenCast restore token 的文件
 };
 
 class Application : public QObject
@@ -95,6 +97,8 @@ private:
     int runPrintConfig();
     /// ISSUE-001 诊断：子进程观测版（同进程拍不到自己的 layer-shell 表面）
     int runBenchCapture(const QString &path);
+    /// 验证 xdg-desktop-portal ScreenCast 的授权持久化（首次弹窗、之后静默）
+    int runPortalScreencastProbe(const QString &tokenFile);
     /// ISSUE-001 诊断：程序化拖拽浮层 + 截屏定位，量出「目标位置 vs 实见位置」的偏差
     int runToastDragBench(int durationMs);
     QRect virtualGeometry() const;

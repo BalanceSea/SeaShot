@@ -13,6 +13,7 @@
 #include "editor/EditorWindow.h"
 #include "overlay/Overlay.h"
 #include "record/GifRecorder.h"
+#include "record/PortalScreencast.h"
 #include "record/RecordingIndicator.h"
 #include "util/Clipboard.h"
 #include "util/Log.h"
@@ -22,6 +23,7 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QDir>
 #include <cmath>
 #include <cstdio>
 #include <sys/resource.h>
@@ -1142,6 +1144,58 @@ int Application::runBenchCapture(const QString &path)
     return ok ? 0 : 1;
 }
 
+int Application::runPortalScreencastProbe(const QString &tokenFile)
+{
+    QTextStream out(stdout);
+    QString token;
+    if (!tokenFile.isEmpty()) {
+        QFile file(tokenFile);
+        if (file.exists() && file.open(QIODevice::ReadOnly))
+            token = QString::fromUtf8(file.readAll()).trimmed();
+        out << "PORTAL_SCREENCAST_TOKEN_FILE " << tokenFile << " exists="
+            << (token.isEmpty() ? 0 : 1) << "\n";
+    }
+
+    PortalScreencast portal;
+    QEventLoop loop;
+    PortalScreencast::Result result;
+    portal.start(token, /*persistMode=*/2, [&](const PortalScreencast::Result &r) {
+        result = r;
+        loop.quit();
+    });
+    // 弹窗要等用户点，给足时间；静默的话这里几乎立刻就返回
+    QTimer::singleShot(180000, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    out << "PORTAL_SCREENCAST_RESULT " << result.describe() << "\n";
+    const bool silent = result.startLatencyMs >= 0 && result.startLatencyMs < 1000;
+    if (result.startLatencyMs >= 0)
+        out << "PORTAL_SCREENCAST_DIALOG_LIKELY " << (silent ? 0 : 1) << " (startLatencyMs="
+            << result.startLatencyMs << ")\n";
+
+    if (result.ok) {
+        QString pipewireError;
+        const int fd = portal.openPipeWireRemote(&pipewireError);
+        out << "PORTAL_SCREENCAST_PIPEWIRE_FD ok=" << (fd >= 0 ? 1 : 0) << " fd=" << fd
+            << (pipewireError.isEmpty() ? QString() : QStringLiteral(" error=%1").arg(pipewireError))
+            << "\n";
+        if (fd >= 0)
+            ::close(fd);
+    }
+
+    if (!result.restoreToken.isEmpty() && !tokenFile.isEmpty()) {
+        QDir().mkpath(QFileInfo(tokenFile).absolutePath());
+        QFile file(tokenFile);
+        if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            file.write(result.restoreToken.toUtf8());
+            out << "PORTAL_SCREENCAST_TOKEN_SAVED " << tokenFile << "\n";
+        }
+    }
+    portal.closeSession();
+    out.flush();
+    return result.ok ? 0 : 1;
+}
+
 int Application::run()
 {
     QTextStream out(stdout);
@@ -1151,6 +1205,8 @@ int Application::run()
         out.flush();
         return runSelfTest();
     }
+    if (m_options.probePortal)
+        return runPortalScreencastProbe(m_options.portalTokenFile);
     if (!m_options.benchCapturePath.isEmpty())
         return runBenchCapture(m_options.benchCapturePath);
     if (m_options.toastDragBenchMs > 0)

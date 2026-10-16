@@ -17,6 +17,7 @@ set(SEASHOT_CORE_SOURCES
     record/GifEncoder.cpp
     record/GifRecorder.cpp
     record/RecordingIndicator.cpp
+    record/PortalScreencast.cpp
     app/Settings.cpp
     app/SettingsDialog.cpp
     app/SelfTest.cpp
@@ -46,6 +47,7 @@ set(SEASHOT_HEADERS
     record/GifEncoder.h
     record/GifRecorder.h
     record/RecordingIndicator.h
+    record/PortalScreencast.h
     app/Settings.h
     app/SettingsDialog.h
     app/SelfTest.h
