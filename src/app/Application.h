@@ -99,6 +99,7 @@ private:
     void exportRecording(RecordingFormat format);
     void exportRecordingGif();
     void exportRecordingMp4();
+    void copyRecordingGif();
     void copyLast();
     int runSelfTest();
     int runListWindows();

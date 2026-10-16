@@ -36,17 +36,34 @@ bool GifEncoder::ffmpegAvailable()
 
 QStringList GifEncoder::rawInputArgs(const QSize &size, int fps, const QString &intermediatePath)
 {
-    // 从 stdin 读 BGRA 原始帧 → FFV1 无损中间文件（快、且不与 GIF 调色板耦合）
-    return {QStringLiteral("-hide_banner"), QStringLiteral("-loglevel"), QStringLiteral("error"),
-            QStringLiteral("-f"), QStringLiteral("rawvideo"),
-            QStringLiteral("-pixel_format"), QStringLiteral("bgra"),
-            QStringLiteral("-video_size"), QStringLiteral("%1x%2").arg(size.width()).arg(size.height()),
-            QStringLiteral("-framerate"), QString::number(qMax(1, fps)),
-            QStringLiteral("-i"), QStringLiteral("-"),
-            QStringLiteral("-c:v"), QStringLiteral("ffv1"),
-            QStringLiteral("-level"), QStringLiteral("3"),
-            QStringLiteral("-pix_fmt"), QStringLiteral("bgra"),
-            QStringLiteral("-y"), intermediatePath};
+    return rawInputArgs(size, fps, intermediatePath, true);
+}
+
+QStringList GifEncoder::rawInputArgs(const QSize &size, int fps, const QString &intermediatePath,
+                                     bool lossless)
+{
+    // 从 stdin 读 BGRA 原始帧。
+    //  - lossless：FFV1 无损（转 GIF/MP4 都只损失一次，代价是临时文件很大）
+    //  - 否则：  直接 H.264 MP4（临时文件小，转 GIF 多一次有损）
+    QStringList args{QStringLiteral("-hide_banner"), QStringLiteral("-loglevel"),
+                     QStringLiteral("error"),
+                     QStringLiteral("-f"), QStringLiteral("rawvideo"),
+                     QStringLiteral("-pixel_format"), QStringLiteral("bgra"),
+                     QStringLiteral("-video_size"),
+                     QStringLiteral("%1x%2").arg(size.width()).arg(size.height()),
+                     QStringLiteral("-framerate"), QString::number(qMax(1, fps)),
+                     QStringLiteral("-i"), QStringLiteral("-")};
+    if (lossless) {
+        args << QStringLiteral("-c:v") << QStringLiteral("ffv1") << QStringLiteral("-level")
+             << QStringLiteral("3") << QStringLiteral("-pix_fmt") << QStringLiteral("bgra");
+    } else {
+        args << QStringLiteral("-c:v") << QStringLiteral("libx264") << QStringLiteral("-preset")
+             << QStringLiteral("veryfast") << QStringLiteral("-crf") << QStringLiteral("18")
+             << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p") << QStringLiteral("-movflags")
+             << QStringLiteral("+faststart");
+    }
+    args << QStringLiteral("-y") << intermediatePath;
+    return args;
 }
 
 QStringList GifEncoder::gifEncodeArgs(const QString &intermediatePath, const QString &gifPath, int fps)
@@ -106,13 +123,14 @@ bool GifEncoder::start(const QSize &size, int fps, QString *error)
 
     const QString dir = QStandardPaths::writableLocation(QStandardPaths::TempLocation);
     QDir().mkpath(dir);
-    m_intermediatePath = QStringLiteral("%1/seashot-record-%2.mkv")
+    m_intermediatePath = QStringLiteral("%1/seashot-record-%2.%3")
                              .arg(dir)
-                             .arg(QCoreApplication::applicationPid());
+                             .arg(QCoreApplication::applicationPid())
+                             .arg(m_lossless ? QStringLiteral("mkv") : QStringLiteral("mp4"));
 
     m_encoder = std::make_unique<QProcess>();
     m_encoder->setProgram(ffmpegPath());
-    m_encoder->setArguments(rawInputArgs(m_size, m_fps, m_intermediatePath));
+    m_encoder->setArguments(rawInputArgs(m_size, m_fps, m_intermediatePath, m_lossless));
     m_encoder->start();
     if (!m_encoder->waitForStarted(5000)) {
         if (error)
@@ -267,6 +285,19 @@ bool GifEncoder::finish(const QString &gifPath, QString *error)
     QProcess gifProcess;
     gifProcess.setProgram(ffmpegPath());
     // 目标格式按扩展名决定：同一条 ffmpeg 管线，只是最后一步换编码器
+    // 已经是目标格式（MP4 模式录 MP4）→ 直接搬文件，避免白跑一遍有损转码
+    if (!m_lossless && wantsMp4(gifPath)) {
+        QDir().mkpath(QFileInfo(gifPath).absolutePath());
+        QFile::remove(gifPath);
+        const bool moved = QFile::rename(m_intermediatePath, gifPath);
+        m_intermediatePath.clear();
+        if (!moved) {
+            if (error)
+                *error = QStringLiteral("移动 MP4 中间文件失败");
+            return false;
+        }
+        return true;
+    }
     const bool toMp4 = wantsMp4(gifPath);
     gifProcess.setArguments(toMp4 ? mp4EncodeArgs(m_intermediatePath, gifPath, m_fps)
                                   : gifEncodeArgs(m_intermediatePath, gifPath, m_fps));

@@ -82,6 +82,7 @@ bool GifRecorder::startFromProvider(FrameProvider provider, const QSize &frameSi
 bool GifRecorder::beginRecording(const QImage &firstFrame, QString *error)
 {
     m_encoder = std::make_unique<GifEncoder>();
+    m_encoder->setLossless(m_lossless);
     if (!m_encoder->start(m_frameSize, m_fps, error)) {
         m_encoder.reset();
         return false;

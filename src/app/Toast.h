@@ -68,6 +68,7 @@ signals:
     void saveRequested();   ///< 保存到设置里的默认目录（不弹对话框）
     void exportGifRequested();  ///< 把本次录制导出为 GIF
     void exportMp4Requested();  ///< 把本次录制导出为 MP4
+    void copyGifRequested();    ///< 导出 GIF 并放进剪贴板（可直接粘贴）
     void saveAsRequested();
     void copyRequested();
     void dismissed();
@@ -84,7 +85,7 @@ protected:
     void changeEvent(QEvent *event) override;
 
 private:
-    enum class Button { None, Edit, Save, SaveAs, Copy, Close, ExportGif, ExportMp4 };
+    enum class Button { None, Edit, Save, SaveAs, Copy, Close, ExportGif, ExportMp4, CopyGif };
 
     // ── 几何 ──────────────────────────────────────────────
     QRect cardRect() const { return QRect(QPoint(0, 0), m_cardSize); } ///< 卡片本地坐标

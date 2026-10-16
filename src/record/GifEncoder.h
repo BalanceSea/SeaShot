@@ -23,6 +23,11 @@ public:
     ~GifEncoder();
 
     bool start(const QSize &size, int fps, QString *error);
+    /// 中间格式：true=无损 FFV1（默认，转 GIF/MP4 只损失一次，但临时文件很大）；
+    /// false=直接录 H.264 MP4（临时文件小得多，转 GIF 会多一次有损）。
+    /// 必须在 start() 之前设置。
+    void setLossless(bool lossless) { m_lossless = lossless; }
+    bool lossless() const { return m_lossless; }
     bool writeFrame(const QImage &image, QString *error);
     bool finish(const QString &gifPath, QString *error);
     /// 只收尾第一遍（中间文件仍然完好、保留在原位），**不转码**。
@@ -39,6 +44,9 @@ public:
 
     // ── 可单测的纯函数 ─────────────────────────────────────
     static QStringList rawInputArgs(const QSize &size, int fps, const QString &intermediatePath);
+    /// 带中间格式选择的版本
+    static QStringList rawInputArgs(const QSize &size, int fps, const QString &intermediatePath,
+                                    bool lossless);
     static QStringList gifEncodeArgs(const QString &intermediatePath, const QString &gifPath, int fps);
     /// MP4（H.264）。用 libx264 + crf 18 + veryfast：体积小、CPU 低、兼容性最好。
     /// yuv420p 是为了播放器兼容（4:2:0 是唯一被普遍支持的像素格式）。
@@ -54,6 +62,7 @@ private:
     QSize m_size;
     int m_fps = 15;
     int m_frames = 0;
+    bool m_lossless = true;
 };
 
 } // namespace seashot

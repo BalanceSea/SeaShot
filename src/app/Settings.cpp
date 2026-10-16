@@ -19,6 +19,7 @@ constexpr const char *kOpenEditor = "capture/openEditorAfterCapture";
 constexpr const char *kKeepShadow = "capture/keepShadowMargin";
 constexpr const char *kHotkey = "shortcut/hotkey";
 constexpr const char *kGifFps = "record/fps";
+constexpr const char *kRecordFormat = "record/format";
 constexpr const char *kTrayPersistent = "ui/trayPersistent";
 constexpr const char *kToastAutoHideMs = "ui/toastAutoHideMs";
 } // namespace
@@ -111,6 +112,25 @@ void Settings::setHotkey(const QString &value)
 {
     QSettings().setValue(QLatin1String(kHotkey), value);
     emit changed();
+}
+
+QString Settings::recordFormat() const
+{
+    const QString value =
+        QSettings().value(QLatin1String(kRecordFormat), QStringLiteral("lossless")).toString();
+    return value == QLatin1String("mp4") ? QStringLiteral("mp4") : QStringLiteral("lossless");
+}
+
+void Settings::setRecordFormat(const QString &value)
+{
+    QSettings().setValue(QLatin1String(kRecordFormat),
+                         value == QLatin1String("mp4") ? QStringLiteral("mp4")
+                                                       : QStringLiteral("lossless"));
+}
+
+bool Settings::recordLossless() const
+{
+    return recordFormat() != QLatin1String("mp4");
 }
 
 int Settings::gifFps() const

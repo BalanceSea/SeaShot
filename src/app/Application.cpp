@@ -145,6 +145,7 @@ Application::Application(const Options &options, QObject *parent)
     connect(m_toast.get(), &Toast::saveRequested, this, &Application::saveToDefault);
     connect(m_toast.get(), &Toast::exportGifRequested, this, &Application::exportRecordingGif);
     connect(m_toast.get(), &Toast::exportMp4Requested, this, &Application::exportRecordingMp4);
+    connect(m_toast.get(), &Toast::copyGifRequested, this, &Application::copyRecordingGif);
     connect(m_toast.get(), &Toast::copyRequested, this, &Application::copyLast);
     connect(m_toast.get(), &Toast::editRequested, this,
             [this]() { openEditor(m_lastImage, m_lastSavedPath); });
@@ -421,6 +422,9 @@ void Application::beginRecording(const SelectionResult &selection)
     // 交互式录制：先只收尾无损中间文件，格式由用户在浮层工具栏上选（GIF / MP4）。
     // 脚本式（--save 给了路径）保持一次到底：按扩展名直接产出，便于验收与自动化。
     m_recorder->setDeferExport(m_options.saveTo.isEmpty());
+    // 中间格式由配置决定：无损（转 GIF/MP4 只损失一次，临时文件 ≈554MB/分钟）
+    // 还是直接录 MP4（临时文件小，转 GIF 多一次有损）
+    m_recorder->setLossless(m_settings->recordLossless());
 
     QString error;
     // 优先 PipeWire（真正的视频流）；不可用时回退到 ScreenShot2 轮询。
@@ -606,6 +610,45 @@ void Application::exportRecording(RecordingFormat format)
             m_toast->dismissAfter(1500);
         } else {
             m_toast->updateStatus(QStringLiteral("导出失败：%1").arg(error), QString(), QString());
+        }
+    }
+}
+
+void Application::copyRecordingGif()
+{
+    QTextStream out(stdout);
+    if (!m_recorder) {
+        out << "RECORD_COPY_ERROR 没有录制结果\n";
+        out.flush();
+        return;
+    }
+    // 先导出成文件（剪贴板要投递完整字节），再整体放进剪贴板 —— 动图不能只投一帧。
+    const QString path = m_settings->defaultSavePath(QStringLiteral("gif"));
+    if (m_toast)
+        m_toast->setExportBusy(true);
+    QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+    QString error;
+    if (!m_recorder->exportTo(path, &error)) {
+        out << "RECORD_COPY_ERROR " << error << "\n";
+        out.flush();
+        if (m_toast) {
+            m_toast->setExportBusy(false);
+            m_toast->updateStatus(QStringLiteral("导出失败：%1").arg(error), QString(), QString());
+        }
+        return;
+    }
+    const bool copied = Clipboard::copyFile(path, QStringLiteral("image/gif"), &error);
+    out << (copied ? "RECORD_COPY ok mime=image/gif path=" : "RECORD_COPY_ERROR ")
+        << (copied ? path : error) << "\n";
+    out.flush();
+    if (m_toast) {
+        m_toast->setExportBusy(false);
+        m_toast->setExportMode(false, QString());
+        if (copied) {
+            m_toast->updateStatus(QStringLiteral("GIF 已复制到剪贴板"), path, QString());
+            m_toast->dismissAfter(1500);
+        } else {
+            m_toast->updateStatus(QStringLiteral("复制失败：%1").arg(error), path, QString());
         }
     }
 }

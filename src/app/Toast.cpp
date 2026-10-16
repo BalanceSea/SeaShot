@@ -34,6 +34,7 @@ QString Toast::labelFor(Button button)
     case Button::Close: return QStringLiteral("关闭");
     case Button::ExportGif: return QStringLiteral("导出 GIF");
     case Button::ExportMp4: return QStringLiteral("导出 MP4");
+    case Button::CopyGif: return QStringLiteral("复制 GIF");
     case Button::None: break;
     }
     return QString();
@@ -49,6 +50,7 @@ QIcon Toast::iconFor(Button button)
     case Button::Close: return ui::iconClose();
     case Button::ExportGif: return ui::iconSave();
     case Button::ExportMp4: return ui::iconSaveAs();
+    case Button::CopyGif: return ui::iconCopy();
     case Button::None: break;
     }
     return QIcon();
@@ -230,7 +232,7 @@ QRect Toast::barRect() const
 QVector<Toast::Button> Toast::buttonOrder() const
 {
     if (m_exportMode)
-        return {Button::ExportGif, Button::ExportMp4, Button::Close};
+        return {Button::ExportGif, Button::ExportMp4, Button::CopyGif, Button::Close};
     return {m_editEnabled ? Button::Edit : Button::None, Button::Save, Button::SaveAs, Button::Copy,
             Button::Close};
 }
@@ -658,6 +660,9 @@ void Toast::activate(Button button)
     case Button::ExportMp4:
         emit exportMp4Requested();
         break;
+    case Button::CopyGif:
+        emit copyGifRequested();
+        break;
     case Button::Close:
         closeAndNotify();
         break;
@@ -688,6 +693,8 @@ void Toast::scheduleAutoClick()
         target = Button::ExportGif;
     else if (name == QLatin1String("mp4"))
         target = Button::ExportMp4;
+    else if (name == QLatin1String("copygif"))
+        target = Button::CopyGif;
     else {
         SS_WARN() << "[toast] 未知的 SEASHOT_TOAST_AUTOCLICK=" << name;
         return;

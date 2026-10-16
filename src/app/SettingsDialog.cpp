@@ -6,6 +6,7 @@
 
 #include <QApplication>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFileDialog>
@@ -230,6 +231,22 @@ void SettingsDialog::buildUi()
     QWidget *recordPage = makePage(QStringLiteral("GIF 录制"),
                                    QStringLiteral("只录选定区域；不设时长与体积上限"), pages, &recordForm);
     m_fpsSpin = new QSpinBox(recordPage);
+    // 录制中间格式：无损 vs MP4（用户在配置界面里选）
+    m_recordFormatBox = new QComboBox(this);
+    m_recordFormatBox->setObjectName(QStringLiteral("recordFormat"));
+    m_recordFormatBox->addItem(QStringLiteral("无损（转 GIF/MP4 只损失一次；临时文件约 550MB/分钟）"),
+                              QStringLiteral("lossless"));
+    m_recordFormatBox->addItem(QStringLiteral("MP4（临时文件小得多；转 GIF 会多一次有损）"),
+                              QStringLiteral("mp4"));
+    m_recordFormatBox->setToolTip(QStringLiteral(
+        "录制时先落到临时文件，你选完导出格式后再转码。\n"
+        "无损：画质最好，但全屏录制约 550MB/分钟。\n"
+        "MP4：临时文件小得多，适合长时间录制；之后导出 GIF 会多一次有损压缩。"));
+    recordForm->addRow(QStringLiteral("录制格式"), m_recordFormatBox);
+    connect(m_recordFormatBox, &QComboBox::currentIndexChanged, this, [this](int) {
+        m_settings->setRecordFormat(m_recordFormatBox->currentData().toString());
+    });
+
     m_fpsSpin->setObjectName(QStringLiteral("gifFps"));
     m_fpsSpin->setRange(1, 60);
     m_fpsSpin->setSuffix(QStringLiteral(" fps"));
@@ -339,6 +356,10 @@ void SettingsDialog::loadFromSettings()
     m_templateEdit->setText(m_settings->filenameTemplate());
     m_toastSpin->setValue(m_settings->toastAutoHideMs());
     m_fpsSpin->setValue(m_settings->gifFps());
+    if (m_recordFormatBox) {
+        const int index = m_recordFormatBox->findData(m_settings->recordFormat());
+        m_recordFormatBox->setCurrentIndex(index >= 0 ? index : 0);
+    }
     m_hotkeyEdit->setKeySequence(QKeySequence(m_settings->hotkey()));
     m_configPathLabel->setText(QStringLiteral("配置文件 %1").arg(m_settings->configFilePath()));
     m_loading = false;

@@ -37,6 +37,15 @@ public:
     QString hotkey() const;
     void setHotkey(const QString &value);
 
+    /// 录制中间格式：
+    ///  - "lossless"（默认）：无损 FFV1，之后转 GIF/MP4 都只损失一次，但临时文件很大
+    ///    （实测全屏 1920x1080 ≈554 MB/分钟）
+    ///  - "mp4"：直接录 H.264 MP4，临时文件小得多；转 GIF 会多一次有损
+    /// 未识别的值一律按 "lossless" 处理。
+    QString recordFormat() const;
+    void setRecordFormat(const QString &value);
+    bool recordLossless() const;
+
     int gifFps() const;
     void setGifFps(int value);
 

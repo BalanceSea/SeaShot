@@ -69,6 +69,8 @@ public:
     /// 延迟导出：停止录制时**只收尾中间文件、不转码**，把格式选择留给用户。
     /// 之后用 exportTo(path) 按扩展名导出（.gif / .mp4），导出完中间文件自动清掉。
     void setDeferExport(bool defer) { m_deferExport = defer; }
+    /// 中间格式（无损 / MP4），由配置决定；须在 start*/ 之前设置
+    void setLossless(bool lossless) { m_lossless = lossless; }
     bool deferExport() const { return m_deferExport; }
     /// 把已保留的无损中间文件导出成 path（按扩展名定格式）。仅延迟导出模式下有意义。
     bool exportTo(const QString &path, QString *error);
@@ -102,6 +104,7 @@ private:
     bool m_inFlight = false;
     bool m_finishing = false;
     bool m_deferExport = false;
+    bool m_lossless = true;
     int m_fps = 15;
 };
 

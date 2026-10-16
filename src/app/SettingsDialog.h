@@ -15,6 +15,7 @@ class QLabel;
 class QLineEdit;
 class QKeySequenceEdit;
 class QSpinBox;
+class QComboBox;
 
 namespace seashot {
 
@@ -51,6 +52,7 @@ private:
     QLineEdit *m_templateEdit = nullptr;
     QSpinBox *m_toastSpin = nullptr;
     QSpinBox *m_fpsSpin = nullptr;
+    QComboBox *m_recordFormatBox = nullptr;
     QKeySequenceEdit *m_hotkeyEdit = nullptr;
     QLabel *m_hotkeyStatus = nullptr;
     QLabel *m_configPathLabel = nullptr;
