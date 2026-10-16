@@ -1,26 +1,24 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 4 ms 8 x 8 "" 
-[info] [kwin] 已清理陈旧助手脚本 "seashot-386259" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-386314" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-399699" id= 1 run方式= Script<N>.run 
 [warn] [wayland] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：跳过自排除 
 [warn] [app] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：本次不排除自己的窗口 
 [info] [toast] layer-shell role 已应用（LayerOverlay） 
 TOAST image=400x300 display=400x300 scaled=0 anchor=300,200 400x300 geometry=300,502 640x334 autoHide=0
 [info] [toast] visible= true layerShell= true geometry= QRect(300,502 640x334) autoHideMs= 0 
 DRAGBENCH_START startX=300 stepMs=16 stepPx=1 durationMs=2500 captureEvery=20
-DRAGBENCH_SAMPLE step=37 observed=324 targetAtFrame=324 lagPx=0 lagMs=0 applyUs=79
-DRAGBENCH_SAMPLE step=64 observed=344 targetAtFrame=344 lagPx=0 lagMs=0 applyUs=106
-DRAGBENCH_SAMPLE step=75 observed=364 targetAtFrame=364 lagPx=0 lagMs=0 applyUs=100
-DRAGBENCH_SAMPLE step=97 observed=384 targetAtFrame=384 lagPx=0 lagMs=0 applyUs=77
-DRAGBENCH_SAMPLE step=117 observed=404 targetAtFrame=404 lagPx=0 lagMs=0 applyUs=79
-DRAGBENCH_SAMPLE step=136 observed=424 targetAtFrame=424 lagPx=0 lagMs=0 applyUs=80
-DRAGBENCH_SAMPLE step=158 observed=446 targetAtFrame=447 lagPx=1 lagMs=16 applyUs=168
-DRAGBENCH_SAMPLE step=193 observed=480 targetAtFrame=480 lagPx=0 lagMs=0 applyUs=87
-DRAGBENCH_SAMPLE step=203 observed=493 targetAtFrame=493 lagPx=0 lagMs=0 applyUs=201
-DRAGBENCH_SAMPLE step=218 observed=507 targetAtFrame=507 lagPx=0 lagMs=0 applyUs=236
-DRAGBENCH_SAMPLE step=237 observed=525 targetAtFrame=525 lagPx=0 lagMs=0 applyUs=119
-DRAGBENCH_SAMPLE step=254 observed=544 targetAtFrame=544 lagPx=0 lagMs=0 applyUs=85
-DRAGBENCH samples=12 lagPxAvg=0.0833333 lagPxMax=1 lagMsAvg=1.33333
-DRAGBENCH_CPU userMs=557.335 sysMs=58.708
-DRAGBENCH_CHURN steps=266 commits=266 elapsedMs=2500 commitsPerSec=106.4
-[info] [kwin] 脚本已卸载 pluginName= "seashot-386314" 
+DRAGBENCH_SAMPLE step=35 observed=324 targetAtFrame=324 lagPx=0 lagMs=0 applyUs=72
+DRAGBENCH_SAMPLE step=70 observed=350 targetAtFrame=350 lagPx=0 lagMs=0 applyUs=92
+DRAGBENCH_SAMPLE step=95 observed=382 targetAtFrame=382 lagPx=0 lagMs=0 applyUs=86
+DRAGBENCH_SAMPLE step=96 observed=386 targetAtFrame=386 lagPx=0 lagMs=0 applyUs=95
+DRAGBENCH_SAMPLE step=119 observed=406 targetAtFrame=406 lagPx=0 lagMs=0 applyUs=149
+DRAGBENCH_SAMPLE step=137 observed=425 targetAtFrame=425 lagPx=0 lagMs=0 applyUs=77
+DRAGBENCH_SAMPLE step=159 observed=445 targetAtFrame=445 lagPx=0 lagMs=0 applyUs=87
+DRAGBENCH_SAMPLE step=182 observed=470 targetAtFrame=470 lagPx=0 lagMs=0 applyUs=150
+DRAGBENCH_SAMPLE step=195 observed=482 targetAtFrame=482 lagPx=0 lagMs=0 applyUs=76
+DRAGBENCH_SAMPLE step=219 observed=505 targetAtFrame=505 lagPx=0 lagMs=0 applyUs=118
+DRAGBENCH samples=10 lagPxAvg=0 lagPxMax=0 lagMsAvg=0
+DRAGBENCH_CPU userMs=484.438 sysMs=40.983
+DRAGBENCH_CADENCE commits=241 avgGapMs=17.725 minGapMs=14 maxGapMs=64 jitterStddevMs=8.20819
+DRAGBENCH_CHURN steps=241 commits=241 elapsedMs=2500 commitsPerSec=96.4
+[info] [kwin] 脚本已卸载 pluginName= "seashot-399699" 

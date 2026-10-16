@@ -46,7 +46,9 @@ public:
     QRect currentGeometry() const { return geometry(); }
     /// 诊断用：累计提交次数（每次 applyPosition 一次）
     int commitCount() const { return m_commitCount; }
-    void resetCommitCount() { m_commitCount = 0; }
+    void resetCommitCount() { m_commitCount = 0; m_commitTimes.clear(); }
+    /// 诊断用：每次提交的时间戳（毫秒），用来量提交节奏抖动
+    QVector<qint64> commitTimestamps() const { return m_commitTimes; }
 
 signals:
     void editRequested();
@@ -99,6 +101,7 @@ private:
     /// 上一次实际提交过的位置（重复位置不再提交）
     QPoint m_lastAppliedTopLeft{-1, -1};
     int m_commitCount = 0;
+    QVector<qint64> m_commitTimes;
 
     bool m_editEnabled = true;
     bool m_layerShellApplied = false;

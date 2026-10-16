@@ -1,11 +1,12 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 23 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-392609" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 8 ms 8 x 8 "" 
+[info] [kwin] 已清理陈旧助手脚本 "seashot-399775" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-400289" id= 1 run方式= Script<N>.run 
 BACKEND_CHOICE Wayland 会话 + KDE 桌面（WAYLAND_DISPLAY=wayland-0）
 SeaShot 自检（Phase 1）
 ========================
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(0,0 32x32) 
-[info] [shot2] "CaptureArea" ok 3 ms 32 x 32 "" 
+[info] [shot2] "CaptureArea" ok 5 ms 32 x 32 "" 
 [info] [clipboard] 已通过 wl-copy 写入 99 字节 
 [OK  ] 后端选择
        Wayland 会话 + KDE 桌面（WAYLAND_DISPLAY=wayland-0）
@@ -40,4 +41,4 @@ SeaShot 自检（Phase 1）
 
 
 结果: 9 项检查，0 项致命失败
-[info] [kwin] 脚本已卸载 pluginName= "seashot-392609" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-400289" 

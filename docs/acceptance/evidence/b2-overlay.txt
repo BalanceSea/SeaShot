@@ -1,17 +1,9 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 6 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-392647" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 4 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-400320" id= 1 run方式= Script<N>.run 
 [info] [overlay] layer-shell role 已应用（LayerOverlay，四边锚定） 
 [info] [app] 选择模式已启动，窗口快照 17 个； "覆盖层: layer-shell=已应用, 快照窗口数=17, 虚拟几何=1920x1080+0+0" 
 OVERLAY_SHOWN 覆盖层: layer-shell=已应用, 快照窗口数=17, 虚拟几何=1920x1080+0+0
 OVERLAY_WINDOWS 17
 OVERLAY_EXCLUDED 1
-[info] [app] 截取窗口 "{aa3589e8-072f-470c-9535-1404c8ef2126}" "" 
-[info] [shot2] "CaptureWindow" ok 27 ms 1920 x 971 "" 
-[info] [clipboard] 已通过 wl-copy 写入 7339 字节 
-[info] [toast] layer-shell role 已应用（LayerOverlay） 
-TOAST image=1920x971 display=1886x954 scaled=1 anchor=0,35 1920x971 geometry=8,17 1886x988 autoHide=0
-[info] [toast] visible= true layerShell= true geometry= QRect(8,17 1886x988) autoHideMs= 0 
-CAPTURE ok size=1920x971 scale=1
-COPIED image/png
-[info] [kwin] 脚本已卸载 pluginName= "seashot-392647" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-400320" 

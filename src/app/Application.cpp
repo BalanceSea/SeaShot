@@ -22,6 +22,7 @@
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <cmath>
 #include <sys/resource.h>
 #include <QDialog>
 #include <QElapsedTimer>
@@ -1016,6 +1017,28 @@ int Application::runToastDragBench(int durationMs)
             summary << "DRAGBENCH_CPU userMs="
                     << (ms(cpuEnd->ru_utime) - ms(cpuStart->ru_utime))
                     << " sysMs=" << (ms(cpuEnd->ru_stime) - ms(cpuStart->ru_stime)) << "\n";
+            const QVector<qint64> times = m_toast->commitTimestamps();
+            if (times.size() > 2) {
+                qint64 sum = 0;
+                qint64 minGap = 1LL << 62;
+                qint64 maxGap = 0;
+                for (int i = 1; i < times.size(); ++i) {
+                    const qint64 gap = times.at(i) - times.at(i - 1);
+                    sum += gap;
+                    minGap = qMin(minGap, gap);
+                    maxGap = qMax(maxGap, gap);
+                }
+                const double avg = double(sum) / (times.size() - 1);
+                double variance = 0;
+                for (int i = 1; i < times.size(); ++i) {
+                    const double diff = double(times.at(i) - times.at(i - 1)) - avg;
+                    variance += diff * diff;
+                }
+                variance /= (times.size() - 1);
+                summary << "DRAGBENCH_CADENCE commits=" << times.size() << " avgGapMs=" << avg
+                        << " minGapMs=" << minGap << " maxGapMs=" << maxGap
+                        << " jitterStddevMs=" << std::sqrt(variance) << "\n";
+            }
             summary << "DRAGBENCH_CHURN steps=" << *step << " commits=" << m_toast->commitCount()
                     << " elapsedMs=" << durationMs << " commitsPerSec="
                     << double(m_toast->commitCount()) * 1000.0 / qMax(1, durationMs) << "\n";

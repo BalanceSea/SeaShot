@@ -52,7 +52,7 @@ Toast::Toast(QWidget *parent)
     connect(&m_autoHide, &QTimer::timeout, this, &Toast::closeAndNotify);
 
     m_moveThrottle.setSingleShot(true);
-    m_moveThrottle.setInterval(11); // ~90Hz
+    m_moveThrottle.setInterval(11); // 默认 ~90Hz；挂了帧回调时改成 30ms 兜底
     connect(&m_moveThrottle, &QTimer::timeout, this, &Toast::flushPendingPosition);
 }
 
@@ -254,6 +254,8 @@ void Toast::applyPosition(const QPoint &globalTopLeft)
 {
     ensureLayerShell();
     ++m_commitCount;
+    if (m_commitTimes.size() < 20000)
+        m_commitTimes.append(QDateTime::currentMSecsSinceEpoch());
     if (m_layerShellApplied) {
         QScreen *screen =
             QGuiApplication::screenAt(globalTopLeft + QPoint(width() / 2, height() / 2));
@@ -431,9 +433,11 @@ void Toast::mouseMoveEvent(QMouseEvent *event)
         return;
     // 节流到 ~90Hz：KWin 每次 margin 变化都要重排该层，240Hz 鼠标下逐事件提交会闪烁/发涩；
     // 每次提交只标 1px 脏区（见 applyPosition 注释），所以 11ms 的合并不会带来额外重传。
-    m_pendingTopLeft = event->globalPosition().toPoint() - m_dragOrigin;
-    if (!m_moveThrottle.isActive())
-        m_moveThrottle.start();
+    // 逐事件提交：每次只改边距 + 标 1px 脏区（见 applyPosition），
+    // 实测 240Hz 输入下提交开销 ~70µs、lagPx ≤ 1；不节流是为了保证"跟手"。
+    const QPoint target = event->globalPosition().toPoint() - m_dragOrigin;
+    if (target != m_lastAppliedTopLeft)
+        applyPosition(target);
 }
 
 void Toast::mouseReleaseEvent(QMouseEvent *)

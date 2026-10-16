@@ -1,11 +1,11 @@
 Test project /home/balancesea/Vibe Code/SeaShot/build
     Start 1: tst_screenmapper
-1/3 Test #1: tst_screenmapper .................   Passed    0.56 sec
+1/3 Test #1: tst_screenmapper .................   Passed    0.88 sec
     Start 2: tst_selection
-2/3 Test #2: tst_selection ....................   Passed    0.07 sec
+2/3 Test #2: tst_selection ....................   Passed    0.10 sec
     Start 4: tst_annotation
-3/3 Test #4: tst_annotation ...................   Passed    0.12 sec
+3/3 Test #4: tst_annotation ...................   Passed    0.61 sec
 
 100% tests passed out of 3
 
-Total Test time (real) =   0.75 sec
+Total Test time (real) =   1.62 sec

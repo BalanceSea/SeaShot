@@ -1,6 +1,6 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-388267" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 4 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-401725" id= 1 run方式= Script<N>.run 
 EDITOR_OPEN size=400x300 source=docs/acceptance/evidence/p2-source.png
 [info] [app] 收到退出信号，正在收尾（卸载 KWin 助手脚本） 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-388267" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-401725" 
