@@ -94,6 +94,11 @@ private:
     void saveAs();
     /// 保存到设置里的默认目录（按文件名模板命名，不弹对话框）
     void saveToDefault();
+    /// 录制导出格式
+    enum class RecordingFormat { Gif, Mp4 };
+    void exportRecording(RecordingFormat format);
+    void exportRecordingGif();
+    void exportRecordingMp4();
     void copyLast();
     int runSelfTest();
     int runListWindows();

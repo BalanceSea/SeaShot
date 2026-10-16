@@ -143,6 +143,8 @@ Application::Application(const Options &options, QObject *parent)
     m_toast->setAutoHideMs(m_settings->toastAutoHideMs());    m_toast->setEditEnabled(true);
     connect(m_toast.get(), &Toast::saveAsRequested, this, &Application::saveAs);
     connect(m_toast.get(), &Toast::saveRequested, this, &Application::saveToDefault);
+    connect(m_toast.get(), &Toast::exportGifRequested, this, &Application::exportRecordingGif);
+    connect(m_toast.get(), &Toast::exportMp4Requested, this, &Application::exportRecordingMp4);
     connect(m_toast.get(), &Toast::copyRequested, this, &Application::copyLast);
     connect(m_toast.get(), &Toast::editRequested, this,
             [this]() { openEditor(m_lastImage, m_lastSavedPath); });
@@ -416,6 +418,9 @@ void Application::beginRecording(const SelectionResult &selection)
 
     const QString path = m_options.saveTo.isEmpty() ? defaultGifPath() : m_options.saveTo;
     m_recorder->setOutputPath(path);
+    // 交互式录制：先只收尾无损中间文件，格式由用户在浮层工具栏上选（GIF / MP4）。
+    // 脚本式（--save 给了路径）保持一次到底：按扩展名直接产出，便于验收与自动化。
+    m_recorder->setDeferExport(m_options.saveTo.isEmpty());
 
     QString error;
     // 优先 PipeWire（真正的视频流）；不可用时回退到 ScreenShot2 轮询。
@@ -571,6 +576,50 @@ void Application::stopRecording()
         m_tray->setRecording(false);
 }
 
+void Application::exportRecording(RecordingFormat format)
+{
+    QTextStream out(stdout);
+    if (!m_recorder) {
+        out << "RECORD_EXPORT_ERROR 没有录制结果\n";
+        out.flush();
+        return;
+    }
+    const QString suffix = format == RecordingFormat::Mp4 ? QStringLiteral("mp4")
+                                                          : QStringLiteral("gif");
+    const QString path = m_settings->defaultSavePath(suffix);
+    if (m_toast)
+        m_toast->setExportBusy(true);
+    QString error;
+    // 导出是同步的（ffmpeg 调色板量化可能几秒）：先让浮层把"正在导出"画出来
+    QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+    const bool ok = m_recorder->exportTo(path, &error);
+    out << (ok ? "RECORD_EXPORT ok format=" : "RECORD_EXPORT_ERROR format=") << suffix
+        << (ok ? QStringLiteral(" path=%1").arg(path) : QStringLiteral(" error=%1").arg(error))
+        << "\n";
+    out.flush();
+    if (m_toast) {
+        m_toast->setExportBusy(false);
+        if (ok) {
+            m_toast->setExportMode(false, QString());
+            m_toast->updateStatus(QStringLiteral("已导出 %1").arg(QFileInfo(path).fileName()),
+                                  path, QString());
+            m_toast->dismissAfter(1500);
+        } else {
+            m_toast->updateStatus(QStringLiteral("导出失败：%1").arg(error), QString(), QString());
+        }
+    }
+}
+
+void Application::exportRecordingGif()
+{
+    exportRecording(RecordingFormat::Gif);
+}
+
+void Application::exportRecordingMp4()
+{
+    exportRecording(RecordingFormat::Mp4);
+}
+
 void Application::onRecordingFinished(const QString &gifPath, int captured, int dropped,
                                       int failed, qint64 elapsedMs, const QString &error)
 {
@@ -595,15 +644,26 @@ void Application::onRecordingFinished(const QString &gifPath, int captured, int 
         << " fps=" << QString::number(effectiveFps, 'f', 2) << "\n";
     out.flush();
 
-    // 结果用既有的浮层展示（缩略图 = 最后一帧，按钮里「另存为」对 GIF 不适用）
+    // 结果用既有的浮层展示（缩略图 = 最后一帧）
     const QImage thumbnail = m_recorder ? m_recorder->lastFrame() : QImage();
     if (m_toast && !thumbnail.isNull()) {
         m_toast->setEditEnabled(false);
-        m_toast->showResult(thumbnail, gifPath,
-                            QStringLiteral("已录制 GIF：%1 帧 / %2 秒")
-                                .arg(captured)
-                                .arg(QString::number(seconds, 'f', 1)),
-                            QString(), QRectF(m_recorder->region()).toAlignedRect());
+        const QString info = QStringLiteral("已录制：%1 帧 / %2 秒 · 选导出格式")
+                                 .arg(captured)
+                                 .arg(QString::number(seconds, 'f', 1));
+        if (m_recorder->deferExport()) {
+            // 工具栏直接给出两种格式，不替用户预设
+            m_toast->setExportMode(true, info);
+            m_toast->showResult(thumbnail, QString(),
+                                QStringLiteral("已录制：%1 帧 / %2 秒")
+                                    .arg(captured)
+                                    .arg(QString::number(seconds, 'f', 1)),
+                                QString(), QRectF(m_recorder->region()).toAlignedRect());
+            m_toast->setExportMode(true, info); // showResult 会重建缓存，这里再确认一次模式
+        } else {
+            m_toast->showResult(thumbnail, gifPath, info, QString(),
+                                QRectF(m_recorder->region()).toAlignedRect());
+        }
         m_keepAliveForToast = true;
     }
 

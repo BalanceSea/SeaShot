@@ -25,6 +25,12 @@ public:
     bool start(const QSize &size, int fps, QString *error);
     bool writeFrame(const QImage &image, QString *error);
     bool finish(const QString &gifPath, QString *error);
+    /// 只收尾第一遍（中间文件仍然完好、保留在原位），**不转码**。
+    /// 用于"录完再让用户选导出格式"：先留下无损产物，选好再转。
+    bool closeIntermediate(QString *error);
+    /// 把中间文件转成 output（格式按扩展名定）。与 finish() 的第二遍是同一段逻辑。
+    static bool transcode(const QString &intermediatePath, const QString &outputPath, int fps,
+                          QString *error);
     void abort();
 
     bool isActive() const { return m_encoder && m_encoder->state() != QProcess::NotRunning; }
@@ -34,6 +40,11 @@ public:
     // ── 可单测的纯函数 ─────────────────────────────────────
     static QStringList rawInputArgs(const QSize &size, int fps, const QString &intermediatePath);
     static QStringList gifEncodeArgs(const QString &intermediatePath, const QString &gifPath, int fps);
+    /// MP4（H.264）。用 libx264 + crf 18 + veryfast：体积小、CPU 低、兼容性最好。
+    /// yuv420p 是为了播放器兼容（4:2:0 是唯一被普遍支持的像素格式）。
+    static QStringList mp4EncodeArgs(const QString &intermediatePath, const QString &mp4Path, int fps);
+    /// 按输出扩展名决定目标格式（.mp4/.m4v → MP4，其余 → GIF）
+    static bool wantsMp4(const QString &path);
     static bool ffmpegAvailable();
     static QString ffmpegPath();
 

@@ -5,6 +5,8 @@
 #include "util/Log.h"
 
 #include <QCoreApplication>
+#include <QFile>
+#include <QFileInfo>
 #include <QThread>
 #include <QTimer>
 
@@ -227,7 +229,31 @@ void GifRecorder::onFrame(const CaptureImage &image)
     }
     ++m_stats.captured;
     m_lastFrame = image.image;
+    // ⚠️ 必须每帧同步用时：指示器读的是 stats.elapsedMs，而这个字段原先只在 stop()
+    //    里赋值一次 → 录制期间恒为 0 → 屏幕上秒数永远停在 00:00，只有帧数在动。
+    m_stats.elapsedMs = m_elapsed.elapsed();
     emit progress();
+}
+
+bool GifRecorder::exportTo(const QString &path, QString *error)
+{
+    if (!m_encoder) {
+        if (error)
+            *error = QStringLiteral("没有可导出的录制（中间文件已释放）");
+        return false;
+    }
+    const QString intermediate = m_encoder->intermediatePath();
+    if (intermediate.isEmpty() || !QFile::exists(intermediate)) {
+        if (error)
+            *error = QStringLiteral("找不到中间文件：%1").arg(intermediate);
+        return false;
+    }
+    if (!GifEncoder::transcode(intermediate, path, m_fps, error))
+        return false;
+    // 导出一个格式后中间文件就清掉：要两种格式应当一次问清（避免长期占用磁盘）
+    m_encoder.reset();
+    SS_INFO() << "[record] 已导出" << path;
+    return true;
 }
 
 void GifRecorder::stop()
@@ -249,6 +275,23 @@ void GifRecorder::finishEncoding()
 {
     QString error;
     const QString gifPath = m_outputPath;
+
+    if (m_deferExport) {
+        // 只把中间文件收尾（仍然是无损的），转码留到用户选好格式之后。
+        // 收尾方式：让 ffmpeg 正常关闭写通道并退出，但不做第二遍转码 ——
+        // 复用 GifEncoder 的"第一遍"收尾逻辑，把输出路径留空来跳过转码。
+        const bool closed = m_encoder && m_encoder->closeIntermediate(&error);
+        m_finishing = false;
+        if (!closed) {
+            SS_WARN() << "[record] 中间文件收尾失败：" << error;
+            emit finished(QString(), m_stats, error);
+            return;
+        }
+        SS_INFO() << "[record] 已保留无损中间文件，等用户选导出格式";
+        emit finished(QString(), m_stats, QString());
+        return;
+    }
+
     const bool ok = m_encoder && m_encoder->finish(gifPath, &error);
     m_encoder.reset();
     m_finishing = false;

@@ -32,6 +32,8 @@ QString Toast::labelFor(Button button)
     case Button::SaveAs: return QStringLiteral("另存为");
     case Button::Copy: return QStringLiteral("复制");
     case Button::Close: return QStringLiteral("关闭");
+    case Button::ExportGif: return QStringLiteral("导出 GIF");
+    case Button::ExportMp4: return QStringLiteral("导出 MP4");
     case Button::None: break;
     }
     return QString();
@@ -45,6 +47,8 @@ QIcon Toast::iconFor(Button button)
     case Button::SaveAs: return ui::iconSaveAs();
     case Button::Copy: return ui::iconCopy();
     case Button::Close: return ui::iconClose();
+    case Button::ExportGif: return ui::iconSave();
+    case Button::ExportMp4: return ui::iconSaveAs();
     case Button::None: break;
     }
     return QIcon();
@@ -225,8 +229,23 @@ QRect Toast::barRect() const
 
 QVector<Toast::Button> Toast::buttonOrder() const
 {
+    if (m_exportMode)
+        return {Button::ExportGif, Button::ExportMp4, Button::Close};
     return {m_editEnabled ? Button::Edit : Button::None, Button::Save, Button::SaveAs, Button::Copy,
             Button::Close};
+}
+
+void Toast::setExportMode(bool enabled, const QString &info)
+{
+    m_exportMode = enabled;
+    m_exportInfo = info;
+    invalidateCache();
+}
+
+void Toast::setExportBusy(bool busy)
+{
+    m_exportBusy = busy;
+    invalidateCache();
 }
 
 int Toast::barNeededWidth() const
@@ -461,7 +480,9 @@ void Toast::rebuildCache()
 
     // 状态文字
     painter.setPen(text);
-    QString info = m_message;
+    QString info = m_exportMode && !m_exportInfo.isEmpty() ? m_exportInfo : m_message;
+    if (m_exportBusy)
+        info = QStringLiteral("正在导出，请稍候…");
     if (m_scaledToFit && !m_source.isNull()) {
         info += QStringLiteral("（屏幕放不下，已缩到 %1×%2 显示）")
                     .arg(m_display.width())
@@ -630,6 +651,12 @@ void Toast::activate(Button button)
         break;
     case Button::Copy:
         emit copyRequested();
+        break;
+    case Button::ExportGif:
+        emit exportGifRequested();
+        break;
+    case Button::ExportMp4:
+        emit exportMp4Requested();
         break;
     case Button::Close:
         closeAndNotify();

@@ -39,6 +39,11 @@ public:
                     const QString &copyError, const QRect &anchorGlobalRect);
 
     void setEditEnabled(bool enabled);
+    /// 录制结果模式：工具栏换成「导出 GIF / 导出 MP4 / 关闭」，
+    /// 让用户在同一排按钮里直接挑格式（不再需要默认格式或弹窗追问）。
+    void setExportMode(bool enabled, const QString &info);
+    /// 导出中/导出完成的状态文字（导出期间禁用按钮，避免重复触发）
+    void setExportBusy(bool busy);
     /// 0 = 不自动消失（默认）
     void setAutoHideMs(int milliseconds);
     /// 更新状态文字（复制/保存完成后调用）
@@ -61,6 +66,8 @@ public:
 signals:
     void editRequested();
     void saveRequested();   ///< 保存到设置里的默认目录（不弹对话框）
+    void exportGifRequested();  ///< 把本次录制导出为 GIF
+    void exportMp4Requested();  ///< 把本次录制导出为 MP4
     void saveAsRequested();
     void copyRequested();
     void dismissed();
@@ -77,7 +84,7 @@ protected:
     void changeEvent(QEvent *event) override;
 
 private:
-    enum class Button { None, Edit, Save, SaveAs, Copy, Close };
+    enum class Button { None, Edit, Save, SaveAs, Copy, Close, ExportGif, ExportMp4 };
 
     // ── 几何 ──────────────────────────────────────────────
     QRect cardRect() const { return QRect(QPoint(0, 0), m_cardSize); } ///< 卡片本地坐标
@@ -141,6 +148,9 @@ private:
 
     QTimer m_autoHide;
     bool m_editEnabled = true;
+    bool m_exportMode = false;
+    bool m_exportBusy = false;
+    QString m_exportInfo;
     bool m_layerShellApplied = false;
     bool m_fixedSurface = true; ///< false = 旧实现（移动表面本身，仅用于 A/B）
     bool m_dragging = false;

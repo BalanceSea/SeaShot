@@ -12,6 +12,8 @@ namespace seashot {
 namespace {
 constexpr int kWriteTimeoutMs = 5000;
 constexpr int kFinishTimeoutMs = 60000;
+// 转码：GIF 调色板量化比 H.264 慢得多（尤其大分辨率/长时长），给足时间
+constexpr int kTranscodeTimeoutMs = 600000;
 constexpr int kGifTimeoutMs = 120000;
 } // namespace
 
@@ -49,14 +51,40 @@ QStringList GifEncoder::rawInputArgs(const QSize &size, int fps, const QString &
 
 QStringList GifEncoder::gifEncodeArgs(const QString &intermediatePath, const QString &gifPath, int fps)
 {
+    // dither=none：抖动会给每个像素加噪，**正面破坏 GIF 的帧间差分**（只写变化区域）。
+    // 实测（同一段 1920x1080 3 秒源）：
+    //   dither=bayer:bayer_scale=3  → 1,405,770 字节
+    //   dither=none                 → 1,098,771 字节（-22%）
+    // 代价：大片渐变上可能有轻微色带；屏幕截图多为纯色区域，这个取舍值得。
+    // 另：offsetting/transdiff（只写变化区域）在本机 ffmpeg 上**本来就是默认开启**的 ——
+    //     实测显式加上 -gifflags 后体积一模一样，所以不必额外指定。
     const QString filter = QStringLiteral("fps=%1,split[s0][s1];[s0]palettegen=stats_mode=diff[p];"
-                                         "[s1][p]paletteuse=dither=bayer:bayer_scale=3")
+                                         "[s1][p]paletteuse=dither=none")
                                .arg(qMax(1, fps));
     return {QStringLiteral("-hide_banner"), QStringLiteral("-loglevel"), QStringLiteral("error"),
             QStringLiteral("-i"), intermediatePath,
             QStringLiteral("-vf"), filter,
             QStringLiteral("-loop"), QStringLiteral("0"),
             QStringLiteral("-y"), gifPath};
+}
+
+QStringList GifEncoder::mp4EncodeArgs(const QString &intermediatePath, const QString &mp4Path, int fps)
+{
+    return {QStringLiteral("-hide_banner"), QStringLiteral("-loglevel"), QStringLiteral("error"),
+            QStringLiteral("-i"), intermediatePath,
+            QStringLiteral("-c:v"), QStringLiteral("libx264"),
+            QStringLiteral("-preset"), QStringLiteral("veryfast"),
+            QStringLiteral("-crf"), QStringLiteral("18"),
+            QStringLiteral("-pix_fmt"), QStringLiteral("yuv420p"),
+            QStringLiteral("-movflags"), QStringLiteral("+faststart"),
+            QStringLiteral("-r"), QString::number(qMax(1, fps)),
+            QStringLiteral("-y"), mp4Path};
+}
+
+bool GifEncoder::wantsMp4(const QString &path)
+{
+    return path.endsWith(QLatin1String(".mp4"), Qt::CaseInsensitive)
+        || path.endsWith(QLatin1String(".m4v"), Qt::CaseInsensitive);
 }
 
 bool GifEncoder::start(const QSize &size, int fps, QString *error)
@@ -140,6 +168,71 @@ bool GifEncoder::writeFrame(const QImage &image, QString *error)
     return true;
 }
 
+bool GifEncoder::closeIntermediate(QString *error)
+{
+    if (!m_encoder) {
+        if (error)
+            *error = QStringLiteral("没有正在进行的编码");
+        return false;
+    }
+    m_encoder->closeWriteChannel();
+    if (!m_encoder->waitForFinished(kFinishTimeoutMs)) {
+        if (error)
+            *error = QStringLiteral("第一遍编码收尾超时");
+        abort();
+        return false;
+    }
+    if (m_encoder->exitCode() != 0) {
+        if (error)
+            *error = QStringLiteral("第一遍编码失败：%1")
+                         .arg(QString::fromLocal8Bit(m_encoder->readAllStandardError()).trimmed());
+        abort();
+        return false;
+    }
+    m_encoder.reset();
+    return true; // 中间文件留在原位，不清也不转
+}
+
+bool GifEncoder::transcode(const QString &intermediatePath, const QString &outputPath, int fps,
+                           QString *error)
+{
+    if (intermediatePath.isEmpty() || !QFile::exists(intermediatePath)) {
+        if (error)
+            *error = QStringLiteral("找不到中间文件：%1").arg(intermediatePath);
+        return false;
+    }
+    if (!ffmpegAvailable()) {
+        if (error)
+            *error = QStringLiteral("找不到 ffmpeg");
+        return false;
+    }
+    QDir().mkpath(QFileInfo(outputPath).absolutePath());
+    QProcess process;
+    process.setProgram(ffmpegPath());
+    process.setArguments(wantsMp4(outputPath)
+                             ? mp4EncodeArgs(intermediatePath, outputPath, fps)
+                             : gifEncodeArgs(intermediatePath, outputPath, fps));
+    process.start();
+    if (!process.waitForStarted(5000)) {
+        if (error)
+            *error = QStringLiteral("无法启动 ffmpeg 转码");
+        return false;
+    }
+    if (!process.waitForFinished(kTranscodeTimeoutMs)) {
+        process.kill();
+        if (error)
+            *error = QStringLiteral("转码超时");
+        return false;
+    }
+    if (process.exitCode() != 0) {
+        if (error)
+            *error = QStringLiteral("转码失败：%1")
+                         .arg(QString::fromLocal8Bit(process.readAllStandardError()).trimmed());
+        return false;
+    }
+    return true;
+}
+
 bool GifEncoder::finish(const QString &gifPath, QString *error)
 {
     if (gifPath.isEmpty()) {
@@ -173,7 +266,10 @@ bool GifEncoder::finish(const QString &gifPath, QString *error)
     QDir().mkpath(QFileInfo(gifPath).absolutePath());
     QProcess gifProcess;
     gifProcess.setProgram(ffmpegPath());
-    gifProcess.setArguments(gifEncodeArgs(m_intermediatePath, gifPath, m_fps));
+    // 目标格式按扩展名决定：同一条 ffmpeg 管线，只是最后一步换编码器
+    const bool toMp4 = wantsMp4(gifPath);
+    gifProcess.setArguments(toMp4 ? mp4EncodeArgs(m_intermediatePath, gifPath, m_fps)
+                                  : gifEncodeArgs(m_intermediatePath, gifPath, m_fps));
     gifProcess.start();
     if (!gifProcess.waitForStarted(5000) || !gifProcess.waitForFinished(kGifTimeoutMs)
         || gifProcess.exitCode() != 0) {
