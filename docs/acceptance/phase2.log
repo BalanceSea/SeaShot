@@ -1,0 +1,10 @@
+== Phase 2 验收 ==
+二进制: /home/balancesea/.local/bin/seashot (2026-10-16 10:51:37)
+
+PASS  A. 单测（撤销/命中/渲染/交互） 100% tests passed out of 3
+PASS  B. 导出尺寸 == 源图尺寸      两者都是 400x300（ANNOTATED docs/acceptance/evidence/p2-annotated.png size=400x300 annotations=5）
+PASS  C. 标注覆盖多个区域          CELLS=12/12 TOTAL=2056 GRID=[174, 300, 480, 114, 90, 190, 185, 136, 126, 120, 122, 19]（4x3 网格中至少 3 格有变化）
+PASS  D. 编辑器打开且不留半成品 EDITOR_OPEN size=400x300 source=docs/acceptance/evidence/p2-source.png；/home/balancesea/Pictures/Screenshots 文件数 0 → 0 未变
+
+== 汇总: 4 通过 / 0 失败 ==
+证据目录: docs/acceptance/evidence

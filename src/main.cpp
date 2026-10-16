@@ -52,6 +52,14 @@ int main(int argc, char **argv)
     QCommandLineOption backendOption(QStringLiteral("backend"),
                                      QStringLiteral("后端：auto|wayland|x11"), QStringLiteral("name"),
                                      QStringLiteral("auto"));
+    QCommandLineOption editOption(QStringLiteral("edit"),
+                                  QStringLiteral("用编辑器打开一张 PNG"), QStringLiteral("path"));
+    QCommandLineOption annotateInOption(QStringLiteral("annotate-in"),
+                                        QStringLiteral("（诊断/验收）标注演示的输入图"),
+                                        QStringLiteral("path"));
+    QCommandLineOption annotateOutOption(QStringLiteral("annotate-out"),
+                                         QStringLiteral("（诊断/验收）标注演示的输出图"),
+                                         QStringLiteral("path"));
 
     parser.addOption(selftestOption);
     parser.addOption(listOption);
@@ -63,6 +71,9 @@ int main(int argc, char **argv)
     parser.addOption(noCopyOption);
     parser.addOption(overlayHoldOption);
     parser.addOption(backendOption);
+    parser.addOption(editOption);
+    parser.addOption(annotateInOption);
+    parser.addOption(annotateOutOption);
     parser.process(app);
 
     seashot::Options options;
@@ -75,6 +86,9 @@ int main(int argc, char **argv)
     options.windowHandle = parser.value(windowOption);
     options.backend = parser.value(backendOption);
     options.overlayHoldMs = parser.value(overlayHoldOption).toInt();
+    options.editPath = parser.value(editOption);
+    options.annotateIn = parser.value(annotateInOption);
+    options.annotateOut = parser.value(annotateOutOption);
 
     if (parser.isSet(rectOption)) {
         const QStringList parts = parser.value(rectOption).split(QLatin1Char(','));

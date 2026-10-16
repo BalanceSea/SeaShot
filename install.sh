@@ -72,6 +72,12 @@ if [ "$DO_AUTOSTART" = 1 ]; then
     echo "   ~/.config/autostart/seashot.desktop"
 fi
 
+# PATH 检查：很多发行版（包括本机）默认 PATH 里没有 ~/.local/bin
+case ":$PATH:" in
+    *":$BINDIR:"*) IN_PATH=1 ;;
+    *) IN_PATH=0 ;;
+ esac
+
 cat <<EOF
 
 完成。下一步：
@@ -80,3 +86,14 @@ cat <<EOF
   $BIN --capture           # 立刻开始一次交互式截图（可绑到 KDE 自定义快捷键）
   系统设置 → 快捷键 → 添加命令：$BIN --capture
 EOF
+
+if [ "$IN_PATH" = 0 ]; then
+    cat <<EOF
+
+注意：$BINDIR 不在你的 PATH 里，所以直接敲 seashot 会报「未知的命令」。三选一：
+  1) 用完整路径： $BIN --capture
+  2) 加进 PATH（fish）： fish_add_path $BINDIR      # 立即生效并永久保存
+     加进 PATH（bash/zsh）： echo 'export PATH="\$HOME/.local/bin:\$PATH"' >> ~/.profile
+  3) 不改 PATH：在 KRunner / 应用菜单里搜 “SeaShot”（desktop 文件已装好）
+EOF
+fi

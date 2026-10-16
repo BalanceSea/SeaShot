@@ -1,0 +1,1 @@
+EDITOR_OPEN size=400x300 source=docs/acceptance/evidence/p2-source.png

@@ -1,0 +1,2 @@
+CAPTURE ok size=400x300 scale=1
+SAVED docs/acceptance/evidence/p2-source.png

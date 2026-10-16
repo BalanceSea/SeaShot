@@ -1,0 +1,1 @@
+ANNOTATED docs/acceptance/evidence/p2-annotated.png size=400x300 annotations=5

@@ -6,6 +6,10 @@
 #include "app/Tray.h"
 #include "backend/CaptureBackend.h"
 #include "backend/wayland/WaylandBackend.h"
+#include "editor/Annotation.h"
+#include "editor/AnnotationDocument.h"
+#include "editor/AnnotationRenderer.h"
+#include "editor/EditorWindow.h"
 #include "overlay/Overlay.h"
 #include "util/Clipboard.h"
 #include "util/Log.h"
@@ -89,10 +93,8 @@ Application::Application(const Options &options, QObject *parent)
     m_toast->setEditEnabled(true);
     connect(m_toast.get(), &Toast::saveAsRequested, this, &Application::saveAs);
     connect(m_toast.get(), &Toast::copyRequested, this, &Application::copyLast);
-    connect(m_toast.get(), &Toast::editRequested, this, [this]() {
-        SS_INFO() << "[app] 『编辑』按钮：编辑器在 Phase 2 交付（当前仅占位）";
-        QTextStream(stdout) << "EDIT_REQUESTED phase2-pending\n";
-    });
+    connect(m_toast.get(), &Toast::editRequested, this,
+            [this]() { openEditor(m_lastImage, m_lastSavedPath); });
 }
 
 Application::~Application()
@@ -150,7 +152,95 @@ bool Application::startServer()
 bool Application::isOneShot() const
 {
     return m_options.selftest || m_options.listWindows || m_options.captureScreen
-        || m_options.hasRect || !m_options.windowHandle.isEmpty() || m_options.overlayHoldMs > 0;
+        || m_options.hasRect || !m_options.windowHandle.isEmpty() || m_options.overlayHoldMs > 0
+        || !m_options.editPath.isEmpty() || !m_options.annotateOut.isEmpty();
+}
+
+void Application::openEditor(const QImage &image, const QString &sourcePath)
+{
+    QTextStream out(stdout);
+    if (image.isNull()) {
+        out << "EDITOR_ERROR 空图像\n";
+        out.flush();
+        return;
+    }
+    auto *editor = new EditorWindow(image, sourcePath);
+    editor->show();
+    editor->raise();
+    editor->activateWindow();
+    out << "EDITOR_OPEN size=" << image.width() << "x" << image.height()
+        << " source=" << (sourcePath.isEmpty() ? QStringLiteral("(none)") : sourcePath) << "\n";
+    out.flush();
+    connect(editor, &EditorWindow::savedTo, this,
+            [](const QString &path) { SS_INFO() << "[editor] 已保存" << path; });
+}
+
+int Application::runAnnotateDemo()
+{
+    QTextStream out(stdout);
+    const QImage source(m_options.annotateIn);
+    if (source.isNull()) {
+        out << "ANNOTATE_ERROR 无法读取 " << m_options.annotateIn << "\n";
+        return 2;
+    }
+
+    // 五种工具各来一个：既给验收脚本一个可重复的端到端检查，也可当诊断用
+    const double w = source.width();
+    const double h = source.height();
+    AnnotationDocument document;
+
+    Annotation arrow;
+    arrow.kind = ToolKind::Arrow;
+    arrow.color = QColor(255, 64, 64);
+    arrow.width = 5;
+    arrow.points = {QPointF(w * 0.15, h * 0.20), QPointF(w * 0.55, h * 0.45)};
+    document.add(arrow);
+
+    Annotation rectangle;
+    rectangle.kind = ToolKind::Rectangle;
+    rectangle.color = QColor(61, 174, 255);
+    rectangle.width = 4;
+    rectangle.points = {QPointF(w * 0.60, h * 0.15), QPointF(w * 0.90, h * 0.40)};
+    document.add(rectangle);
+
+    Annotation ellipse;
+    ellipse.kind = ToolKind::Ellipse;
+    ellipse.color = QColor(120, 255, 120);
+    ellipse.width = 4;
+    ellipse.points = {QPointF(w * 0.10, h * 0.55), QPointF(w * 0.40, h * 0.85)};
+    document.add(ellipse);
+
+    Annotation pen;
+    pen.kind = ToolKind::Pen;
+    pen.color = QColor(255, 220, 80);
+    pen.width = 3;
+    for (int i = 0; i < 20; ++i)
+        pen.points.append(QPointF(w * (0.50 + 0.02 * i), h * (0.70 + 0.10 * std::sin(i / 3.0))));
+    document.add(pen);
+
+    Annotation text;
+    text.kind = ToolKind::Text;
+    text.color = QColor(255, 255, 255);
+    text.width = 8;
+    text.text = QStringLiteral("SeaShot 编辑器");
+    text.points = {QPointF(w * 0.15, h * 0.05)};
+    document.add(text);
+
+    const QImage rendered = renderAnnotations(source, document.items());
+    if (rendered.width() != source.width() || rendered.height() != source.height()) {
+        out << "ANNOTATE_ERROR 导出尺寸变了 " << rendered.width() << "x" << rendered.height()
+            << " (源 " << source.width() << "x" << source.height() << ")\n";
+        return 3;
+    }
+    QString error;
+    if (!Settings::saveImage(m_options.annotateOut, rendered, &error)) {
+        out << "ANNOTATE_ERROR " << error << "\n";
+        return 4;
+    }
+    out << "ANNOTATED " << m_options.annotateOut << " size=" << rendered.width() << "x"
+        << rendered.height() << " annotations=" << document.count() << "\n";
+    out.flush();
+    return 0;
 }
 
 QRect Application::virtualGeometry() const
@@ -428,6 +518,17 @@ int Application::run()
     }
     if (m_options.listWindows)
         return runListWindows();
+    if (!m_options.annotateOut.isEmpty())
+        return runAnnotateDemo();
+    if (!m_options.editPath.isEmpty()) {
+        const QImage image(m_options.editPath);
+        if (image.isNull()) {
+            out << "EDITOR_ERROR 无法读取 " << m_options.editPath << "\n";
+            return 2;
+        }
+        openEditor(image, m_options.editPath);
+        return QCoreApplication::exec();
+    }
     if (m_options.captureScreen || m_options.hasRect || !m_options.windowHandle.isEmpty())
         return runNonInteractiveCapture();
     if (m_options.overlayHoldMs > 0) {

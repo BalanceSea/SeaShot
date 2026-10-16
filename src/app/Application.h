@@ -33,6 +33,9 @@ struct Options {
     QString saveTo; ///< --save PATH
     bool noCopy = false; ///< 不写剪贴板（覆盖设置里的开关）
     int overlayHoldMs = 0; ///< --overlay-hold MS：显示覆盖层若干毫秒后退出（验收用）
+    QString editPath; ///< --edit PATH：直接用编辑器打开一张图
+    QString annotateIn; ///< --annotate-demo 的输入图
+    QString annotateOut; ///< --annotate-demo 的输出图
 };
 
 class Application : public QObject
@@ -47,6 +50,8 @@ public:
     int run();
 
 private:
+    /// 打开编辑器（截图结果浮层上的「编辑」按钮、以及 --edit 都走这里）
+    void openEditor(const QImage &image, const QString &sourcePath);
     void startResident();
     void startCapture();
     void handleSelection(const SelectionResult &result);
@@ -58,6 +63,7 @@ private:
     int runListWindows();
     int runNonInteractiveCapture();
     int showOverlayAndHold();
+    int runAnnotateDemo();
     QRect virtualGeometry() const;
     bool isOneShot() const;
 
