@@ -1,6 +1,7 @@
 #include "editor/EditorWindow.h"
 
 #include "app/Settings.h"
+#include "ui/Theme.h"
 #include "util/Clipboard.h"
 #include "util/Log.h"
 
@@ -24,6 +25,20 @@
 namespace seashot {
 
 namespace {
+
+QIcon toolIcon(ToolKind kind)
+{
+    switch (kind) {
+    case ToolKind::Select: return ui::iconToolSelect();
+    case ToolKind::Arrow: return ui::iconToolArrow();
+    case ToolKind::Rectangle: return ui::iconToolRectangle();
+    case ToolKind::Ellipse: return ui::iconToolEllipse();
+    case ToolKind::Pen: return ui::iconToolPen();
+    case ToolKind::Text: return ui::iconToolText();
+    }
+    return {};
+}
+
 QIcon swatchIcon(const QColor &color)
 {
     QPixmap pixmap(18, 18);
@@ -76,7 +91,9 @@ void EditorWindow::buildUi()
         auto *button = new QToolButton(toolbar);
         button->setText(toolName(tool));
         button->setCheckable(true);
-        button->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+        button->setIcon(toolIcon(tool));
+        button->setIconSize(QSize(ui::spec::iconSize, ui::spec::iconSize));
         button->setShortcut(QKeySequence(QString::number(shortcut++)));
         button->setToolTip(QStringLiteral("%1（快捷键 %2）")
                                .arg(toolName(tool))
@@ -89,6 +106,7 @@ void EditorWindow::buildUi()
 
     toolbar->addSeparator();
     m_colorButton = new QToolButton(toolbar);
+    m_colorButton->setIconSize(QSize(ui::spec::iconSize, ui::spec::iconSize));
     m_colorButton->setText(QStringLiteral("颜色"));
     m_colorButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     m_colorButton->setIcon(swatchIcon(m_canvas->color()));
@@ -105,7 +123,7 @@ void EditorWindow::buildUi()
     toolbar->addWidget(m_widthBox);
 
     toolbar->addSeparator();
-    m_undoAction = toolbar->addAction(QStringLiteral("撤销"), this, [this]() {
+    m_undoAction = toolbar->addAction(ui::iconUndo(), QStringLiteral("撤销"), this, [this]() {
         if (m_canvas->document().undo()) {
             m_dirty = true;
             m_canvas->update();
@@ -113,7 +131,7 @@ void EditorWindow::buildUi()
         }
     });
     m_undoAction->setShortcut(QKeySequence::Undo);
-    m_redoAction = toolbar->addAction(QStringLiteral("重做"), this, [this]() {
+    m_redoAction = toolbar->addAction(ui::iconRedo(), QStringLiteral("重做"), this, [this]() {
         if (m_canvas->document().redo()) {
             m_dirty = true;
             m_canvas->update();
@@ -123,17 +141,18 @@ void EditorWindow::buildUi()
     m_redoAction->setShortcuts({QKeySequence(QStringLiteral("Ctrl+Shift+Z")),
                                 QKeySequence(QStringLiteral("Ctrl+Y"))});
 
-    QAction *deleteAction = toolbar->addAction(QStringLiteral("删除选中"), this,
+    QAction *deleteAction = toolbar->addAction(ui::iconDelete(), QStringLiteral("删除选中"), this,
                                                [this]() { m_canvas->deleteSelected(); });
     deleteAction->setShortcut(QKeySequence::Delete);
 
     toolbar->addSeparator();
-    QAction *copyAction = toolbar->addAction(QStringLiteral("复制"), this,
+    QAction *copyAction = toolbar->addAction(ui::iconCopy(), QStringLiteral("复制"), this,
                                              &EditorWindow::copyToClipboard);
     copyAction->setShortcut(QKeySequence::Copy);
-    QAction *saveAction = toolbar->addAction(QStringLiteral("保存"), this, &EditorWindow::save);
+    QAction *saveAction = toolbar->addAction(ui::iconSave(), QStringLiteral("保存"), this,
+                                             &EditorWindow::save);
     saveAction->setShortcut(QKeySequence::Save);
-    QAction *saveAsAction = toolbar->addAction(QStringLiteral("另存为"), this,
+    QAction *saveAsAction = toolbar->addAction(ui::iconSaveAs(), QStringLiteral("另存为"), this,
                                                &EditorWindow::saveAs);
     saveAsAction->setShortcuts({QKeySequence(QStringLiteral("Ctrl+Shift+S"))});
 

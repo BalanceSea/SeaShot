@@ -8,6 +8,7 @@ set(SEASHOT_CORE_SOURCES
     backend/wayland/ScreenShot2.cpp
     backend/wayland/WaylandBackend.cpp
     overlay/Overlay.cpp
+    ui/Theme.cpp
     editor/Annotation.cpp
     editor/AnnotationDocument.cpp
     editor/AnnotationRenderer.cpp
@@ -36,6 +37,7 @@ set(SEASHOT_HEADERS
     backend/wayland/ScreenShot2.h
     backend/wayland/WaylandBackend.h
     overlay/Overlay.h
+    ui/Theme.h
     editor/Annotation.h
     editor/AnnotationDocument.h
     editor/AnnotationRenderer.h

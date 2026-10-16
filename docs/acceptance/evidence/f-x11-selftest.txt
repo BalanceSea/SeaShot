@@ -16,7 +16,7 @@ SeaShot 自检（Phase 1）
 [OK  ] 窗口枚举
        共 2 个窗口
        320000f appId=MinecraftConnectTool frame=587,274 1080x720 stack=0
-       1200011 appId=QQ frame=1187,198 957x720 stack=1
+       1200011 appId=QQ frame=975,163 957x720 stack=1
 [OK  ] 区域截图（32x32 探测）
        得到 32x32，scale=1
 [OK  ] 剪贴板（wl-copy）

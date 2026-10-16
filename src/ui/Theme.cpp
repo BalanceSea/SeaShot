@@ -1,0 +1,137 @@
+#include "ui/Theme.h"
+
+namespace seashot::ui {
+
+QIcon icon(const QStringList &names)
+{
+    for (const QString &name : names) {
+        const QIcon candidate = QIcon::fromTheme(name);
+        if (!candidate.isNull() && !candidate.availableSizes().isEmpty())
+            return candidate;
+        if (!candidate.isNull() && candidate.name().isEmpty() == false)
+            return candidate;
+    }
+    return {};
+}
+
+QIcon icon(const QString &name)
+{
+    return icon(QStringList{name});
+}
+
+CardColors cardColors(const QPalette &palette)
+{
+    CardColors colors;
+    colors.card = palette.color(QPalette::Window);
+    colors.cardText = palette.color(QPalette::WindowText);
+    colors.bar = palette.color(QPalette::Window);
+    colors.bar.setAlpha(235);
+    colors.button = palette.color(QPalette::Button);
+    colors.buttonText = palette.color(QPalette::ButtonText);
+    colors.primary = palette.color(QPalette::Highlight);
+    colors.primaryText = palette.color(QPalette::HighlightedText);
+    colors.border = palette.color(QPalette::Mid);
+    colors.frameOuter = QColor(0, 0, 0);
+    colors.frameOuter.setAlpha(spec::frameOuterAlpha);
+    colors.frameInner = palette.color(QPalette::Highlight);
+    colors.frameInner.setAlpha(spec::frameInnerAlpha);
+    return colors;
+}
+
+QIcon iconEdit()
+{
+    return icon({QStringLiteral("document-edit"), QStringLiteral("edit-entry"),
+                 QStringLiteral("edit")});
+}
+
+QIcon iconSaveAs()
+{
+    return icon({QStringLiteral("document-save-as"), QStringLiteral("document-save")});
+}
+
+QIcon iconCopy()
+{
+    return icon({QStringLiteral("edit-copy"), QStringLiteral("edit-duplicate")});
+}
+
+QIcon iconClose()
+{
+    return icon({QStringLiteral("window-close"), QStringLiteral("dialog-close")});
+}
+
+QIcon iconRecord()
+{
+    return icon({QStringLiteral("media-record"), QStringLiteral("camera-video")});
+}
+
+QIcon iconStop()
+{
+    return icon({QStringLiteral("media-playback-stop"), QStringLiteral("process-stop")});
+}
+
+QIcon iconCapture()
+{
+    return icon({QStringLiteral("camera-photo"), QStringLiteral("camera")});
+}
+
+QIcon iconSettings()
+{
+    return icon({QStringLiteral("settings-configure"), QStringLiteral("preferences-system")});
+}
+
+QIcon iconUndo()
+{
+    return icon({QStringLiteral("edit-undo"), QStringLiteral("edit-undo-history")});
+}
+
+QIcon iconRedo()
+{
+    return icon({QStringLiteral("edit-redo"), QStringLiteral("edit-redo-history")});
+}
+
+QIcon iconDelete()
+{
+    return icon({QStringLiteral("edit-delete"), QStringLiteral("edit-delete-remove")});
+}
+
+QIcon iconSave()
+{
+    return icon({QStringLiteral("document-save")});
+}
+
+QIcon iconRefresh()
+{
+    return icon({QStringLiteral("view-refresh")});
+}
+
+QIcon iconToolSelect()
+{
+    return icon({QStringLiteral("transform-move"), QStringLiteral("edit-select")});
+}
+
+QIcon iconToolArrow()
+{
+    return icon({QStringLiteral("draw-arrow"), QStringLiteral("draw-line")});
+}
+
+QIcon iconToolRectangle()
+{
+    return icon({QStringLiteral("draw-rectangle"), QStringLiteral("draw-highlight")});
+}
+
+QIcon iconToolEllipse()
+{
+    return icon({QStringLiteral("draw-circle"), QStringLiteral("draw-ellipse")});
+}
+
+QIcon iconToolPen()
+{
+    return icon({QStringLiteral("draw-freehand"), QStringLiteral("draw-line")});
+}
+
+QIcon iconToolText()
+{
+    return icon({QStringLiteral("draw-text"), QStringLiteral("insert-text")});
+}
+
+} // namespace seashot::ui

@@ -119,6 +119,8 @@ private:
     bool m_layerShellApplied = false;
     bool m_fixedSurface = true; ///< false = 旧实现（移动表面本身，仅用于 A/B）
     bool m_dragging = false;
+    Button m_hoverButton = Button::None;
+    Button m_pressedButton = Button::None;
     bool m_dragMarker = false;
     QPoint m_dragOrigin;   ///< 拖动时鼠标相对卡片左上角的偏移
     QRect m_lastAnchor;

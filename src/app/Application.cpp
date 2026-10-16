@@ -554,6 +554,19 @@ void Application::openSettings()
     }
     auto *dialog = new SettingsDialog(m_settings.get(), m_backend.get(), nullptr);
     dialog->setAttribute(Qt::WA_DeleteOnClose, true);
+    // 诊断/取证：把界面直接渲染成 PNG（不受其它窗口遮挡影响）
+    if (!qEnvironmentVariable("SEASHOT_UI_GRAB").isEmpty()) {
+        dialog->show();
+        QTimer::singleShot(200, this, [this, dialog]() {
+            const QString path = qEnvironmentVariable("SEASHOT_UI_GRAB");
+            dialog->grab().save(path);
+            QTextStream(stdout) << "UI_GRAB " << path << " size=" << dialog->size().width() << "x"
+                                << dialog->size().height() << "\n";
+            QTextStream(stdout).flush();
+            QCoreApplication::quit();
+        });
+        return;
+    }
     m_settingsDialog = dialog;
     connect(dialog, &QObject::destroyed, this, [this]() { m_settingsDialog = nullptr; });
     connect(dialog, &SettingsDialog::hotkeyChanged, this, &Application::applyHotkey);

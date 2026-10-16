@@ -1,5 +1,6 @@
 #include "app/Toast.h"
 
+#include "ui/Theme.h"
 #include "util/Log.h"
 
 #include <QApplication>
@@ -210,16 +211,27 @@ QVector<QPair<Toast::Button, QRect>> Toast::buttons() const
     const QFontMetrics metrics(font());
     const int width = qMax(260, m_cardSize.width());
     const int height = qMax(120, m_cardSize.height());
-    int x = width - kButtonPadding;
+    int x = width - ui::spec::cardPadding;
     for (auto it = order.crbegin(); it != order.crend(); ++it) {
         if (*it == Button::None)
             continue;
+        const QIcon ic = [it]() {
+            switch (*it) {
+            case Button::Edit: return ui::iconEdit();
+            case Button::SaveAs: return ui::iconSaveAs();
+            case Button::Copy: return ui::iconCopy();
+            default: return ui::iconClose();
+            }
+        }();
         const int textWidth = metrics.horizontalAdvance(buttonLabel(int(*it)));
-        const int buttonWidth = textWidth + 18;
+        const int iconPart = ic.isNull() ? 0 : ui::spec::iconSize + ui::spec::gap / 2;
+        const int buttonWidth = textWidth + iconPart + ui::spec::buttonPadX * 2;
         x -= buttonWidth;
-        result.prepend({*it, QRect(x, height - barHeight() + (barHeight() - kButtonHeight) / 2,
-                                   buttonWidth, kButtonHeight)});
-        x -= 6;
+        result.prepend({*it, QRect(x,
+                                   height - barHeight()
+                                       + (barHeight() - ui::spec::buttonHeight) / 2,
+                                   buttonWidth, ui::spec::buttonHeight)});
+        x -= ui::spec::gap;
     }
     return result;
 }
@@ -358,14 +370,14 @@ void Toast::rebuildCache()
     QPainter painter(&m_cache);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    const QPalette pal = palette();
-    const QColor window = pal.color(QPalette::Window);
-    const QColor text = pal.color(QPalette::WindowText);
-    const QColor button = pal.color(QPalette::Button);
-    const QColor buttonText = pal.color(QPalette::ButtonText);
-    const QColor highlight = pal.color(QPalette::Highlight);
-    const QColor highlightedText = pal.color(QPalette::HighlightedText);
-    const QColor border = pal.color(QPalette::Mid);
+    const ui::CardColors colors = ui::cardColors(palette());
+    const QColor window = colors.card;
+    const QColor text = colors.cardText;
+    const QColor button = colors.button;
+    const QColor buttonText = colors.buttonText;
+    const QColor highlight = colors.primary;
+    const QColor highlightedText = colors.primaryText;
+    const QColor border = colors.border;
 
     const QRectF cardF = QRectF(card).adjusted(0.5, 0.5, -0.5, -0.5);
     painter.setPen(Qt::NoPen);
@@ -407,17 +419,46 @@ void Toast::rebuildCache()
     painter.drawText(QRect(kButtonPadding, bar.top(), textRight - kButtonPadding, bar.height()),
                      Qt::AlignVCenter | Qt::AlignLeft, info);
 
-    // 按钮：第一个（编辑/或首个可用）为主按钮
-    bool first = true;
+    // 按钮：第一个（编辑/或首个可用）为主按钮；带图标 + hover/pressed 态
+    const Button primaryButton = m_editEnabled ? Button::Edit : Button::SaveAs;
     for (const auto &entry : buttons()) {
         const QRect &rect = entry.second;
-        const bool primary = first;
+        const bool primary = entry.first == primaryButton;
+        const bool hovered = m_hoverButton == entry.first;
+        const bool pressed = m_pressedButton == entry.first;
+        QColor background = primary ? highlight : button;
+        if (pressed)
+            background = background.darker(ui::spec::pressedDarker);
+        else if (hovered)
+            background = background.lighter(ui::spec::hoverLighten);
+        const QColor foreground = primary ? highlightedText : buttonText;
         painter.setPen(QPen(primary ? highlight.darker(110) : border, 1));
-        painter.setBrush(primary ? highlight : button);
-        painter.drawRoundedRect(QRectF(rect).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
-        painter.setPen(primary ? highlightedText : buttonText);
-        painter.drawText(rect, Qt::AlignCenter, buttonLabel(int(entry.first)));
-        first = false;
+        painter.setBrush(background);
+        painter.drawRoundedRect(QRectF(rect).adjusted(0.5, 0.5, -0.5, -0.5), ui::spec::buttonRadius,
+                                ui::spec::buttonRadius);
+
+        const QIcon ic = [&entry]() {
+            switch (entry.first) {
+            case Button::Edit: return ui::iconEdit();
+            case Button::SaveAs: return ui::iconSaveAs();
+            case Button::Copy: return ui::iconCopy();
+            default: return ui::iconClose();
+            }
+        }();
+        const QString label = buttonLabel(int(entry.first));
+        const int textWidth = painter.fontMetrics().horizontalAdvance(label);
+        const int iconPart = ic.isNull() ? 0 : ui::spec::iconSize + ui::spec::gap / 2;
+        const int contentWidth = textWidth + iconPart;
+        const int startX = rect.left() + (rect.width() - contentWidth) / 2;
+        if (!ic.isNull()) {
+            const QRect iconRect(startX, rect.top() + (rect.height() - ui::spec::iconSize) / 2,
+                                 ui::spec::iconSize, ui::spec::iconSize);
+            ic.paint(&painter, iconRect, Qt::AlignCenter, QIcon::Normal,
+                     pressed ? QIcon::On : QIcon::Off);
+        }
+        painter.setPen(foreground);
+        painter.drawText(QRect(startX + iconPart, rect.top(), textWidth + 2, rect.height()),
+                         Qt::AlignVCenter | Qt::AlignLeft, label);
     }
 
     // 边框：外圈 3px 深色 + 内圈 2px 主题高亮色（浅色/深色桌面都能一眼找到）
@@ -429,12 +470,12 @@ void Toast::rebuildCache()
         m_cacheDirty = false;
         return;
     }
-    QColor darkRing(0, 0, 0);
-    darkRing.setAlpha(115);
-    painter.setPen(QPen(darkRing, 3));
-    painter.drawRoundedRect(QRectF(card).adjusted(1.5, 1.5, -1.5, -1.5), 8, 8);
-    painter.setPen(QPen(highlight.darker(105), 2));
-    painter.drawRoundedRect(QRectF(card).adjusted(4.0, 4.0, -4.0, -4.0), 6, 6);
+    painter.setPen(QPen(colors.frameOuter, ui::spec::frameOuterWidth));
+    painter.drawRoundedRect(QRectF(card).adjusted(1.0, 1.0, -1.0, -1.0), ui::spec::cardRadius,
+                            ui::spec::cardRadius);
+    painter.setPen(QPen(colors.frameInner, ui::spec::frameInnerWidth));
+    painter.drawRoundedRect(QRectF(card).adjusted(3.0, 3.0, -3.0, -3.0),
+                            ui::spec::cardRadius - 2, ui::spec::cardRadius - 2);
 
     painter.end();
     m_cacheDirty = false;
@@ -481,6 +522,10 @@ void Toast::mousePressEvent(QMouseEvent *event)
     const QPoint localInCard = event->position().toPoint()
         - (m_fixedSurface ? m_cardOffset : QPoint(0, 0));
     const Button hit = buttonAt(localInCard);
+    if (hit != Button::None && event->button() == Qt::LeftButton) {
+        m_pressedButton = hit;
+        invalidateCache();
+    }
     if (hit == Button::None && event->button() == Qt::LeftButton) {
         m_dragging = true;
         m_dragOrigin = event->globalPosition().toPoint() - cardTopLeftGlobal();
@@ -508,8 +553,17 @@ void Toast::mousePressEvent(QMouseEvent *event)
 
 void Toast::mouseMoveEvent(QMouseEvent *event)
 {
-    if (!m_dragging || !(event->buttons() & Qt::LeftButton))
+    if (!m_dragging || !(event->buttons() & Qt::LeftButton)) {
+        // 悬停态：跟随调色板的按钮高亮
+        const QPoint localInCard = event->position().toPoint()
+            - (m_fixedSurface ? m_cardOffset : QPoint(0, 0));
+        const Button hovered = buttonAt(localInCard);
+        if (hovered != m_hoverButton) {
+            m_hoverButton = hovered;
+            invalidateCache();
+        }
         return;
+    }
     // 逐事件提交：固定表面模式下每次只是「弄脏旧位置 + 新位置两块矩形 + 更新输入区域」，
     // 没有图层重排，也没有整块缓冲重传，所以不需要节流。
     applyPosition(event->globalPosition().toPoint() - m_dragOrigin);
@@ -518,6 +572,10 @@ void Toast::mouseMoveEvent(QMouseEvent *event)
 void Toast::mouseReleaseEvent(QMouseEvent *)
 {
     m_dragging = false;
+    if (m_pressedButton != Button::None) {
+        m_pressedButton = Button::None;
+        invalidateCache();
+    }
     maybeStartAutoHide();
 }
 
@@ -543,6 +601,10 @@ void Toast::enterEvent(QEnterEvent *)
 
 void Toast::leaveEvent(QEvent *)
 {
+    if (m_hoverButton != Button::None) {
+        m_hoverButton = Button::None;
+        invalidateCache();
+    }
     maybeStartAutoHide();
 }
 

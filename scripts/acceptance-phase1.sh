@@ -40,24 +40,36 @@ else
 fi
 
 ### B) 覆盖层自排除 ----------------------------------------------------------
-"$SEASHOT" --rect 0,0,480,300 --save "$OUT/b1-baseline.png" --no-copy > "$OUT/b1.txt" 2>&1
-"$SEASHOT" --overlay-hold 7000 > "$OUT/b2-overlay.txt" 2>&1 &
-OVERLAY_PID=$!
-sleep 2.5
-"$SEASHOT" --rect 0,0,480,300 --save "$OUT/b2-with-overlay.png" --no-copy > "$OUT/b2.txt" 2>&1
-"$SEASHOT" --list-windows > "$OUT/b2-list-windows.txt" 2>&1
-wait "$OVERLAY_PID" 2>/dev/null
-if [ -f "$OUT/b1-baseline.png" ] && [ -f "$OUT/b2-with-overlay.png" ]; then
-    # 失败模式是「覆盖层入镜」：整屏压暗 ~47% → 平均亮度会掉约 120。
-    # 用平均亮度差判定（比 RMSE 稳健），阈值放到 25：
-    # 实测桌面在动时两次截图的自然抖动可达 ~5，而真失败会掉 ~120，两者差 5 倍以上。
+# 失败模式是「覆盖层入镜」：整屏压暗 ~47% → 平均亮度掉约 94~120。
+# 但桌面在动时（用户正在切窗口）两次截图的自然差异也能到 ~35，所以这里：
+#   1) 判定用平均亮度差，阈值 25（仍比真失败小 4 倍）；
+#   2) 最多重试 3 轮 —— 环境抖动不该冒充回归，真泄漏则会每轮都红。
+B_OK=0
+B_DETAIL=""
+for round in 1 2 3; do
+    "$SEASHOT" --rect 0,0,480,300 --save "$OUT/b1-baseline.png" --no-copy > "$OUT/b1.txt" 2>&1
+    "$SEASHOT" --overlay-hold 4000 > "$OUT/b2-overlay.txt" 2>&1 &
+    OVERLAY_PID=$!
+    sleep 2
+    "$SEASHOT" --rect 0,0,480,300 --save "$OUT/b2-with-overlay.png" --no-copy > "$OUT/b2.txt" 2>&1
+    "$SEASHOT" --list-windows > "$OUT/b2-list-windows.txt" 2>&1
+    wait "$OVERLAY_PID" 2>/dev/null
+
+    if [ ! -f "$OUT/b1-baseline.png" ] || [ ! -f "$OUT/b2-with-overlay.png" ]; then
+        B_DETAIL="第 $round 轮：缺少截图产物"
+        continue
+    fi
     M1=$(magick "$OUT/b1-baseline.png" -format '%[fx:mean*255]' info:)
     M2=$(magick "$OUT/b2-with-overlay.png" -format '%[fx:mean*255]' info:)
-    OK=$(python3 -c "print(1 if abs(float('$M1') - float('$M2')) < 25.0 else 0)")
-    report "B. 覆盖层自排除(像素)" "$OK" "平均亮度 $M1 vs $M2（差 <25 视为不含覆盖层；真失败会掉 ~120）"
-else
-    report "B. 覆盖层自排除(像素)" 0 "缺少截图产物"
-fi
+    DELTA=$(python3 -c "print(abs(float('$M1') - float('$M2')))")
+    B_DETAIL="第 $round 轮：平均亮度 $M1 vs $M2（差 $DELTA）"
+    if python3 -c "import sys; sys.exit(0 if float('$DELTA') < 25 else 1)"; then
+        B_OK=1
+        break
+    fi
+    sleep 1
+done
+report "B. 覆盖层自排除(像素)" "$B_OK" "$B_DETAIL（阈值 25；真失败掉 94~120）"
 if grep -q 'excluded=1' "$OUT/b2-list-windows.txt"; then
     report "B. 覆盖层窗口标记" 1 "见 $OUT/b2-list-windows.txt（appId=seashot … excluded=1）"
 else

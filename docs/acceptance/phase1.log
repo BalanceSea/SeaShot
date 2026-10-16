@@ -1,15 +1,15 @@
 == Phase 1 验收 ==
-二进制: /home/balancesea/.local/bin/seashot (2026-10-16 12:50:39)
+二进制: /home/balancesea/.local/bin/seashot (2026-10-16 12:58:16)
 
 PASS  A. seashot --selftest                9 项检查全过，见 docs/acceptance/evidence/a-selftest.txt
-PASS  B. 覆盖层自排除(像素)        平均亮度 165.527 vs 166.176（差 <25 视为不含覆盖层；真失败会掉 ~120）
+PASS  B. 覆盖层自排除(像素)        第 1 轮：平均亮度 165.28 vs 166.963（差 1.6829999999999927）（阈值 25；真失败掉 94~120）
 PASS  B. 覆盖层窗口标记             见 docs/acceptance/evidence/b2-list-windows.txt（appId=seashot … excluded=1）
-PASS  C. 窗口图与屏幕一致          frame定位 602x430+64+52 OFFSET=65,53 SIZES=600x428/600x428 RMSE=0.0174716 NEG=0.313831
+SKIP  C. 窗口图与屏幕一致          该矩形被遮挡（最上层窗口=「quickshell」，面板表面覆盖=1），本次无法比对；RMSE=0.608368
 PASS  C. 窗口图含装饰/阴影         窗口图 730x558，frame=660,326 600x428，即含装饰与阴影边距
 PASS  D. 剪贴板退出后仍可粘贴    退出前/后 wl-paste --list-types 均为 image/png
-PASS  E. 连续 20 次区域截图         成功率 20/20，平均 78ms，最慢 82ms
+PASS  E. 连续 20 次区域截图         成功率 20/20，平均 90ms，最慢 118ms
 PASS  F. X11 后端 selftest               见 docs/acceptance/evidence/f-x11-selftest.txt（X11 会话未实测）
 PASS  F. X11 后端截图(XWayland)        CAPTURE ok size=200x150 scale=1
 
-== 汇总: 9 通过 / 0 失败 / 0 跳过（环境遮挡）==
+== 汇总: 8 通过 / 0 失败 / 1 跳过（环境遮挡）==
 证据目录: docs/acceptance/evidence

@@ -1,5 +1,6 @@
 #include "record/RecordingIndicator.h"
 
+#include "ui/Theme.h"
 #include "util/Log.h"
 
 #include <QApplication>
@@ -171,18 +172,20 @@ void RecordingIndicator::rebuildCache()
 
     QPainter painter(&m_cache);
     painter.setRenderHint(QPainter::Antialiasing, true);
-    const QPalette pal = palette();
-    const QColor window = pal.color(QPalette::Window);
-    const QColor text = pal.color(QPalette::WindowText);
-    const QColor highlight = pal.color(QPalette::Highlight);
-    const QColor highlightedText = pal.color(QPalette::HighlightedText);
-    const QColor border = pal.color(QPalette::Mid);
-
-    QColor card = window;
+    const ui::CardColors colors = ui::cardColors(palette());
+    const QColor text = colors.cardText;
+    const QColor highlight = colors.primary;
+    const QColor highlightedText = colors.primaryText;
+    QColor card = colors.card;
     card.setAlpha(240);
-    painter.setPen(QPen(border, 1));
+    painter.setPen(QPen(colors.frameOuter, ui::spec::frameOuterWidth));
     painter.setBrush(card);
-    painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 8, 8);
+    painter.drawRoundedRect(QRectF(rect()).adjusted(1.0, 1.0, -1.0, -1.0), ui::spec::cardRadius,
+                            ui::spec::cardRadius);
+    painter.setPen(QPen(colors.frameInner, ui::spec::frameInnerWidth));
+    painter.setBrush(Qt::NoBrush);
+    painter.drawRoundedRect(QRectF(rect()).adjusted(3.0, 3.0, -3.0, -3.0),
+                            ui::spec::cardRadius - 2, ui::spec::cardRadius - 2);
 
     // 闪烁红点
     painter.setPen(Qt::NoPen);
@@ -203,9 +206,23 @@ void RecordingIndicator::rebuildCache()
     const QRect stopRect = stopButtonRect();
     painter.setPen(QPen(highlight.darker(110), 1));
     painter.setBrush(highlight);
-    painter.drawRoundedRect(QRectF(stopRect).adjusted(0.5, 0.5, -0.5, -0.5), 4, 4);
+    painter.drawRoundedRect(QRectF(stopRect).adjusted(0.5, 0.5, -0.5, -0.5), ui::spec::buttonRadius,
+                            ui::spec::buttonRadius);
+    const QIcon stopIcon = ui::iconStop();
+    const QString stopLabel = QStringLiteral("停止");
+    const int stopTextWidth = painter.fontMetrics().horizontalAdvance(stopLabel);
+    const int stopIconPart = stopIcon.isNull() ? 0 : ui::spec::iconSize + ui::spec::gap / 2;
+    const int stopStartX = stopRect.left() + (stopRect.width() - stopTextWidth - stopIconPart) / 2;
+    if (!stopIcon.isNull()) {
+        stopIcon.paint(&painter,
+                       QRect(stopStartX, stopRect.top() + (stopRect.height() - ui::spec::iconSize) / 2,
+                             ui::spec::iconSize, ui::spec::iconSize),
+                       Qt::AlignCenter, QIcon::Normal, QIcon::Off);
+    }
     painter.setPen(highlightedText);
-    painter.drawText(stopRect, Qt::AlignCenter, QStringLiteral("停止"));
+    painter.drawText(QRect(stopStartX + stopIconPart, stopRect.top(), stopTextWidth + 2,
+                           stopRect.height()),
+                     Qt::AlignVCenter | Qt::AlignLeft, stopLabel);
     painter.end();
     m_cacheDirty = false;
 }

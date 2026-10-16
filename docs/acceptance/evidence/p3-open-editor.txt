@@ -1,9 +1,9 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-342407" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-431278" id= 1 run方式= Script<N>.run 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(0,0 160x120) 
-[info] [shot2] "CaptureArea" ok 3 ms 160 x 120 "" 
+[info] [shot2] "CaptureArea" ok 2 ms 160 x 120 "" 
 EDITOR_OPEN size=160x120 source=(none)
 CAPTURE ok size=160x120 scale=1
 [info] [app] 收到退出信号，正在收尾（卸载 KWin 助手脚本） 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-342407" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-431278" 
