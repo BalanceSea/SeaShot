@@ -899,6 +899,8 @@ int Application::runToastDragBench(int durationMs)
     m_toast->setAutoHideMs(0);
     m_toast->showResult(image, QString(), QStringLiteral("拖动基准"), QString(), anchor);
     m_toast->resetCommitCount();
+    // 观测时要用卡片宽度把"品红框质心"反推成左上角
+    auto cardWidth = std::make_shared<int>(qMax(1, m_toast->currentGeometry().width()));
     auto cpuStart = std::make_shared<struct rusage>();
     auto cpuEnd = std::make_shared<struct rusage>();
     ::getrusage(RUSAGE_SELF, cpuStart.get());
@@ -967,20 +969,27 @@ int Application::runToastDragBench(int durationMs)
                 reports->append(QStringLiteral("step=%1 观测失败").arg(*step));
                 return;
             }
-            int minX = -1;
+            // 用质心而不是最左像素：桌面上别的地方（图标/头像）也可能有品红像素，
+            // 用最左值会被它们带偏。质心对少量杂点鲁棒，且品红像素总数本身能反映拖影。
+            qint64 sumX = 0;
+            qint64 count = 0;
             for (int y = 0; y < frame.height(); y += 2) {
                 const QRgb *line = reinterpret_cast<const QRgb *>(frame.constScanLine(y));
                 for (int x = 0; x < frame.width(); ++x) {
                     const QColor color = QColor::fromRgb(line[x]);
-                    if (color.red() > 200 && color.green() < 60 && color.blue() > 200
-                        && (minX < 0 || x < minX))
-                        minX = x;
+                    if (color.red() > 200 && color.green() < 60 && color.blue() > 200) {
+                        sumX += x;
+                        ++count;
+                    }
                 }
             }
-            if (minX < 0) {
+            if (count == 0) {
                 reports->append(QStringLiteral("step=%1 没找到品红框").arg(*step));
                 return;
             }
+            const int centroidX = int(sumX / count);
+            // 卡片左上角 = 质心 - 半宽（质心是框的中心）
+            const int observedX = centroidX - *cardWidth / 2;
             int targetAtFrame = 0;
             for (const auto &point : *trajectory) {
                 if (point.first <= frameAt)
@@ -988,15 +997,16 @@ int Application::runToastDragBench(int durationMs)
                 else
                     break;
             }
-            const int lagPx = targetAtFrame - minX;
+            const int lagPx = targetAtFrame - observedX;
             reports->append(QStringLiteral("step=%1 observed=%2 targetAtFrame=%3 lagPx=%4 lagMs=%5 "
-                                           "applyUs=%6")
+                                           "applyUs=%6 magenta=%7")
                                 .arg(*step)
-                                .arg(minX)
+                                .arg(observedX)
                                 .arg(targetAtFrame)
                                 .arg(lagPx)
                                 .arg(lagPx * stepMs / stepPx)
-                                .arg(applyUs));
+                                .arg(applyUs)
+                                .arg(count));
         });
         child->start();
     });

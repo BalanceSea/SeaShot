@@ -24,7 +24,7 @@ timeout 120 "$SEASHOT" --toast-drag-bench "$DURATION" --rect 300,200,400,300 \
 
 SAMPLES=$(grep -c '^DRAGBENCH_SAMPLE' "$OUT/issue001-drag-bench.txt" || true)
 SUMMARY=$(grep '^DRAGBENCH samples=' "$OUT/issue001-drag-bench.txt" | tail -1)
-LAG_AVG=$(echo "$SUMMARY" | sed -nE 's/.*lagPxAvg=([0-9.]+).*/\1/p')
+LAG_AVG=$(echo "$SUMMARY" | sed -nE 's/.*lagPxAvg=(-?[0-9.]+).*/\1/p')
 LAG_MAX=$(echo "$SUMMARY" | sed -nE 's/.*lagPxMax=([0-9.-]+).*/\1/p')
 LAG_MS=$(echo "$SUMMARY" | sed -nE 's/.*lagMsAvg=([0-9.]+).*/\1/p')
 RELEASE=$(grep '^DRAGBENCH_RELEASE' "$OUT/issue001-drag-bench.txt" | tail -1)
@@ -42,7 +42,7 @@ fi
 
 # 允许 8px（两帧）；用整数比较避免 shell 小数问题
 RESULT=0
-if [ "${LAG_MAX%.*}" -gt 8 ]; then
+if [ "${LAG_MAX%.*}" -gt 8 ] || [ "${LAG_MAX%.*}" -lt -8 ]; then
     echo "FAIL  拖动仍然滞后：lagPxAvg=$LAG_AVG lagPxMax=$LAG_MAX（阈值 8px）"
     RESULT=1
 else

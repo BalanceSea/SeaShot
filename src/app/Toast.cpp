@@ -3,6 +3,7 @@
 #include "util/Log.h"
 
 #include <QApplication>
+#include <QDateTime>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QKeyEvent>
@@ -22,8 +23,6 @@ constexpr int kScreenMargin = 16;
 constexpr int kAnchorGap = 3;
 constexpr int kButtonHeight = 24;
 constexpr int kButtonPadding = 12;
-constexpr int kPositionFlushMs = 8; ///< （已废弃）拖动合并提交：实测会凭空加延迟，改为逐事件提交
-constexpr int kDismissDelayMs = 1200; ///< 保存完成后再展示多久
 
 QString buttonLabel(int id)
 {
@@ -47,19 +46,10 @@ Toast::Toast(QWidget *parent)
     setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
     setWindowTitle(QStringLiteral("seashot-toast"));
+    m_fixedSurface = !qEnvironmentVariableIsSet("SEASHOT_TOAST_MOVING_SURFACE");
 
     m_autoHide.setSingleShot(true);
     connect(&m_autoHide, &QTimer::timeout, this, &Toast::closeAndNotify);
-
-    m_moveThrottle.setSingleShot(true);
-    m_moveThrottle.setInterval(11); // 默认 ~90Hz；挂了帧回调时改成 30ms 兜底
-    connect(&m_moveThrottle, &QTimer::timeout, this, &Toast::flushPendingPosition);
-}
-
-void Toast::flushPendingPosition()
-{
-    if (m_pendingTopLeft != m_lastAppliedTopLeft)
-        applyPosition(m_pendingTopLeft);
 }
 
 int Toast::barHeight() const
@@ -80,10 +70,36 @@ void Toast::setAutoHideMs(int milliseconds)
     m_autoHideMs = qMax(0, milliseconds);
 }
 
+void Toast::setDragMarkerEnabled(bool enabled)
+{
+    m_dragMarker = enabled;
+    invalidateCache();
+}
+
 void Toast::invalidateCache()
 {
     m_cacheDirty = true;
     update();
+}
+
+QRect Toast::surfaceGeometry() const
+{
+    QScreen *screen = QGuiApplication::screenAt(m_lastAnchor.center());
+    if (!screen)
+        screen = QGuiApplication::primaryScreen();
+    return screen ? screen->geometry() : QRect(0, 0, 1920, 1080);
+}
+
+QPoint Toast::cardTopLeftGlobal() const
+{
+    if (!m_fixedSurface)
+        return m_lastAppliedTopLeftFallback;
+    return surfaceGeometry().topLeft() + m_cardOffset;
+}
+
+QRect Toast::currentGeometry() const
+{
+    return QRect(cardTopLeftGlobal(), m_cardSize);
 }
 
 void Toast::showResult(const QImage &image, const QString &savedPath, const QString &message,
@@ -115,10 +131,21 @@ void Toast::showResult(const QImage &image, const QString &savedPath, const QStr
         : image.scaled(display, Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
     // 2) 卡片 == 图片尺寸（按钮条浮在图片上），但至少留够按钮宽度
+    m_cardSize = display; // 先按图片尺寸算，下面按按钮再放宽
     const int buttonsWidth = buttons().isEmpty() ? 0 : (buttons().last().second.right() + 1);
-    const int cardWidth = qMax(m_display.width(), buttonsWidth + kButtonPadding);
-    const int cardHeight = m_display.height() + barHeight();
-    resize(qMax(cardWidth, 260), qMax(cardHeight, 120));
+    m_cardSize.setWidth(qMax(m_cardSize.width(), buttonsWidth + kButtonPadding));
+    m_cardSize.setHeight(m_cardSize.height() + barHeight());
+    m_cardSize.setWidth(qMax(m_cardSize.width(), 260));
+    m_cardSize.setHeight(qMax(m_cardSize.height(), 120));
+
+    // 3) 表面：固定模式铺满输出；旧模式就是卡片本身
+    if (m_fixedSurface) {
+        const QRect surface = surfaceGeometry();
+        resize(surface.size());
+        move(surface.topLeft());
+    } else {
+        resize(m_cardSize);
+    }
 
     reposition(anchorGlobalRect);
     show();
@@ -132,11 +159,13 @@ void Toast::showResult(const QImage &image, const QString &savedPath, const QStr
         << " scaled=" << (m_scaledToFit ? 1 : 0)
         << " anchor=" << anchorGlobalRect.x() << "," << anchorGlobalRect.y() << " "
         << anchorGlobalRect.width() << "x" << anchorGlobalRect.height()
-        << " geometry=" << x() << "," << y() << " " << width() << "x" << height()
+        << " card=" << m_cardSize.width() << "x" << m_cardSize.height()
+        << " cardTopLeft=" << cardTopLeftGlobal().x() << "," << cardTopLeftGlobal().y()
+        << " fixedSurface=" << (m_fixedSurface ? 1 : 0)
         << " autoHide=" << m_autoHideMs << "\n";
     out.flush();
     SS_INFO() << "[toast] visible=" << isVisible() << "layerShell=" << m_layerShellApplied
-              << "geometry=" << geometry() << "autoHideMs=" << m_autoHideMs;
+              << "cardTopLeft=" << cardTopLeftGlobal() << "autoHideMs=" << m_autoHideMs;
 
     maybeStartAutoHide();
 }
@@ -155,12 +184,6 @@ void Toast::dismissAfter(int milliseconds)
     m_autoHide.start(qMax(0, milliseconds));
 }
 
-void Toast::setDragMarkerEnabled(bool enabled)
-{
-    m_dragMarker = enabled;
-    invalidateCache();
-}
-
 void Toast::maybeStartAutoHide()
 {
     m_autoHide.stop();
@@ -176,7 +199,7 @@ void Toast::closeAndNotify()
 
 QRect Toast::barRect() const
 {
-    return QRect(0, height() - barHeight(), width(), barHeight());
+    return QRect(0, m_cardSize.height() - barHeight(), m_cardSize.width(), barHeight());
 }
 
 QVector<QPair<Toast::Button, QRect>> Toast::buttons() const
@@ -185,14 +208,16 @@ QVector<QPair<Toast::Button, QRect>> Toast::buttons() const
                                 Button::Copy, Button::Close};
     QVector<QPair<Button, QRect>> result;
     const QFontMetrics metrics(font());
-    int x = width() - kButtonPadding;
+    const int width = qMax(260, m_cardSize.width());
+    const int height = qMax(120, m_cardSize.height());
+    int x = width - kButtonPadding;
     for (auto it = order.crbegin(); it != order.crend(); ++it) {
         if (*it == Button::None)
             continue;
         const int textWidth = metrics.horizontalAdvance(buttonLabel(int(*it)));
         const int buttonWidth = textWidth + 18;
         x -= buttonWidth;
-        result.prepend({*it, QRect(x, height() - barHeight() + (barHeight() - kButtonHeight) / 2,
+        result.prepend({*it, QRect(x, height - barHeight() + (barHeight() - kButtonHeight) / 2,
                                    buttonWidth, kButtonHeight)});
         x -= 6;
     }
@@ -217,12 +242,12 @@ void Toast::reposition(const QRect &anchorGlobalRect)
 
     int px = anchorGlobalRect.left();
     int py = anchorGlobalRect.bottom() + kAnchorGap;
-    if (py + height() > available.bottom() - kScreenMargin / 2)
-        py = anchorGlobalRect.bottom() - height(); // 下方放不下 → 左下角对齐，往上盖
+    if (py + m_cardSize.height() > available.bottom() - kScreenMargin / 2)
+        py = anchorGlobalRect.bottom() - m_cardSize.height(); // 下方放不下 → 左下角对齐，往上盖
     if (py < available.top() + kScreenMargin / 2)
         py = available.top() + kScreenMargin / 2;
     px = qBound(available.left() + kScreenMargin / 2, px,
-                available.right() - width() - kScreenMargin / 2);
+                available.right() - m_cardSize.width() - kScreenMargin / 2);
     applyPosition(QPoint(px, py));
 }
 
@@ -238,13 +263,22 @@ void Toast::ensureLayerShell()
     }
     if (auto *layerShell = LayerShellQt::Window::get(handle)) {
         layerShell->setLayer(LayerShellQt::Window::LayerOverlay);
-        layerShell->setAnchors(LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop
-                                                             | LayerShellQt::Window::AnchorLeft));
+        if (m_fixedSurface) {
+            // 表面铺满输出、不设边距：拖动只改卡片在表面内的偏移，KWin 无需重排图层
+            layerShell->setAnchors(LayerShellQt::Window::Anchors(
+                LayerShellQt::Window::AnchorTop | LayerShellQt::Window::AnchorBottom
+                | LayerShellQt::Window::AnchorLeft | LayerShellQt::Window::AnchorRight));
+            layerShell->setMargins(QMargins(0, 0, 0, 0));
+        } else {
+            layerShell->setAnchors(LayerShellQt::Window::Anchors(
+                LayerShellQt::Window::AnchorTop | LayerShellQt::Window::AnchorLeft));
+        }
         layerShell->setExclusiveZone(-1);
         layerShell->setKeyboardInteractivity(
             LayerShellQt::Window::KeyboardInteractivityOnDemand);
         m_layerShellApplied = true;
-        SS_INFO() << "[toast] layer-shell role 已应用（LayerOverlay）";
+        SS_INFO() << "[toast] layer-shell role 已应用"
+                  << (m_fixedSurface ? "（铺满输出的固定表面）" : "（旧：移动表面）");
     } else {
         SS_WARN() << "[toast] LayerShellQt 不可用，退化为普通窗口（X11 路径）";
     }
@@ -256,42 +290,68 @@ void Toast::applyPosition(const QPoint &globalTopLeft)
     ++m_commitCount;
     if (m_commitTimes.size() < 20000)
         m_commitTimes.append(QDateTime::currentMSecsSinceEpoch());
-    if (m_layerShellApplied) {
-        QScreen *screen =
-            QGuiApplication::screenAt(globalTopLeft + QPoint(width() / 2, height() / 2));
-        if (!screen)
-            screen = QGuiApplication::primaryScreen();
-        const QRect output = screen ? screen->geometry() : QRect(0, 0, 1920, 1080);
-        if (auto *handle = windowHandle()) {
-            if (auto *layerShell = LayerShellQt::Window::get(handle)) {
-                layerShell->setMargins(QMargins(globalTopLeft.x() - output.x(),
-                                                globalTopLeft.y() - output.y(), 0, 0));
+
+    if (!m_fixedSurface) {
+        // 旧实现：移动表面本身（每次 set_margin 都会让 KWin 重排该层，仅用于 A/B 对照）
+        if (m_layerShellApplied) {
+            if (QScreen *screen =
+                    QGuiApplication::screenAt(globalTopLeft + QPoint(m_cardSize.width() / 2,
+                                                                     m_cardSize.height() / 2))) {
+                if (auto *handle = windowHandle()) {
+                    if (auto *layerShell = LayerShellQt::Window::get(handle)) {
+                        layerShell->setMargins(QMargins(globalTopLeft.x() - screen->geometry().x(),
+                                                        globalTopLeft.y() - screen->geometry().y(), 0,
+                                                        0));
+                    }
+                }
             }
         }
+        move(globalTopLeft);
+        m_lastAppliedTopLeftFallback = globalTopLeft;
+        if (m_layerShellApplied)
+            update(QRect(0, 0, 1, 1)); // 只标 1px 脏区，促成提交但不重传内容
+        return;
     }
-    move(globalTopLeft); // 非 layer-shell（X11）下才有效
 
-    // 关键：layer-shell 的位置由边距决定，但边距要随 surface 提交才会生效。
-    // 只调 setMargins() 时，实测 KWin 会在「碰巧有别的提交」时才应用（位置成块跳动，
-    // ISSUE-001）；但每次都对整张卡片重绘+重传缓冲，在 240Hz 鼠标下就是每秒 ~390 次
-    // 整块缓冲提交，表现为闪烁/不跟手。
-    //
-    // 办法：只把 1x1 像素标脏——Qt 的 shm 后端只拷贝脏区，但依旧会 attach+commit，
-    // 于是「位置随提交生效」而「内容不重传」。拖动时卡片内容本来就不变，所以视觉无差。
-    if (m_layerShellApplied) {
-        // 诊断开关：强制整块重绘（用于对比缓冲重传的 CPU 代价）
-        if (qEnvironmentVariableIsSet("SEASHOT_TOAST_FULL_REPAINT_ON_MOVE"))
-            update();
-        else
-            update(QRect(0, 0, 1, 1));
+    // 固定表面：只挪卡片在表面内的偏移，弄脏「旧位置 + 新位置」两块矩形
+    const QRect surface = surfaceGeometry();
+    const QPoint newOffset = globalTopLeft - surface.topLeft();
+    if (newOffset == m_cardOffset) {
+        --m_commitCount; // 位置没变，不算一次提交
+        return;
     }
-    m_lastAppliedTopLeft = globalTopLeft;
+    const QRect oldCard(m_cardOffset, m_cardSize);
+    const QRect newCard(newOffset, m_cardSize);
+    m_cardOffset = newOffset;
+    m_lastCardRect = newCard;
+
+    // 输入区域只保留卡片本身（Wayland 下映射为 wl_surface.set_input_region），
+    // 其余地方点击穿透到桌面。
+    // ⚠️ 必须用 QWindow::setMask（只动平台窗口），**不能用 QWidget::setMask**：
+    // 后者是"控件可见区域"裁剪，会阻止 Qt 绘制卡片以外的像素 —— 旧位置的边框
+    // 就永远擦不掉，拖动时会留下一条实心拖影（实测就是这样，排查了很久）。
+    if (QWindow *handle = windowHandle())
+        handle->setMask(QRegion(newCard));
+
+    // ⚠️ 脏区必须覆盖「最近几次」的卡片矩形，不能只标旧+新：
+    // Qt 的 Wayland shm 后端有 2~3 个缓冲轮换，只重绘脏区时，轮到的那个缓冲里
+    // 残留的是更早位置上的卡片像素 —— 表现就是拖动时出现拖影/闪烁（实测观测图里
+    // 品红框被"拉长"成 526/566 宽即此）。取最近 3 次位置的并集即可让每个缓冲都写全。
+    m_recentCardRects.append(newCard);
+    while (m_recentCardRects.size() > 3)
+        m_recentCardRects.removeFirst();
+    QRect damage;
+    for (const QRect &rect : std::as_const(m_recentCardRects))
+        damage = damage.isNull() ? rect : damage.united(rect);
+    Q_UNUSED(oldCard)
+    update(damage);
 }
 
 void Toast::rebuildCache()
 {
+    const QRect card = cardRect();
     const qreal dpr = devicePixelRatioF();
-    m_cache = QPixmap(size() * dpr);
+    m_cache = QPixmap(card.size() * dpr);
     m_cache.setDevicePixelRatio(dpr);
     m_cache.fill(Qt::transparent);
 
@@ -306,17 +366,16 @@ void Toast::rebuildCache()
     const QColor highlight = pal.color(QPalette::Highlight);
     const QColor highlightedText = pal.color(QPalette::HighlightedText);
     const QColor border = pal.color(QPalette::Mid);
-    const QColor shadow = pal.color(QPalette::Shadow);
 
-    const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+    const QRectF cardF = QRectF(card).adjusted(0.5, 0.5, -0.5, -0.5);
     painter.setPen(Qt::NoPen);
     painter.setBrush(window);
-    painter.drawRoundedRect(card, 8, 8);
+    painter.drawRoundedRect(cardF, 8, 8);
 
     // 图片（原尺寸或等比缩小）
     if (!m_display.isNull()) {
-        const QRect imageArea(0, 0, width(), height() - barHeight());
-        const QPoint imagePos((width() - m_display.width()) / 2,
+        const QRect imageArea(0, 0, card.width(), card.height() - barHeight());
+        const QPoint imagePos((card.width() - m_display.width()) / 2,
                               qMax(0, (imageArea.height() - m_display.height()) / 2));
         painter.drawImage(imagePos, m_display);
     }
@@ -343,9 +402,9 @@ void Toast::rebuildCache()
         info += QStringLiteral(" · ") + m_copyError;
     else if (!m_savedPath.isEmpty())
         info += QStringLiteral(" · ") + QFileInfo(m_savedPath).fileName();
-    const int textRight = buttons().isEmpty() ? width() - kButtonPadding
+    const int textRight = buttons().isEmpty() ? card.width() - kButtonPadding
                                               : buttons().first().second.left() - 8;
-    painter.drawText(bar.adjusted(kButtonPadding, 0, -(width() - textRight), 0),
+    painter.drawText(QRect(kButtonPadding, bar.top(), textRight - kButtonPadding, bar.height()),
                      Qt::AlignVCenter | Qt::AlignLeft, info);
 
     // 按钮：第一个（编辑/或首个可用）为主按钮
@@ -361,13 +420,11 @@ void Toast::rebuildCache()
         first = false;
     }
 
-    // 边框（你的要求：截图内容容易"溶进"背景）
-    // 外圈 3px 深色 + 内圈 2px 主题高亮色：浅色与深色桌面上都能一眼找到
+    // 边框：外圈 3px 深色 + 内圈 2px 主题高亮色（浅色/深色桌面都能一眼找到）
     painter.setBrush(Qt::NoBrush);
     if (m_dragMarker) {
-        // 诊断模式：纯品红粗框，便于截屏后精确求出卡片在屏幕上的位置
         painter.setPen(QPen(QColor(255, 0, 255), 4));
-        painter.drawRect(QRectF(rect()).adjusted(2, 2, -2, -2));
+        painter.drawRect(QRectF(card).adjusted(2, 2, -2, -2));
         painter.end();
         m_cacheDirty = false;
         return;
@@ -375,20 +432,41 @@ void Toast::rebuildCache()
     QColor darkRing(0, 0, 0);
     darkRing.setAlpha(115);
     painter.setPen(QPen(darkRing, 3));
-    painter.drawRoundedRect(QRectF(rect()).adjusted(1.5, 1.5, -1.5, -1.5), 8, 8);
+    painter.drawRoundedRect(QRectF(card).adjusted(1.5, 1.5, -1.5, -1.5), 8, 8);
     painter.setPen(QPen(highlight.darker(105), 2));
-    painter.drawRoundedRect(QRectF(rect()).adjusted(4.0, 4.0, -4.0, -4.0), 6, 6);
+    painter.drawRoundedRect(QRectF(card).adjusted(4.0, 4.0, -4.0, -4.0), 6, 6);
 
     painter.end();
     m_cacheDirty = false;
 }
 
-void Toast::paintEvent(QPaintEvent *)
+void Toast::paintEvent(QPaintEvent *event)
 {
-    if (m_cacheDirty || m_cache.size() != size() * devicePixelRatioF())
+    if (m_cacheDirty || m_cache.size() != (QSizeF(m_cardSize) * devicePixelRatioF()).toSize())
         rebuildCache();
+
     QPainter painter(this);
-    painter.drawPixmap(0, 0, m_cache);
+    if (!m_fixedSurface) {
+        painter.drawPixmap(0, 0, m_cache);
+        return;
+    }
+
+    // 固定表面：把「脏区大小的整帧」整体画上去（里面含透明像素），
+    // 而不是先 fillRect(transparent) 再 drawPixmap —— 实测透明填充会被优化掉/不生效，
+    // 导致旧位置像素残留成拖影。整帧绘制则是确定的：透明像素也会被写入。
+    const QRect damage = event->rect();
+    const qreal dpr = devicePixelRatioF();
+    const QSize wanted = (QSizeF(damage.size()) * dpr).toSize();
+    if (m_frameBuffer.size() != wanted) {
+        m_frameBuffer = QPixmap(wanted);
+        m_frameBuffer.setDevicePixelRatio(dpr);
+    }
+    m_frameBuffer.fill(Qt::transparent);
+    {
+        QPainter framePainter(&m_frameBuffer);
+        framePainter.drawPixmap(m_cardOffset - damage.topLeft(), m_cache);
+    }
+    painter.drawPixmap(damage.topLeft(), m_frameBuffer);
 }
 
 void Toast::resizeEvent(QResizeEvent *event)
@@ -400,11 +478,12 @@ void Toast::resizeEvent(QResizeEvent *event)
 void Toast::mousePressEvent(QMouseEvent *event)
 {
     setFocus(Qt::MouseFocusReason);
-    const Button hit = buttonAt(event->position().toPoint());
+    const QPoint localInCard = event->position().toPoint()
+        - (m_fixedSurface ? m_cardOffset : QPoint(0, 0));
+    const Button hit = buttonAt(localInCard);
     if (hit == Button::None && event->button() == Qt::LeftButton) {
         m_dragging = true;
-        m_dragOrigin = event->globalPosition().toPoint() - frameGeometry().topLeft();
-        m_pendingTopLeft = frameGeometry().topLeft();
+        m_dragOrigin = event->globalPosition().toPoint() - cardTopLeftGlobal();
         return;
     }
     switch (hit) {
@@ -431,23 +510,15 @@ void Toast::mouseMoveEvent(QMouseEvent *event)
 {
     if (!m_dragging || !(event->buttons() & Qt::LeftButton))
         return;
-    // 节流到 ~90Hz：KWin 每次 margin 变化都要重排该层，240Hz 鼠标下逐事件提交会闪烁/发涩；
-    // 每次提交只标 1px 脏区（见 applyPosition 注释），所以 11ms 的合并不会带来额外重传。
-    // 逐事件提交：每次只改边距 + 标 1px 脏区（见 applyPosition），
-    // 实测 240Hz 输入下提交开销 ~70µs、lagPx ≤ 1；不节流是为了保证"跟手"。
-    // ⚠️ 必须同时更新 m_pendingTopLeft：mouseReleaseEvent 会 flush 它，
-    //     只调用 applyPosition 而不同步 pending，松手就会瞬移回按下时的位置。
-    const QPoint target = event->globalPosition().toPoint() - m_dragOrigin;
-    m_pendingTopLeft = target;
-    if (target != m_lastAppliedTopLeft)
-        applyPosition(target);
+    // 逐事件提交：固定表面模式下每次只是「弄脏旧位置 + 新位置两块矩形 + 更新输入区域」，
+    // 没有图层重排，也没有整块缓冲重传，所以不需要节流。
+    applyPosition(event->globalPosition().toPoint() - m_dragOrigin);
 }
 
 void Toast::mouseReleaseEvent(QMouseEvent *)
 {
     m_dragging = false;
-    m_moveThrottle.stop();
-    flushPendingPosition(); // 松手前把最后的位置落地
+    maybeStartAutoHide();
 }
 
 void Toast::keyPressEvent(QKeyEvent *event)
