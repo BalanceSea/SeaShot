@@ -5,6 +5,64 @@
 
 ## 待修
 
+### ISSUE-008 串流路径（portal ScreenCast + PipeWire）—— 免弹窗已达成，接帧未验证
+
+- **背景**：你问过"录 GIF 能否不要授权弹窗"。Wayland 下客户端拿不到屏幕内容，除非
+  用户批准过一次（没有任何客户端能绕过）；能免弹窗的机制是 portal 的 restore token。
+- **状态**：**免弹窗已验证可行**（首次点一次即可，之后永久静默）。
+
+**实测证据（2026-10-16）**
+
+首次（勾选「Allow restoring on future sessions」）：
+```
+PORTAL_SCREENCAST_RESPONSE Start code=0 keys=restore_token,streams startLatencyMs=3590
+PORTAL_SCREENCAST_RESULT ... restoreToken=XakNXJWJS6RrhxlXRa7EvQ
+权限库: Set "screencast" true "XakNXJWJS6RrhxlXRa7EvQ" "seashot" "yes" "KDE"
+  → ~/.local/share/flatpak/db/screencast 时间戳变当天；token 落盘 ~/.cache/seashot/screencast.token
+  → portal 日志: "Replacing restore data received from portal impl with a token"
+```
+
+第二次（带 token，**无对话框**）：
+```
+PORTAL_SCREENCAST_BEGIN restoreToken=XakNXJWJS6RrhxlXRa7EvQ
+PORTAL_SCREENCAST_RESULT ok=1 usedRestoreToken=1 startLatencyMs=7
+PORTAL_SCREENCAST_DIALOG_LIKELY 0 (startLatencyMs=7)
+```
+
+**根因（曾长期误判，留档）**：`persist_mode` / `restore_token` 属于 **SelectSources** 的 options，
+不是 `CreateSession`。前端 `screen-cast.c` 的 `screen_cast_select_sources_options[]` 只认这两个键，
+KDE 也只在 `SelectSources` 里读（`screencast.cpp:206`）；KDE 的 `CreateSession` 对 options 是 `Q_UNUSED`。
+放错的后果：KDE 的 `session->persistMode()` 恒为 `NoPersist` → `Start` 里
+`if (persistMode() != NoPersist)` 为假 → 不回传 `restore_data` → 前端不
+`generate_and_save_restore_token` → 应答里没有 token、权限库零流量、每次必弹窗。
+- 附带纠正过一个错误推断："权限库没流量 ⇒ app id 不对"。**前端只在铸 token 时才碰权限库**，
+  所以没流量不能推出身份问题。
+- 附带做了正确但非根因的改动：私有 D-Bus 连接 + 首个调用即 `Registry.Register("seashot")`
+  （`0f12294`）—— 身份确定化，命令行/桌面文件/自启都是同一个 id，值得保留。
+
+**仍未验证（下一步的真正风险点）**
+
+- `OpenPipeWireRemote` 拿到了 fd（`fd=22`），但**从未消费过帧**。KDE portal 日志里每次都有：
+  ```
+  Stream error:  target not found
+  PipeWire remote error: -2 target not found
+  ```
+  无法确定这是"探测程序拿到 fd 就 close 导致的拆卸噪音"，还是"流本身建不起来"。
+  **结论：现在还谈不上"录 GIF 改走 PipeWire"** —— 必须先做接帧验证（GStreamer/pipewiresrc
+  连 fd + node id，看是否出帧），否则现有 ScreenShot2 轮询实现不动。
+- 流参数（node id）目前**故意不解析**：手工迭代 `a(ua{sv})` 会让 Qt 直接 abort
+  （`QDBusArgument: write from a read-only object` + SIGABRT，已实测）。接帧时必须用
+  `qdbus_cast` / 注册元类型的正规做法。
+
+**工具（可重复验证）**
+
+```fish
+bash scripts/portal-debug.sh on|off          # 开关 portal 调试日志（可逆）
+bash scripts/probe-n1-permission-store.sh    # 监听权限库 + 抓 portal 日志 + 抓探测输出
+seashot --probe-portal-screencast            # 完整流程（首次会弹窗，之后静默）
+seashot --probe-portal-screencast --probe-portal-no-start   # dry-run：只建会话，不弹窗
+```
+
 ## 已修（留档，避免回归）
 
 ### ISSUE-004 整体 UI 美化
