@@ -10,5 +10,5 @@ MIT-SHM: 可用
 X11 后端：窗口枚举用 EWMH（_NET_CLIENT_LIST_STACKING/_NET_FRAME_EXTENTS），截图用 XGetImage，快捷键用 XGrabKey。**X11 会话未实测**（本机无 X11 会话），仅在 XWayland 下冒烟；XWayland 下只能看到并截取 X11 客户端窗口。窗口被遮挡时会截到遮挡物。
 WINDOWS 3
 320000f appId=MinecraftConnectTool pid=278780 active=0 normal=1 min=1 visible=0 stack=0 frame=587,274 1080x720 excluded=0 title=Minecraft Connect Tool
-2e0000b appId=Minecraft* 1.21.1 pid=278516 active=0 normal=1 min=0 visible=1 stack=1 frame=1060,381 854x508 excluded=0 title=BeebeeBlock_v3.07.6
-1200011 appId=QQ pid=2746 active=1 normal=1 min=0 visible=1 stack=2 frame=963,316 957x720 excluded=0 title=QQ
+1200011 appId=QQ pid=2746 active=0 normal=1 min=0 visible=1 stack=1 frame=1151,299 957x720 excluded=0 title=QQ
+2e0000b appId=Minecraft* 1.21.1 pid=278516 active=1 normal=1 min=0 visible=1 stack=2 frame=1060,381 854x508 excluded=0 title=BeebeeBlock_v3.07.6

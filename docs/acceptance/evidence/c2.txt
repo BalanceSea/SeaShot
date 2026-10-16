@@ -1,9 +1,9 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-328719" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 4 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-333555" id= 1 run方式= Script<N>.run 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(660,326 600x428) 
-[info] [shot2] "CaptureArea" ok 6 ms 600 x 428 "" 
+[info] [shot2] "CaptureArea" ok 5 ms 600 x 428 "" 
 [info] [settings] 已保存 "docs/acceptance/evidence/c2-area.png" 
 CAPTURE ok size=600x428 scale=1
 SAVED docs/acceptance/evidence/c2-area.png
-[info] [kwin] 脚本已卸载 pluginName= "seashot-328719" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-333555" 

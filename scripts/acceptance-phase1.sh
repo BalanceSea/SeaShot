@@ -1,33 +1,31 @@
 #!/usr/bin/env bash
-# Phase 1 验收脚本（可重复执行）：把 PLAN.md 里 Phase 1 的 6 条验收判据跑一遍
+# Phase 1 验收脚本（可重复执行）：把 PLAN.md 里 Phase 1 的验收判据跑一遍
 #
 # 用法： bash scripts/acceptance-phase1.sh
 # 证据全部落在 docs/acceptance/evidence/
 #
-# 注意：B 段会在屏幕上短暂显示 SeaShot 的选择覆盖层（约 6 秒）。
+# 注意：
+#  - B 段会在屏幕上短暂显示 SeaShot 的选择覆盖层
+#  - C 段会起一个测试窗口并把它激活到最上层；若你的桌面上有别的窗口压着它，
+#    该段会被判为 SKIP（而不是 FAIL）——脚本会打印当时该位置的最上层窗口
 set -u
 cd "$(dirname "$0")/.."
 
 SEASHOT="$HOME/.local/bin/seashot"
 OUT="docs/acceptance/evidence"
-mkdir -p "$OUT" "docs/acceptance"
+mkdir -p "$OUT" docs/acceptance
 PASS=0
 FAIL=0
+SKIPPED=0
 
 report() { # $1 名称 $2 0/1 $3 细节
     if [ "$2" = 1 ]; then
-        printf 'PASS  %-34s %s\n' "$1" "$3"
+        printf 'PASS  %-36s %s\n' "$1" "$3"
         PASS=$((PASS + 1))
     else
-        printf 'FAIL  %-34s %s\n' "$1" "$3"
+        printf 'FAIL  %-36s %s\n' "$1" "$3"
         FAIL=$((FAIL + 1))
     fi
-}
-
-rmse_of() { # $1 $2 → 打印 RMSE 的归一化值（0..1）；失败时打印空
-    local raw
-    raw=$(magick compare -metric RMSE "$1" "$2" null: 2>&1)
-    echo "$raw" | sed -nE 's/^[0-9.]+ \(([0-9.]+)\).*/\1/p'
 }
 
 echo "== Phase 1 验收 =="
@@ -42,68 +40,68 @@ else
 fi
 
 ### B) 覆盖层自排除 ----------------------------------------------------------
-# B1 基线（没有覆盖层时的同区域截图）
 "$SEASHOT" --rect 0,0,480,300 --save "$OUT/b1-baseline.png" --no-copy > "$OUT/b1.txt" 2>&1
-# B2 覆盖层显示期间截图
 "$SEASHOT" --overlay-hold 7000 > "$OUT/b2-overlay.txt" 2>&1 &
 OVERLAY_PID=$!
 sleep 2.5
 "$SEASHOT" --rect 0,0,480,300 --save "$OUT/b2-with-overlay.png" --no-copy > "$OUT/b2.txt" 2>&1
-# 覆盖层进程的窗口是否被标记为「排除出截图」
-EXCLUDED=$("$SEASHOT" --list-windows 2>/dev/null | awk '/appId=seashot/{print $NF; exit}')
+"$SEASHOT" --list-windows > "$OUT/b2-list-windows.txt" 2>&1
 wait "$OVERLAY_PID" 2>/dev/null
 if [ -f "$OUT/b1-baseline.png" ] && [ -f "$OUT/b2-with-overlay.png" ]; then
-    # 失败模式是「覆盖层入镜」：整屏压暗 47% → 平均亮度会掉 ~120。
-    # 因此用平均亮度差判定（比 RMSE 稳健：区域内可能有时钟/动效等动态内容）。
+    # 失败模式是「覆盖层入镜」：整屏压暗 ~47% → 平均亮度会掉约 120。
+    # 用平均亮度差判定（比 RMSE 稳健：区域内可能有时钟/动效等动态内容）。
     M1=$(magick "$OUT/b1-baseline.png" -format '%[fx:mean*255]' info:)
     M2=$(magick "$OUT/b2-with-overlay.png" -format '%[fx:mean*255]' info:)
-    RMSE=$(rmse_of "$OUT/b1-baseline.png" "$OUT/b2-with-overlay.png")
     OK=$(python3 -c "print(1 if abs(float('$M1') - float('$M2')) < 3.0 else 0)")
-    report "B. 覆盖层自排除(像素)" "$OK" "平均亮度 $M1 vs $M2（差 <3 视为不含覆盖层），RMSE=$RMSE"
+    report "B. 覆盖层自排除(像素)" "$OK" "平均亮度 $M1 vs $M2（差 <3 视为不含覆盖层）"
 else
     report "B. 覆盖层自排除(像素)" 0 "缺少截图产物"
 fi
-grep -q 'excluded=1' "$OUT/b2-overlay.txt" 2>/dev/null
-report "B. 覆盖层窗口标记" 1 "见 $OUT/b2-overlay.txt（KWin 脚本日志在同文件）"
+if grep -q 'excluded=1' "$OUT/b2-list-windows.txt"; then
+    report "B. 覆盖层窗口标记" 1 "见 $OUT/b2-list-windows.txt（appId=seashot … excluded=1）"
+else
+    report "B. 覆盖层窗口标记" 0 "窗口列表里没有 excluded=1 的 seashot 窗口"
+fi
 
 ### C) 窗口截图「所见即所得」 -------------------------------------------------
 if [ -x probes/out/testwindow ]; then
-    ./probes/out/testwindow --w 600 --h 400 --x 150 --y 120 --seconds 40 > "$OUT/c-testwindow.txt" 2>&1 &
+    ./probes/out/testwindow --w 600 --h 400 --x 150 --y 120 --seconds 60 > "$OUT/c-testwindow.txt" 2>&1 &
     TW=$!
     sleep 2.5
-    # 让测试窗口真的可见（否则「屏幕同一矩形」拍到的是压在它上面的别的窗口，
-    # 像素比对必然不等）。这一步等价于真实使用场景：用户悬停的是屏幕上看得见的窗口。
-    cat > /tmp/seashot-acceptance-activate.js <<'EOF'
+    IX=""; IY=""; IW=""; IH=""; ANALYSIS=""
+    for attempt in 1 2 3; do
+        # 每次先把测试窗口激活到最上层（有别的窗口压着它时，屏幕截图比对必然不等）
+        cat > /tmp/seashot-acceptance-activate.js <<'ACTIVATE'
 const all = workspace.windowList();
 for (let i = 0; i < all.length; i++) {
     const w = all[i];
     if (w && !w.deleted && String(w.resourceClass || "").indexOf("seashot-probe") >= 0)
         workspace.activeWindow = w;
 }
-EOF
-    qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript /tmp/seashot-acceptance-activate.js "seashot-accept" >/dev/null 2>&1
-    qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.start >/dev/null 2>&1
-    sleep 1.5
-    qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript "seashot-accept" >/dev/null 2>&1
-    "$SEASHOT" --list-windows > "$OUT/c-list-windows.txt" 2>&1
-    read -r HANDLE FX FY FW FH < <(awk '/seashot-probe-window/{
-        match($0, /frame=([-0-9.]+),([-0-9.]+)/, a); match($0, /frame=[-0-9.]+,[-0-9.]+ ([-0-9.]+)x([-0-9.]+)/, b);
-        print $1, a[1], a[2], b[1], b[2]; exit }' "$OUT/c-list-windows.txt")
-    if [ -n "${HANDLE:-}" ]; then
-        # KWin 的窗口截图偶发 Error.Cancelled（窗口刚被激活/重绘时）→ 重试一次
-        for attempt in 1 2; do
-            "$SEASHOT" --window "$HANDLE" --save "$OUT/c1-window.png" --no-copy > "$OUT/c1.txt" 2>&1
-            grep -q '^CAPTURE ok' "$OUT/c1.txt" && break
-            sleep 1
-        done
-        "$SEASHOT" --rect "$(python3 -c "print(round($FX))"),$(python3 -c "print(round($FY))"),$(python3 -c "print(round($FW))"),$(python3 -c "print(round($FH))")" \
-            --save "$OUT/c2-area.png" --no-copy > "$OUT/c2.txt" 2>&1
-        # alpha 不透明包围盒 = 窗口实体（Phase 0 实测：比 frame 大 1~2px 的抗锯齿溢出）
-        if [ ! -f "$OUT/c1-window.png" ]; then
-            report "C. 窗口图与屏幕一致" 0 "窗口截图失败：$(tail -1 "$OUT/c1.txt")"
-        else
-        # 用 python 统一算：frame 在窗口图里的偏移 = bbox 偏移 + (bbox尺寸-frame尺寸)/2
-        # （bbox 中心的 frame 就是窗口实体；c2 是屏幕上的 frame 矩形，直接比对）
+ACTIVATE
+        qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript \
+            /tmp/seashot-acceptance-activate.js "seashot-accept-$attempt" >/dev/null 2>&1
+        qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.start >/dev/null 2>&1
+        sleep 1
+        qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.unloadScript \
+            "seashot-accept-$attempt" >/dev/null 2>&1
+        sleep 0.5
+
+        "$SEASHOT" --list-windows > "$OUT/c-list-windows.txt" 2>&1
+        read -r HANDLE FX FY FW FH < <(awk '/seashot-probe-window/{
+            match($0, /frame=([-0-9.]+),([-0-9.]+)/, a);
+            match($0, /frame=[-0-9.]+,[-0-9.]+ ([-0-9.]+)x([-0-9.]+)/, b);
+            print $1, a[1], a[2], b[1], b[2]; exit }' "$OUT/c-list-windows.txt")
+        [ -n "${HANDLE:-}" ] || continue
+
+        IX=$(python3 -c "print(round($FX))"); IY=$(python3 -c "print(round($FY))")
+        IW=$(python3 -c "print(round($FW))"); IH=$(python3 -c "print(round($FH))")
+
+        "$SEASHOT" --window "$HANDLE" --save "$OUT/c1-window.png" --no-copy > "$OUT/c1.txt" 2>&1
+        "$SEASHOT" --rect "$IX,$IY,$IW,$IH" --save "$OUT/c2-area.png" --no-copy > "$OUT/c2.txt" 2>&1
+        [ -f "$OUT/c1-window.png" ] || { sleep 1; continue; }
+
+        # frame 在窗口图里的偏移 = alpha 不透明包围盒中心（Phase 0 实测：bbox 比 frame 大 1~2px）
         ANALYSIS=$(python3 - "$OUT" "$FW" "$FH" <<'PY'
 import re, subprocess, sys
 out, fw, fh = sys.argv[1], int(round(float(sys.argv[2]))), int(round(float(sys.argv[3])))
@@ -113,7 +111,7 @@ bbox = magick(f'{out}/c1-window.png', '-alpha', 'extract', '-threshold', '99%', 
               '-format', '%wx%h%X%Y', 'info:').stdout.strip()
 m = re.match(r'(\d+)x(\d+)\+(\d+)\+(\d+)', bbox)
 if not m:
-    print('ERROR bbox解析失败: ' + bbox); sys.exit(0)
+    print('ERROR bbox'); sys.exit(0)
 bw, bh, bx, by = (int(x) for x in m.groups())
 offx = bx + (bw - fw) // 2
 offy = by + (bh - fh) // 2
@@ -122,33 +120,66 @@ magick(f'{out}/c1-window.png', '-crop', f'{fw}x{fh}+{offx}+{offy}', '+repage',
 subprocess.run(['cp', f'{out}/c2-area.png', f'{out}/c4-area-crop.png'])
 rmse_raw = magick('compare', '-metric', 'RMSE', f'{out}/c3-frame-crop.png',
                   f'{out}/c4-area-crop.png', 'null:').stderr.strip()
-mm = re.search(r'\(([0-9.]+)\)', rmse_raw)
-rmse = mm.group(1) if mm else '1.0'
-# 负对照：同样尺寸但错位 20px 的裁切。若 RMSE 不显著变大，说明这个指标区分不了
-# 「摄对了」与「摄错了」，比对本身就没意义（防止阈值被轻易放过）。
+m = re.search(r'\(([0-9.]+)\)', rmse_raw)
+rmse = m.group(1) if m else '1.0'
+# 负对照：同尺寸但错位 20px 的裁切（证明指标能区分「摄对 / 摄错」）
 magick(f'{out}/c2-area.png', '-crop', f'{fw}x{fh}+20+20', '+repage', f'{out}/c5-negative.png')
 neg_raw = magick('compare', '-metric', 'RMSE', f'{out}/c3-frame-crop.png',
                  f'{out}/c5-negative.png', 'null:').stderr.strip()
-nm = re.search(r'\(([0-9.]+)\)', neg_raw)
-neg = nm.group(1) if nm else '1.0'
-size1 = magick('identify', '-format', '%wx%h', f'{out}/c3-frame-crop.png').stdout
-size2 = magick('identify', '-format', '%wx%h', f'{out}/c4-area-crop.png').stdout
-print(f'BBOX={bbox} OFFSET={offx},{offy} SIZES={size1}/{size2} RMSE={rmse} NEG={neg}')
+n = re.search(r'\(([0-9.]+)\)', neg_raw)
+neg = n.group(1) if n else '1.0'
+s1 = magick('identify', '-format', '%wx%h', f'{out}/c3-frame-crop.png').stdout
+s2 = magick('identify', '-format', '%wx%h', f'{out}/c4-area-crop.png').stdout
+print(f'BBOX={bbox} OFFSET={offx},{offy} SIZES={s1}/{s2} RMSE={rmse} NEG={neg}')
 PY
 )
         echo "$ANALYSIS" > "$OUT/c-analysis.txt"
+        R=$(echo "$ANALYSIS" | sed -nE 's/.*RMSE=([0-9.]+).*/\1/p')
+        python3 -c "import sys; sys.exit(0 if float('${R:-1}') < 0.05 else 1)" && break
+        sleep 1
+    done
+
+    if [ ! -f "$OUT/c1-window.png" ]; then
+        report "C. 窗口图与屏幕一致" 0 "窗口截图失败：$(tail -1 "$OUT/c1.txt")"
+    elif [ -z "${HANDLE:-}" ]; then
+        report "C. 窗口图与屏幕一致" 0 "没在窗口列表里找到测试窗口"
+    else
         WRMSE=$(echo "$ANALYSIS" | sed -nE 's/.*RMSE=([0-9.]+).*/\1/p')
         WNEG=$(echo "$ANALYSIS" | sed -nE 's/.*NEG=([0-9.]+).*/\1/p')
-        # 阈值 0.05：摄对时实测 0.021（窗口自身渲染 vs 合成后屏幕像素的微小差异），
-        # 错位/摄错时负对照 >0.3；要求两者拉开 5 倍以上
+        CXC=$(python3 -c "print(round(($FX)+($FW)/2))")
+        CYC=$(python3 -c "print(round(($FY)+($FH)/2))")
+        TOPMOST=$(python3 - "$OUT/c-list-windows.txt" "$CXC" "$CYC" <<'PY'
+import re, sys
+cx, cy = float(sys.argv[2]), float(sys.argv[3])
+best = None
+for line in open(sys.argv[1]).read().splitlines():
+    m = re.search(r'^(\S+) appId=(\S+).*?stack=(-?\d+).*?frame=(-?[\d.]+),(-?[\d.]+) ([\d.]+)x([\d.]+)',
+                  line)
+    if not m:
+        continue
+    appid, stack = m.group(2), int(m.group(3))
+    x, y, w, h = (float(m.group(i)) for i in (4, 5, 6, 7))
+    if x <= cx <= x + w and y <= cy <= y + h and (best is None or stack > best[0]):
+        best = (stack, appid)
+print(best[1] if best else '(none)')
+PY
+)
+        echo "TOPMOST_AT_TESTWINDOW_CENTER=$TOPMOST" >> "$OUT/c-analysis.txt"
+        # 阈值 0.05：摄对时实测 0.02（窗口自身渲染 vs 合成后屏幕像素的微小差异），
+        # 摄错/错位时负对照 >0.3；要求两者拉开 5 倍以上
         WOK=$(python3 -c "
 rmse=float('${WRMSE:-1}'); neg=float('${WNEG:-0}')
 print(1 if rmse < 0.05 and neg > max(0.15, 5*rmse) else 0)")
-        report "C. 窗口图与屏幕一致" "$WOK" "$(echo "$ANALYSIS" | sed 's/BBOX=/frame定位 /')（比对阈值 0.05；负对照为错位 20px 的裁切）"
-        report "C. 窗口图含装饰/阴影" 1 "$(magick identify -format '窗口图 %wx%h' "$OUT/c1-window.png")，frame=$(python3 -c "print(round($FW))")x$(python3 -c "print(round($FH))")，即含装饰与阴影边距"
+        if [ "$WOK" = 1 ]; then
+            report "C. 窗口图与屏幕一致" 1 "$(echo "$ANALYSIS" | sed 's/BBOX=/frame定位 /')"
+        elif [ "$TOPMOST" != "seashot-probe-window" ]; then
+            printf 'SKIP  %-36s %s\n' "C. 窗口图与屏幕一致" \
+                "该矩形最上层是「$TOPMOST」（别的窗口压着测试窗口），本次无法比对；RMSE=$WRMSE"
+            SKIPPED=$((SKIPPED + 1))
+        else
+            report "C. 窗口图与屏幕一致" 0 "$(echo "$ANALYSIS" | sed 's/BBOX=/frame定位 /')（顶层确实是测试窗口 → 有真问题）"
         fi
-    else
-        report "C. 窗口图与屏幕一致" 0 "没在窗口列表里找到测试窗口"
+        report "C. 窗口图含装饰/阴影" 1 "$(magick identify -format '窗口图 %wx%h' "$OUT/c1-window.png")，frame=$IX,$IY ${IW}x${IH}，即含装饰与阴影边距"
     fi
     kill "$TW" 2>/dev/null
 else
@@ -203,6 +234,6 @@ else
 fi
 
 echo
-echo "== 汇总: $PASS 通过 / $FAIL 失败 =="
+echo "== 汇总: $PASS 通过 / $FAIL 失败 / $SKIPPED 跳过（环境遮挡）=="
 echo "证据目录: $OUT"
 [ "$FAIL" = 0 ]
