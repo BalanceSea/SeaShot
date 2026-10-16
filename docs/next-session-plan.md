@@ -2,33 +2,31 @@
 
 > 本文是**自包含**的：明天开新对话时，读这一份即可接上，不依赖上一轮对话上下文。
 >
-> **一句话现状**：截图/编辑/录制/配置/托盘全部可用且验收通过；「就地编辑」已完成
-> **Phase 0 + A1（骨架）+ A2（图标工具条）+ A3（标注绘制/命中/撤销）+ A3.1（颜色/粗细）+ Phase B（拖手柄改选区 + 快捷键）**
-> （`phaseA1` 6/6、`phaseA2` 10/10、`phaseA3` 13/13、`phaseA3-color` 7/7、`phaseB` 11/11），
-> 用户最初的 8 条诉求里 **①就地编辑 ③1:1 ④选完可改选区 ⑤快捷键** 均已完成；
-> 剩下：A4（复制/保存按钮，半小时）、Phase C（贴图）、D（长截图）、E（OCR）。
+> **一句话现状**：截图/编辑/录制/配置/托盘全部可用且验收通过；「就地编辑」与「贴图」都已完成 ——
+> **Phase 0 + A1（骨架）+ A2（图标工具条）+ A3（标注绘制/命中/撤销）+ A3.1（颜色/粗细）
+> + Phase B（拖手柄改选区 + 快捷键）+ Phase C（贴图/钉图）**
+> （`phaseA1` 6/6、`phaseA2` 10/10、`phaseA3` 13/13、`phaseA3-color` 7/7、`phaseB` 11/11、`phaseC` 10/10），
+> 用户最初的 8 条诉求里 **①③④⑤⑥ 已完成**；
+> 剩下：A4（复制/保存按钮，半小时）、**Phase D 长截图**（风险最高）、**Phase E OCR**。
 
 ---
 
 ## 0. 明天下手第一件事
 
-**做 Phase A4**（见第 4 节）：工具条上加「复制」「保存」两个按钮。
+**先做 Phase A4**（见第 4 节）：工具条上加「复制」「保存」两个按钮 —— 管道已在 Phase B 打通
+（`ConfirmAction`），只剩在 `buildBarCells()` 加两格 + `activateCell()` 发对应 action。
 
-为什么它现在只剩下"加两个格子"：Phase B 为了 `Ctrl+C` / `Ctrl+S` 已经把管道打通了 ——
-`annotationConfirmed` 已经带上 `Overlay::ConfirmAction{Plain,Copy,Save}`，
-`Application::finishCapture()` 也已经按它决定"强制复制 / 强制保存 / 按设置"。
-所以 A4 = `buildBarCells()` 里加两格 + `activateCell()` 里发对应的 action，并用
-`--inplace-demo` 验证（那里已经有现成的合成点击工具）。
+然后**建议先做 Phase D 的可行性探针，而不是直接写长截图**：滚动截屏的"重叠区匹配拼接"
+在本项目还没有任何验证（不像 Phase 0 那样先验过 layer-shell），按老规矩先写个独立探针，
+把"拼接对齐能不能做到像素级无重影"验掉再动主链路。E（OCR）依赖已经齐了（语言包已装）。
 
-已经在位的能力（A4 直接用）：
-- `Overlay::renderSelection(source)` 唯一的"标注 → 图片"出口（预览与导出共用）
-- `ConfirmAction` 通道（B 已通）+ `m_pendingAnnotations` 快照 + 下游统一用合成后的 `result`
-
-可以顺便定一下的三件小事（不阻塞）：
+可以顺便定一下的小事（不阻塞）：
 1. 颜色/粗细要不要**持久化**（现在只在一次会话内有效，默认 `#ff4040` / 4px）？
 2. `Ctrl+C` 现在**不弹浮层**（对齐 QQ 的"复制即走"）——保持还是要飘一下提示？
 3. 结果图现在是**重新抓一屏**（与预览可能有桌面漂移的细微差别）；
    要不要改成"直接用冻结帧 + 标注"作为结果源（严格所见即所得、也省一次抓屏）？
+4. **贴图默认不出现在后续截图里**（自排除按 appId 生效，KWin 看不到 layer-shell 的 scope，
+   见 `docs/acceptance/phaseC.md`）——这个取舍接受吗？
 
 开始前请先确认一件事（外部依赖，不阻塞 A4，但影响 Phase E）：
 
@@ -132,6 +130,7 @@ QQ/PixPin 是选完区域**直接在屏幕上标注**（不打开新窗口），
 | **A3** | 标注绘制/命中/撤销接到 `AnnotationDocument` | 能画矩形/箭头，`Ctrl+Z` 生效 | ✅ **已完成**（2026-10-17，13/13；含「预览==导出逐像素 0 差异」与「完成→结果图真的有标注」端到端，见 `docs/acceptance/phaseA3.md`） |
 | **A3.1** | 颜色 / 粗细（自绘弹出面板：色板 + 滑杆） | 选色/拖粗细，新画的标注跟着变 | ✅ **已完成**（2026-10-17，7/7；面板不压选区、面板内空白点击不误画，见 `docs/acceptance/phaseA3-color.md`） |
 | **A4** | 工具条上的复制/保存按钮接现有链路 | **`acceptance-phase1.sh` 必须仍全绿** | ⬅ **下一步**（管道已在 Phase B 打通，只剩加两格） |
+| **C** | 贴图/钉图到屏幕（layer-shell，可拖动/缩放/右键菜单/多张并存） | 钉图后切到全屏应用仍可见；关闭无残留 | ✅ **已完成**（2026-10-17，10/10；含"另一进程截屏按纯色块核对"与"全屏白底参照之上仍可见"，见 `docs/acceptance/phaseC.md`） |
 
 ### A1/A2/A3 已落地的实现要点（A4 直接接在这些之上）
 
@@ -190,7 +189,7 @@ Idle → Selecting（拖框 / 悬停高亮窗口）
 | 阶段 | 内容 | 备注 |
 | --- | --- | --- |
 | ~~**B**~~ | ~~8 手柄拖改选区 + 快捷键对齐 QQ/PixPin~~ | ✅ **已完成**（2026-10-17，11/11，见 `docs/acceptance/phaseB.md`） |
-| **C** | 贴图/钉图到屏幕 | layer-shell `LayerOverlay`，可拖动/缩放/`Esc` 关；支持多张 |
+| ~~**C**~~ | ~~贴图/钉图到屏幕~~ | ✅ **已完成**（2026-10-17，10/10；`--pin` 与就地编辑 `Ctrl+T` 两个入口，见 `docs/acceptance/phaseC.md`） |
 | **D** | 长截图（滚动截屏） | **风险最高**：需重叠区匹配拼接，建议先做拼接可行性验证 |
 | **E** | OCR | `tesseract` 与 `chi_sim`/`eng` 已确认就绪（见第 0 节） |
 
@@ -219,7 +218,7 @@ Idle → Selecting（拖框 / 悬停高亮窗口）
 | 复制 GIF 后剪贴板为空 | `wl-copy` 靠 fork 的子进程持有选区；本进程退出→管道关闭→持有者被杀。改用 `QProcess::startDetached` + shell 重定向 |
 | 中间文件吃内存 | 本机 **`/tmp` 是 tmpfs**，无损中间文件 ≈554MB/分钟 → 会吃内存。已改落磁盘 `~/.cache/seashot/recording` + 启动清理 + 录制中 <2GB 自动停 |
 
-完整列表见 `docs/known-issues.md`（ISSUE-001 ~ ISSUE-012）。
+完整列表见 `docs/known-issues.md`（ISSUE-001 ~ ISSUE-013；013 是贴图的自排除取舍）。
 
 ---
 
@@ -251,6 +250,9 @@ bash scripts/acceptance-phaseA3-color.sh
 
 # 就地编辑（Phase B）验收：拖手柄改选区 / 方向键微调 / Ctrl+A 全选 / Ctrl+C 复制 / Ctrl+S 保存
 bash scripts/acceptance-phaseB.sh
+
+# 贴图（Phase C）验收：拖动/缩放/右键菜单/多张并存/全屏之上仍可见（约 40s，会弹一个全屏白底参照窗）
+bash scripts/acceptance-phaseC.sh
 
 # 编辑器验收
 bash scripts/acceptance-phase2.sh

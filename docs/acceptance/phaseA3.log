@@ -1,5 +1,5 @@
 == Phase A3 验收（标注绘制 / 命中 / 撤销）==
-二进制: /home/balancesea/.local/bin/seashot (2026-10-17 07:35:40)
+二进制: /home/balancesea/.local/bin/seashot (2026-10-17 07:52:29)
 
 PASS  A3. 六种形状工具都能画出来    逐个合成拖拽 → 矩形/椭圆/箭头/高亮/马赛克/模糊
 PASS  A3. 画笔 / 序号 / 文字             画笔折线、序号徽标 1、文字 "Hi 3"（合成按键输入后回车提交）
@@ -11,7 +11,7 @@ PASS  A3. 预览 == 导出（逐像素）      屏幕上选区内缩 6px 与 ren
 PASS  A3. 汇总判定（演示）             INPLACE_DEMO A3 PASS（退出码 0）
 PASS  A3. 「完成」把标注带进结果    合成 Enter → ANNOTATED count=11 → CAPTURE ok → SAVED（退出码 0）
 PASS  A3. 结果尺寸 == 选区尺寸         落盘图 540x380 == 选区 540x380（导出尺寸不变）
-PASS  A3. 结果里确实有标注（区域对照） 标注区域 150x100+250+40：结果 vs 未标注裁切 RMSE=0.134386 ≫ 结果 vs 预览 RMSE=0.00257975
+PASS  A3. 结果里确实有标注（区域对照） 标注区域 150x100+250+40：结果 vs 未标注裁切 RMSE=0.133888 ≫ 结果 vs 预览 RMSE=0.00577204
 PASS  A3. A1/A2 判据未回归                1:1/手柄/压暗 与 工具条命中/切换 仍然全过
 PASS  A3. 视觉证据落盘                   docs/acceptance/evidence/a3-inplace-annotated.png（选区 + 标注，540x380）与 docs/acceptance/evidence/a3-inplace-annotated-overlay.png（整屏）
 

@@ -21,6 +21,7 @@ set(SEASHOT_CORE_SOURCES
     app/Settings.cpp
     app/SettingsDialog.cpp
     app/SelfTest.cpp
+    app/PinWindow.cpp
     app/Toast.cpp
     app/Tray.cpp
     app/Application.cpp
@@ -51,6 +52,7 @@ set(SEASHOT_HEADERS
     app/Settings.h
     app/SettingsDialog.h
     app/SelfTest.h
+    app/PinWindow.h
     app/Toast.h
     app/Tray.h
     app/Application.h

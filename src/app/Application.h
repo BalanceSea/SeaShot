@@ -26,6 +26,7 @@ class Tray;
 class CaptureBackend;
 class GifRecorder;
 class RecordingIndicator;
+class PinWindow;
 
 struct Options {
     QString backend = QStringLiteral("auto"); ///< auto|wayland|x11
@@ -51,6 +52,8 @@ struct Options {
     bool recordStop = false; ///< --record-stop：让常驻实例停止录制
     int seconds = 0; ///< --seconds N：录制 N 秒后自动停（0 = 手动停）
     int toastDragBenchMs = 0; ///< --toast-drag-bench MS：诊断拖动延迟（ISSUE-001）
+    QString pinPath; ///< --pin PATH：把一张图贴（钉）到屏幕上（Phase C）
+    QString pinDemoOut; ///< --pin-demo PREFIX：贴图的自动化验收（Phase C）
     QString inplaceDemoOut; ///< --inplace-demo PATH：就地标注（Phase A1）的自动化验收
     QString benchCapturePath; ///< --bench-capture PATH：截全屏存盘并打印帧时间戳（给基准测试当观测者）
     bool probePortal = false; ///< --probe-portal-screencast：验证 portal 授权持久化
@@ -132,6 +135,12 @@ private:
     /// Phase A1 验收：程序化合成的鼠标拖拽 → 覆盖层就地标注 → 落盘证据 +
     /// 「覆盖层画面 vs 冻结图」的逐像素 1:1 比对（选区内应完全相同）
     int runInplaceDemo(const QString &outPrefix);
+    /// Phase C：贴（钉）一张图到屏幕上。anchorGlobal 是贴图左上角的目标位置。
+    void pinImage(const QImage &image, const QPoint &anchorGlobal);
+    /// Phase C：`--pin PATH`
+    int runPinFile(const QString &path);
+    /// Phase C 验收：程序化验证拖动/缩放/右键菜单/多张并存/关闭无残留
+    int runPinDemo(const QString &outPrefix);
     QRect virtualGeometry() const;
     bool isOneShot() const;
 
@@ -169,8 +178,11 @@ private:
     bool m_editorOpened = false; ///< 开过编辑器（一次性 CLI 下要等它关掉再退）
     /// 就地标注快照（A3）：标注坐标 = 选区图坐标，抓图后直接 renderAnnotations 就能合成
     QVector<Annotation> m_pendingAnnotations;
-    /// 「完成」时上层要做的交付动作（Phase B：Enter / Ctrl+C / Ctrl+S）
+    /// 「完成」时上层要做的交付动作（Phase B/C：Enter / Ctrl+C / Ctrl+S / 贴图）
     Overlay::ConfirmAction m_pendingAction = Overlay::ConfirmAction::Plain;
+    /// 屏幕上的贴图（Phase C）
+    QVector<QPointer<PinWindow>> m_pins;
+    bool m_quitWhenPinsClosed = false;
     SelectionResult m_pendingSelection;
 };
 

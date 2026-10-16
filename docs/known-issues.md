@@ -182,6 +182,24 @@ seashot --record --rect X,Y,W,H --seconds 3 --save /tmp/x.mp4
 
 **另外提供规避手段**：配置界面「录制格式」选 MP4，中间文件小得多（见 ISSUE-010）。
 
+### ISSUE-013 贴图（layer-shell 浮窗）默认拍不到：自排除按 appId 生效，KWin 看不到 scope
+
+- **状态**：**有意的取舍**（不是 bug），2026-10-17 Phase C 发现并记录。
+- **现象**：`seashot --pin x.png` 把图钉在屏幕上后，**肉眼看得见**，但任何进程
+  （包括另一个 seashot、以及 portal/PipeWire 取帧）截出来的图里都**没有它**。
+- **根因**：本项目的"自排除"是把 `appId == seashot` 的所有窗口标成 `excludeFromCapture`
+  （Phase 0 的 KWin 助手脚本）。贴图也是 `appId=seashot` 的窗口 → 一起被排除。
+  试过给贴图的 layer-shell 表面单独设 `scope("seashot-pin")`，但实测 KWin 6.7 报给脚本的
+  仍是 `resourceClass=seashot / resourceName=seashot`（诊断脚本读到 `cls=seashot name=seashot`），
+  **无法按 namespace 区分单个表面**，所以"只豁免贴图"这条规则写不出来（试过，无效，已撤掉）。
+- **结论/取舍**：贴图归为"本应用 UI"（与覆盖层/结果浮层一致），保持被排除。
+  好处：拿贴图当参考图时，它不会被烘进新截图。
+- **若要改成"贴图算桌面内容"**（像 QQ 的钉图）：目前只能给 `--pin` 这类纯贴图进程
+  单独关掉自排除（会让 `--pin` 与"就地编辑 Ctrl+T"两条入口行为不一致），
+  或等 KWin 侧能按 namespace/role 区分单个 layer 表面。
+- **验收影响**：`scripts/acceptance-phaseC.sh` 的像素判据会给"贴图进程 + 观察者进程"
+  都加 `SEASHOT_DISABLE_SELF_EXCLUSION=1`，关掉自排除后截到的才是人眼所见。
+
 ## 已修（留档，避免回归）
 
 ### ISSUE-012 `acceptance-phase4.sh` 的 F 段判据与延迟导出行为不同步

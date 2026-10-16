@@ -1,5 +1,5 @@
 == Phase B 验收（选区可调整 + 快捷键）==
-二进制: /home/balancesea/.local/bin/seashot (2026-10-17 07:35:40)
+二进制: /home/balancesea/.local/bin/seashot (2026-10-17 07:52:29)
 
 PASS  B. 拖角手柄只改那一个角          拖左上角 (-40,-30)：选区 220,180 540x380 → 180,150 580x410
 PASS  B. 选区最小尺寸 16px                 把右边拖到越过左边 → 宽度夹到 16px
@@ -9,7 +9,7 @@ PASS  B. 选区改过后预览仍 == 导出      选区内缩 6px 与 renderAnno
 PASS  B. 汇总判定（演示）                INPLACE_DEMO B PASS（退出码 0）
 PASS  B. Ctrl+C = 完成并复制                合成 Ctrl+C → COPIED image/png（剪贴板类型：image/png ），退出码 0
 PASS  B. Ctrl+S = 完成并保存                合成 Ctrl+S → SAVED，落盘 540x380（退出码 0）
-PASS  B. 保存的结果里确实有标注       标注区域：结果 vs 未标注裁切 RMSE=0.13439 ≫ 结果 vs 预览 RMSE=0.00302686
+PASS  B. 保存的结果里确实有标注       标注区域：结果 vs 未标注裁切 RMSE=0.115789 ≫ 结果 vs 预览 RMSE=0.00184175
 PASS  B. A1/A2/A3/A3.1 判据未回归           1:1+手柄、工具条、9 种工具+撤销、颜色/粗细 仍全过
 PASS  B. 视觉证据落盘                      docs/acceptance/evidence/b-inplace.txt / -annotated.png / b-save-result.png 等
 

@@ -578,6 +578,36 @@ private slots:
         QVERIFY(canvas.document().undo());
         QCOMPARE(canvas.document().count(), 0);
     }
+
+    // ---------- Phase B：选区调整时的坐标帧平移 ----------
+    void translateAllMovesItemsAndUndoSnapshots()
+    {
+        AnnotationDocument document;
+        document.add(makeRect(QPointF(10, 20), QPointF(60, 70), 4));
+        document.add(makeRect(QPointF(100, 120), QPointF(160, 170), 4));
+        QCOMPARE(document.count(), 2);
+
+        // 选区原点变了（例如拖左上角手柄往外扩）：标注要反向平移，才能继续锚定屏幕内容
+        const QPointF delta(-40, -30);
+        document.translateAll(delta);
+        QCOMPARE(document.at(0).points.at(0), QPointF(10 - 40, 20 - 30));
+        QCOMPARE(document.at(1).points.at(1), QPointF(160 - 40, 170 - 30));
+
+        // 撤销后拿到的快照也必须是平移过的 —— 否则标注会"跳到另一个坐标系"
+        QVERIFY(document.undo()); // 回到只有 1 条
+        QCOMPARE(document.count(), 1);
+        QCOMPARE(document.at(0).points.at(0), QPointF(10 - 40, 20 - 30));
+
+        document.translateAll(QPointF(15, 5));
+        QVERIFY(document.redo()); // 重做栈里的快照同样平移过
+        QCOMPARE(document.count(), 2);
+        QCOMPARE(document.at(1).points.at(0), QPointF(100 - 40 + 15, 120 - 30 + 5));
+
+        // 平移不是一次可撤销的编辑
+        QVERIFY(document.undo());
+        QVERIFY(document.undo()); // 把两条都撤掉（平移没多压栈）
+        QCOMPARE(document.count(), 0);
+    }
 };
 
 QTEST_MAIN(TestAnnotation)

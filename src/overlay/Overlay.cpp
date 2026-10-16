@@ -1114,10 +1114,19 @@ QVector<Overlay::BarCell> Overlay::buildBarCells() const
         x = cell.rect.right() + kGroupGap - kBtnGap;
     }
 
+    { // 贴图（钉到屏幕上）
+        BarCell cell;
+        cell.kind = BarCell::Kind::Pin;
+        cell.separatorBefore = 1;
+        cell.rect = QRectF(x, top, kBtnSize, kBtnSize);
+        cells.append(cell);
+        x += kBtnSize + kBtnGap;
+    }
+
     { // 完成
         BarCell cell;
         cell.kind = BarCell::Kind::Confirm;
-        cell.separatorBefore = 1;
+        cell.separatorBefore = 0;
         cell.rect = QRectF(x, top, kBtnSize, kBtnSize);
         cells.append(cell);
         x += kBtnSize + kBtnGap;
@@ -1224,6 +1233,9 @@ void Overlay::activateCell(int index)
         setCursor(cell.tool == ToolKind::Select ? Qt::ArrowCursor : Qt::CrossCursor);
         update();
         break;
+    case BarCell::Kind::Pin:
+        emit annotationConfirmed(m_selection, ConfirmAction::Pin);
+        break;
     case BarCell::Kind::Confirm:
         emit annotationConfirmed(m_selection, ConfirmAction::Plain);
         break;
@@ -1322,6 +1334,15 @@ void Overlay::drawToolbar(QPainter &painter) const
             painter.setPen(kSizeTextColor);
             painter.drawText(cell.rect, Qt::AlignCenter, selectionSizeText());
             break;
+        case BarCell::Kind::Pin: {
+            if (pressed || hovered) {
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(pressed ? kBtnPress : kBtnHover);
+                painter.drawRoundedRect(cell.rect, 6, 6);
+            }
+            drawPinIcon(painter, box, kIconColor);
+            break;
+        }
         case BarCell::Kind::Confirm:
         case BarCell::Kind::Cancel: {
             const bool confirm = (cell.kind == BarCell::Kind::Confirm);
@@ -1358,6 +1379,9 @@ void Overlay::drawCellBubble(QPainter &painter, const BarCell &cell) const
         break;
     case BarCell::Kind::Confirm:
         text = QStringLiteral("完成  Enter");
+        break;
+    case BarCell::Kind::Pin:
+        text = QStringLiteral("贴图（钉到屏幕上）");
         break;
     case BarCell::Kind::ColorSwatch:
         text = QStringLiteral("颜色  ") + m_annotationColor.name();
@@ -1562,6 +1586,30 @@ void Overlay::drawToolIcon(QPainter &painter, ToolKind kind, const QRectF &box, 
         break;
     }
     }
+    painter.restore();
+}
+
+void Overlay::drawPinIcon(QPainter &painter, const QRectF &box, const QColor &color)
+{
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const double w = box.width();
+    const double h = box.height();
+    QPen pen(color, 1.8);
+    pen.setCapStyle(Qt::RoundCap);
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+    // 针脚
+    painter.drawLine(QPointF(box.left() + w * 0.20, box.bottom() - h * 0.12),
+                     QPointF(box.left() + w * 0.58, box.top() + h * 0.46));
+    // 钉头（45° 圆角方块）
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(color);
+    painter.save();
+    painter.translate(box.center().x() + w * 0.14, box.center().y() - h * 0.16);
+    painter.rotate(45);
+    painter.drawRoundedRect(QRectF(-w * 0.21, -h * 0.21, w * 0.42, h * 0.42), 2, 2);
+    painter.restore();
     painter.restore();
 }
 
@@ -1989,6 +2037,10 @@ void Overlay::keyPressEvent(QKeyEvent *event)
             }
             if (key == Qt::Key_S) {
                 emit annotationConfirmed(m_selection, ConfirmAction::Save);
+                return;
+            }
+            if (key == Qt::Key_T) {
+                emit annotationConfirmed(m_selection, ConfirmAction::Pin); // 贴图（钉到屏幕上）
                 return;
             }
         }

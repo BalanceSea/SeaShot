@@ -1,6 +1,7 @@
 #include "app/Application.h"
 
 #include "app/SelfTest.h"
+#include "app/PinWindow.h"
 #include "app/Settings.h"
 #include "app/SettingsDialog.h"
 #include "app/Toast.h"
@@ -25,6 +26,7 @@
 
 #include <QApplication>
 #include <QCoreApplication>
+#include <QWheelEvent>
 #include <QDateTime>
 #include <QDir>
 #include <cmath>
@@ -1055,7 +1057,10 @@ void Application::finishCapture(const CaptureImage &image)
     // 带 --save 视为脚本化调用：不弹浮层、交付完就退出（验收/自动化靠它保持快）
     const bool scripted = !m_options.saveTo.isEmpty();
 
-    if (wantsEditor) {
+    if (action == Overlay::ConfirmAction::Pin) {
+        // 贴图：把结果钉到屏幕上（不复制/不保存/不弹浮层，和 QQ 的"钉图"一致）
+        pinImage(result, m_lastAnchorRect.topLeft() + QPoint(12 * m_pins.size(), 12 * m_pins.size()));
+    } else if (wantsEditor) {
         // 「截图后直接打开编辑器」：浮层就不弹了，编辑器里已有复制/保存/另存为
         openEditor(result, savedPath);
     } else if (!scripted && action != Overlay::ConfirmAction::Copy) {
@@ -1278,6 +1283,226 @@ int Application::showOverlayAndHold()
                         << (m_backend->windows().isEmpty() ? -1 : (m_selfExclusion ? 1 : 0)) << "\n";
     QTextStream(stdout).flush();
     QTimer::singleShot(m_options.overlayHoldMs, qApp, &QCoreApplication::quit);
+    return QCoreApplication::exec();
+}
+
+void Application::pinImage(const QImage &image, const QPoint &anchorGlobal)
+{
+    if (image.isNull())
+        return;
+    auto *pin = new PinWindow(image, anchorGlobal);
+    m_pins.append(pin);
+
+    connect(pin, &PinWindow::copyRequested, this, [](const QImage &img) {
+        QTextStream out(stdout);
+        QString error;
+        const bool ok = Clipboard::copyImage(img, &error);
+        out << (ok ? "PIN_COPY ok mime=image/png\n"
+                   : QStringLiteral("PIN_COPY_ERROR %1\n").arg(error));
+        out.flush();
+    });
+    connect(pin, &PinWindow::saveRequested, this, [this](const QImage &img) {
+        QTextStream out(stdout);
+        const QString path = m_settings->defaultSavePath();
+        QString error;
+        const bool ok = Settings::saveImage(path, img, &error);
+        out << (ok ? QStringLiteral("PIN_SAVE ok path=%1\n").arg(path)
+                   : QStringLiteral("PIN_SAVE_ERROR %1\n").arg(error));
+        out.flush();
+    });
+    connect(pin, &PinWindow::closed, this, [this, pin]() {
+        m_pins.removeAll(pin);
+        pin->deleteLater();
+        QTextStream out(stdout);
+        out << "PIN_CLOSED 剩余=" << m_pins.size() << "\n";
+        out.flush();
+        if (m_quitWhenPinsClosed && m_pins.isEmpty())
+            QCoreApplication::quit();
+    });
+
+    pin->showPin();
+    QTextStream out(stdout);
+    out << "PIN_CREATED " << pin->diagnostics() << " 共" << m_pins.size() << "张\n";
+    out.flush();
+}
+
+int Application::runPinFile(const QString &path)
+{
+    QTextStream out(stdout);
+    const QImage image(path);
+    if (image.isNull()) {
+        out << "PIN_ERROR 无法读取 " << path << "\n";
+        return 2;
+    }
+    // 默认贴在主屏左上方偏下一点的位置（与 QQ 贴图类似）
+    const QRect virtualRect = virtualGeometry();
+    m_quitWhenPinsClosed = true; // 关掉最后一张贴图就退出（--pin 是独立进程）
+    pinImage(image, virtualRect.topLeft() + QPoint(120, 120));
+    return QCoreApplication::exec();
+}
+
+int Application::runPinDemo(const QString &outPrefix)
+{
+    QTextStream out(stdout);
+    if (!m_backend || !m_backendError.isEmpty()) {
+        out << "PIN_DEMO_ERROR 需要可用的截图后端（用来验证贴图在屏幕上的存在）: "
+            << m_backendError << "\n";
+        return 2;
+    }
+
+    // 用**纯色块**当贴图：验收脚本可以直接在屏幕截图上按颜色找它，
+    // 从而证明"贴图真的在合成结果里 / 真的盖在全屏窗口之上"。
+    QImage pin(240, 160, QImage::Format_RGB32);
+    pin.fill(QColor(0xff, 0x2d, 0x55));
+    {
+        QPainter painter(&pin);
+        painter.setPen(Qt::white);
+        painter.drawRect(pin.rect().adjusted(0, 0, -1, -1));
+        painter.drawText(pin.rect(), Qt::AlignCenter, QStringLiteral("PIN"));
+    }
+
+    const QRect virtualRect = virtualGeometry();
+    const QPoint start = virtualRect.topLeft() + QPoint(300, 260);
+    pinImage(pin, start);
+    if (m_pins.isEmpty()) {
+        out << "PIN_DEMO_ERROR 贴图窗口没建起来\n";
+        return 2;
+    }
+    PinWindow *first = m_pins.first();
+    const QRect rect0 = first->pinRect();
+    auto pinRectsForCheck = std::make_shared<QVector<QRect>>();
+
+    QTimer::singleShot(600, this, [this, first, outPrefix, start, rect0, virtualRect, pinRectsForCheck]() {
+        QTextStream out(stdout);
+        auto send = [](QWidget *widget, QEvent::Type type, const QPointF &pos,
+                       Qt::MouseButton button, Qt::MouseButtons buttons) {
+            QMouseEvent event(type, pos, widget->mapToGlobal(pos.toPoint()), button, buttons,
+                              Qt::NoModifier);
+            QCoreApplication::sendEvent(widget, &event);
+        };
+
+        // 1) 拖动：按下并移动 (70,50)
+        const QPointF from(rect0.width() / 2.0, rect0.height() / 2.0);
+        send(first, QEvent::MouseButtonPress, from, Qt::LeftButton, Qt::LeftButton);
+        send(first, QEvent::MouseMove, from + QPointF(70, 50), Qt::NoButton, Qt::LeftButton);
+        send(first, QEvent::MouseButtonRelease, from + QPointF(70, 50), Qt::LeftButton,
+             Qt::NoButton);
+        const QRect rect1 = first->pinRect();
+        const bool dragOk = (rect1.topLeft() - rect0.topLeft()) == QPoint(70, 50);
+
+        // 2) 滚轮缩放（以图心为锚点）
+        const double zoomBefore = first->zoom();
+        QWheelEvent wheel(QPointF(rect1.width() / 2.0, rect1.height() / 2.0),
+                          first->mapToGlobal(rect1.center()), QPoint(0, 0), QPoint(0, 120),
+                          Qt::NoButton, Qt::NoModifier, Qt::NoScrollPhase, false);
+        QCoreApplication::sendEvent(first, &wheel);
+        const QRect rect2 = first->pinRect();
+        const bool zoomOk = first->zoom() > zoomBefore && rect2.width() > rect1.width();
+
+        // 3) 右键菜单 → 复制（走的是和用户一样的鼠标路径）
+        out << "PIN_DEMO drag=" << (dragOk ? 1 : 0) << " zoom=" << (zoomOk ? 1 : 0)
+            << " zoomValue=" << first->zoom() << " rect=" << rect2.x() << "," << rect2.y()
+            << " " << rect2.width() << "x" << rect2.height() << "\n";
+        const QPointF menuPoint(rect2.width() * 0.4, rect2.height() * 0.4);
+        send(first, QEvent::MouseButtonPress, menuPoint, Qt::RightButton, Qt::RightButton);
+        send(first, QEvent::MouseButtonRelease, menuPoint, Qt::RightButton, Qt::NoButton);
+        const bool menuOpened = first->menuOpen();
+        // 菜单项位置：从菜单矩形里取（PinWindow 自己算的）——用 menuItemAt 反查
+        PinWindow::MenuItem copyItem = PinWindow::MenuItem::None;
+        QPoint copyPoint;
+        for (int y = 0; y < first->height(); ++y) {
+            for (int x = 0; x < first->width(); x += 4) {
+                if (first->menuItemAt(QPoint(x, y)) == PinWindow::MenuItem::Copy) {
+                    copyItem = PinWindow::MenuItem::Copy;
+                    copyPoint = QPoint(x, y); // 这个点已被 menuItemAt 验证落在「复制」上
+                }
+            }
+            if (copyItem != PinWindow::MenuItem::None)
+                break;
+        }
+        bool copyOk = false;
+        out << "PIN_DEMO menuProbe point=" << copyPoint.x() << "," << copyPoint.y()
+            << " itemAtPoint=" << static_cast<int>(first->menuItemAt(copyPoint))
+            << " menuOpenBefore=" << (first->menuOpen() ? 1 : 0) << "\n";
+        out.flush();
+        if (copyItem != PinWindow::MenuItem::None) {
+            send(first, QEvent::MouseButtonPress, copyPoint, Qt::LeftButton, Qt::LeftButton);
+            send(first, QEvent::MouseButtonRelease, copyPoint, Qt::LeftButton, Qt::NoButton);
+            copyOk = !first->menuOpen();
+        }
+
+        // 「保存到默认目录」也走一遍（默认目录 = ~/Pictures/Screenshots，验收脚本会删掉产物）
+        bool saveOk = false;
+        {
+            send(first, QEvent::MouseButtonPress, menuPoint, Qt::RightButton, Qt::RightButton);
+            send(first, QEvent::MouseButtonRelease, menuPoint, Qt::RightButton, Qt::NoButton);
+            PinWindow::MenuItem saveItem = PinWindow::MenuItem::None;
+            QPoint savePoint;
+            for (int y = 0; y < first->height() && saveItem == PinWindow::MenuItem::None; ++y) {
+                for (int x = 0; x < first->width(); x += 4) {
+                    if (first->menuItemAt(QPoint(x, y)) == PinWindow::MenuItem::Save) {
+                        saveItem = PinWindow::MenuItem::Save;
+                        savePoint = QPoint(x, y);
+                        break;
+                    }
+                }
+            }
+            if (saveItem != PinWindow::MenuItem::None) {
+                send(first, QEvent::MouseButtonPress, savePoint, Qt::LeftButton, Qt::LeftButton);
+                send(first, QEvent::MouseButtonRelease, savePoint, Qt::LeftButton, Qt::NoButton);
+                saveOk = !first->menuOpen();
+            }
+        }
+
+
+        // 4) 第二张并存
+        QImage second(160, 120, QImage::Format_RGB32);
+        second.fill(QColor(0x2d, 0xff, 0x88));
+        pinImage(second, start + QPoint(320, 40));
+        const bool twoPins = m_pins.size() == 2;
+
+        out << "PIN_DEMO menu=" << (menuOpened ? 1 : 0) << " copy=" << (copyOk ? 1 : 0)
+            << " menuCopyPoint=" << (copyItem != PinWindow::MenuItem::None ? 1 : 0)
+            << " saveItem=" << (saveOk ? 1 : 0) << " twoPins=" << (twoPins ? 1 : 0) << "\n";
+        const bool ok = dragOk && zoomOk && menuOpened && copyOk && saveOk && twoPins;
+
+        // 6) 把两张贴图**保持一会儿**，让验收脚本用另一个进程去截屏核对位置与像素。
+        //    ⚠️ 不能在本进程里截屏：同一进程的 ScreenShot2 拍不到自己的 layer-shell 表面
+        //    （ISSUE-007 实测过，Toast 拖动基准也是因此才用子进程当观测者）。
+        QStringList rectText;
+        for (PinWindow *pin : std::as_const(m_pins)) {
+            const QRect rect = pin->pinRect();
+            rectText << QStringLiteral("%1,%2 %3x%4")
+                            .arg(rect.x())
+                            .arg(rect.y())
+                            .arg(rect.width())
+                            .arg(rect.height());
+        }
+        int holdMs = qEnvironmentVariableIntValue("SEASHOT_PIN_DEMO_HOLD");
+        if (holdMs <= 0)
+            holdMs = 2500;
+        out << "PIN_DEMO holding=" << holdMs << " pinRects=" << rectText.join(QLatin1Char(';'))
+            << "\n";
+        out.flush();
+
+        QTimer::singleShot(holdMs, this, [this, first, ok]() {
+            QTextStream out(stdout);
+            // 7) 关掉第一张：第二张还在；再全部关掉 → 无残留
+            first->closePin();
+            const bool oneLeft = m_pins.size() == 1;
+            while (!m_pins.isEmpty())
+                m_pins.first()->closePin();
+            QCoreApplication::processEvents();
+            const bool noResidue = m_pins.isEmpty();
+            out << "PIN_DEMO close oneLeft=" << (oneLeft ? 1 : 0) << " noResidue="
+                << (noResidue ? 1 : 0) << "\n";
+            const bool allOk = ok && oneLeft && noResidue;
+            out << (allOk ? "PIN_DEMO PASS" : "PIN_DEMO FAIL") << "\n";
+            out.flush();
+            QCoreApplication::exit(allOk ? 0 : 1);
+        });
+    });
+
     return QCoreApplication::exec();
 }
 
@@ -1930,6 +2155,8 @@ int Application::runInplaceDemo(const QString &outPrefix)
                 postKey(Qt::Key_C, QString(), Qt::ControlModifier);
             else if (actionMode == QLatin1String("save"))
                 postKey(Qt::Key_S, QString(), Qt::ControlModifier);
+            else if (actionMode == QLatin1String("pin"))
+                postKey(Qt::Key_T, QString(), Qt::ControlModifier);
             else
                 postKey(Qt::Key_Return, QStringLiteral("\r"));
             exitWorks = !m_overlay->isAnnotating();
@@ -2523,6 +2750,10 @@ int Application::run()
         return runToastDragBench(m_options.toastDragBenchMs);
     if (!m_options.inplaceDemoOut.isEmpty())
         return runInplaceDemo(m_options.inplaceDemoOut);
+    if (!m_options.pinDemoOut.isEmpty())
+        return runPinDemo(m_options.pinDemoOut);
+    if (!m_options.pinPath.isEmpty())
+        return runPinFile(m_options.pinPath);
     if (m_options.printConfig)
         return runPrintConfig();
     if (m_options.hotkeyStatus) {
