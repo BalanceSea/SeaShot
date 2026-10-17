@@ -1755,8 +1755,16 @@ int Application::runInplaceDemo(const QString &outPrefix)
         QTextStream(stdout).flush();
     });
 
-    // 拖拽 → selectionFinished → 异步抓冻结屏幕 → beginAnnotating：给这条链 2s
-    QTimer::singleShot(2000, this, [this, outPrefix]() {
+    // 拖拽 → selectionFinished → 异步抓冻结屏幕 → beginAnnotating：给这条链 2s。
+    // ⚠️ 抓屏是异步的：如果 2s 后还没进 Annotating（机器忙/有别的进程在抢屏幕），
+    //    就再等一会儿重试，而不是直接往下跑出一堆看不懂的失败。
+    auto verification = std::make_shared<std::function<void(int)>>();
+    *verification = [this, outPrefix, verification](int attempt) {
+        if (!m_overlay->isAnnotating() && attempt < 20) {
+            QTimer::singleShot(250, this, [verification, attempt]() { (*verification)(attempt + 1); });
+            return;
+        }
+        [this, outPrefix]() {
         QTextStream out(stdout);
         const bool annotating = m_overlay->isAnnotating();
         const QImage frozen = m_overlay->frozenFrame();
@@ -1768,6 +1776,18 @@ int Application::runInplaceDemo(const QString &outPrefix)
         out << "INPLACE_DEMO " << m_overlay->annotationDiagnostics() << "\n";
         out << "INPLACE_DEMO grab=" << shot.width() << "x" << shot.height() << " dpr=" << dpr
             << "\n";
+        // 诊断：拖拽本该选中 220,180 540x380。若不一样（例如外面的东西点了一下，被当成
+        // "选中那个窗口"），这里直接写出来，省得对着一堆失败排查。
+        {
+            const QRectF got = m_overlay->localSelectionRect();
+            const QRectF want(220, 180, 540, 380);
+            if ((got.topLeft() - want.topLeft()).manhattanLength() > 1
+                || qAbs(got.width() - want.width()) > 1 || qAbs(got.height() - want.height()) > 1) {
+                out << "INPLACE_DEMO selectionMismatch got=" << qRound(got.x()) << ","
+                    << qRound(got.y()) << " " << qRound(got.width()) << "x" << qRound(got.height())
+                    << " want=220,180 540x380\n";
+            }
+        }
 
         if (!outPrefix.isEmpty()) {
             shot.save(outPrefix + QStringLiteral("-overlay.png"));
@@ -2416,7 +2436,9 @@ int Application::runInplaceDemo(const QString &outPrefix)
         } else {
             QCoreApplication::exit(allOk ? 0 : 1);
         }
-    });
+        }();
+    };
+    (*verification)(0);
 
     return QCoreApplication::exec();
 }

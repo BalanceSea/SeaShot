@@ -1,7 +1,7 @@
 Test project /home/balancesea/Vibe Code/SeaShot/build
     Start 9: tst_scrollstitcher
-1/1 Test #9: tst_scrollstitcher ...............   Passed    0.27 sec
+1/1 Test #9: tst_scrollstitcher ...............   Passed    0.28 sec
 
 100% tests passed out of 1
 
-Total Test time (real) =   0.27 sec
+Total Test time (real) =   0.28 sec

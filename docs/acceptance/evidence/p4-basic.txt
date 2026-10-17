@@ -1,19 +1,19 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-110194" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-119705" id= 1 run方式= Script<N>.run 
 PORTAL_SCREENCAST_REGISTER appId=seashot ok=1
 PORTAL_SCREENCAST_BEGIN restoreToken=XakNXJWJS6RrhxlXRa7EvQ persistMode=2 portalVersion=5
-PORTAL_SCREENCAST_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_14385/seashot_1bcc450a
-PORTAL_SCREENCAST_REQUEST_HANDLE CreateSession actualPath=/org/freedesktop/portal/desktop/request/1_14385/seashot_1bcc450a
+PORTAL_SCREENCAST_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_15672/seashot_e68ff8ee
+PORTAL_SCREENCAST_REQUEST_HANDLE CreateSession actualPath=/org/freedesktop/portal/desktop/request/1_15672/seashot_e68ff8ee
 PORTAL_SCREENCAST_RESPONSE CreateSession code=0 keys=session_handle session_handleType=QString
-PORTAL_SCREENCAST_REQUEST SelectSources predictedPath=/org/freedesktop/portal/desktop/request/1_14385/seashot_2404c736
-PORTAL_SCREENCAST_REQUEST_HANDLE SelectSources actualPath=/org/freedesktop/portal/desktop/request/1_14385/seashot_2404c736
-PORTAL_SCREENCAST_REQUEST Start predictedPath=/org/freedesktop/portal/desktop/request/1_14385/seashot_62e72f78
-PORTAL_SCREENCAST_REQUEST_HANDLE Start actualPath=/org/freedesktop/portal/desktop/request/1_14385/seashot_62e72f78
-PORTAL_SCREENCAST_RESPONSE Start code=0 keys=restore_token,streams startLatencyMs=5
-[info] [portal] ScreenCast 会话建立: "ok=1 session=/org/freedesktop/portal/desktop/session/1_14385/seashot_s_fdb20404 streams=1 streamsPresent=1 node=91 usedRestoreToken=1 restoreToken=XakNXJWJS6RrhxlXRa7EvQ startLatencyMs=5" 
+PORTAL_SCREENCAST_REQUEST SelectSources predictedPath=/org/freedesktop/portal/desktop/request/1_15672/seashot_87934d2e
+PORTAL_SCREENCAST_REQUEST_HANDLE SelectSources actualPath=/org/freedesktop/portal/desktop/request/1_15672/seashot_87934d2e
+PORTAL_SCREENCAST_REQUEST Start predictedPath=/org/freedesktop/portal/desktop/request/1_15672/seashot_503d5f7a
+PORTAL_SCREENCAST_REQUEST_HANDLE Start actualPath=/org/freedesktop/portal/desktop/request/1_15672/seashot_503d5f7a
+PORTAL_SCREENCAST_RESPONSE Start code=0 keys=restore_token,streams startLatencyMs=14
+[info] [portal] ScreenCast 会话建立: "ok=1 session=/org/freedesktop/portal/desktop/session/1_15672/seashot_s_951b2de9 streams=1 streamsPresent=1 node=91 usedRestoreToken=1 restoreToken=XakNXJWJS6RrhxlXRa7EvQ startLatencyMs=14" 
 [info] [pipewire] 开始出帧 
-[info] [record] 编码器已启动 QSize(320, 240) 15 fps → "/home/balancesea/.cache/seashot/recording/seashot-record-110194.mkv" 
+[info] [record] 编码器已启动 QSize(320, 240) 15 fps → "/home/balancesea/.cache/seashot/recording/seashot-record-119705.mkv" 
 [info] [record] 开始录制（PipeWire 帧源） QRectF(300,200 320x240) 15 fps 帧尺寸 QSize(320, 240) 
 RECORD_SOURCE pipewire node=91 format="BGRA 1920x1080" frameSize=320x240
 [info] [app] 录制帧源 = PipeWire "BGRA 1920x1080" 
@@ -22,10 +22,10 @@ RECORDING_INDICATOR_GEOMETRY x=300 y=154 w=300 h=40 regionTop=200 regionBottom=4
 RECORDING_INDICATOR region=300,200 320x240 fps=15 output=docs/acceptance/evidence/p4-basic.gif
 [info] [app] 将在 3 秒后自动停止录制 
 RECORD_STOP requested
-[info] [record] 停止采集：请求 48 帧 / 采到 48 / 丢 0 / 失败 0 用时 3150 ms 
-[info] [record] GIF 完成 "docs/acceptance/evidence/p4-basic.gif" 48 帧 24097 字节 
-RECORD ok path=docs/acceptance/evidence/p4-basic.gif frames=48 dropped=0 failed=0 elapsedMs=3150 fps=15.24
+[info] [record] 停止采集：请求 47 帧 / 采到 47 / 丢 0 / 失败 0 用时 3098 ms 
+[info] [record] GIF 完成 "docs/acceptance/evidence/p4-basic.gif" 47 帧 20061 字节 
+RECORD ok path=docs/acceptance/evidence/p4-basic.gif frames=47 dropped=0 failed=0 elapsedMs=3098 fps=15.17
 [info] [toast] layer-shell role 已应用 （铺满输出的固定表面） 
 TOAST image=320x240 display=320x240 scaled=0 anchor=300,200 320x240 card=425x288 bar=48 buttons=4 cardTopLeft=300,442 fixedSurface=1 autoHide=0
 [info] [toast] visible= true layerShell= true cardTopLeft= QPoint(300,442) autoHideMs= 0 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-110194" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-119705" 

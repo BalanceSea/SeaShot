@@ -1,0 +1,13 @@
+== Phase E 验收（OCR 文字识别）==
+二进制: /home/balancesea/.local/bin/seashot (2026-10-17 08:37:49)
+
+PASS  E. 依赖：tesseract + 中英语言包  语言包：afr,chi_sim,eng,osd
+PASS  E. 中文识别（与已知文本比对） 识别="你 好 世 界 这 是 识 别 测 试"（命中 10/10），耗时 389ms
+PASS  E. 英文识别（关键短语必须命中） 识别="Hello World OCR test 12345"，耗时 116ms（--ocr-langs eng 生效）
+PASS  E. 交互入口 Ctrl+O → 面板 → 复制 OCR ok lang=chi_sim+eng psm=3 lines=7 elapsedMs=492；OCR_WINDOW ok=1 lines=7 elapsedMs=492；OCR_COPY ok chars=107；OCR_COPY_LINE ok chars=7；剪贴板里确实是识别结果里的那一行（"4 4 志 园…"）
+PASS  E. 错误路径：读不到的图会明确报错 OCR_ERROR 无法读取 docs/acceptance/evidence/e-ocr-empty.txt（退出码 2，不是静默返回空文本）
+PASS  E. 单测（本机装了 tesseract 就真跑识别） 100% tests passed out of 1
+PASS  E. 视觉证据落盘                    e-ocr-zh.png / e-ocr-en.png（已知文本的合成图）+ e-ocr-*.txt（识别结果）
+
+== 汇总: 7 通过 / 0 失败 ==
+证据: docs/acceptance/evidence/e-ocr*.txt / e-ocr-*.png

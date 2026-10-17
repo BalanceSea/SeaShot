@@ -40,6 +40,12 @@ report() { # $1 名称 $2 0/1 $3 细节
     fi
 }
 
+rmse_between() { # $1 $2 → 归一化 RMSE
+    local raw
+    raw=$(magick compare -metric RMSE "$1" "$2" null: 2>&1)
+    sed -nE 's/.*\(([0-9.]+)\).*/\1/p' <<<"$raw"
+}
+
 field() { # $1 关键字（形如 key=）
     sed -nE "s/.*$1([^ ]+).*/\1/p" "$LOG" | head -1
 }
@@ -148,34 +154,28 @@ else
     report "A3. 结果尺寸 == 选区尺寸" 0 "落盘图 $RSIZE ≠ 选区 ${SW}x${SH}"
 fi
 
-# 结果里必须真的有标注。直接比整张图会被「桌面内容在两次抓取之间变了」干扰，
-# 所以用**区域对照**：挑一个确定被标注盖住的小区域（demo 里椭圆画在 250,40 150x100），
-#   结果 应该像「预览（带标注）」而不是像「未标注的冻结裁切」。
-# 实测（本机）：结果 vs 冻结裁切 ≈0.129，结果 vs 预览 ≈0.002 —— 判据留 4 倍差距，容错很大。
-REGION="150x100+250+40"
+# 结果里必须真的有标注。判据必须**不受"屏幕背景内容"影响**，也不再跨进程比较
+# （跨进程/跨时刻比较会因为桌面内容变化而假红 —— 实测踩过）：
+#   把"落盘结果"与"**同一次运行**的未标注冻结裁切"比：标注像素的**峰值差**要大（红椭圆 vs 浅底），
+#   且差异像素**数量**要够（椭圆描边面积量级 ~1500px）。两个都过才算真有标注。
 FROZEN="$COMMIT_PREFIX-frozen.png"
 SEL_CROP="$COMMIT_PREFIX-frozen-selection.png"
-PREVIEW="$PREFIX-annotated.png"
-R_FROZEN="?"; R_PREVIEW="?"
-if [ -f "$FROZEN" ] && [ -n "${SX:-}" ] && [ -f "$RESULT" ] && [ -f "$PREVIEW" ]; then
+PEAK="-"; AE="-"
+if [ -f "$FROZEN" ] && [ -n "${SX:-}" ] && [ -f "$RESULT" ]; then
     magick "$FROZEN" -crop "${SW}x${SH}+${SX}+${SY}" +repage "$SEL_CROP" 2>/dev/null
-    magick "$SEL_CROP" -crop "$REGION" +repage "$COMMIT_PREFIX-region-frozen.png" 2>/dev/null
-    magick "$RESULT" -crop "$REGION" +repage "$COMMIT_PREFIX-region-result.png" 2>/dev/null
-    magick "$PREVIEW" -crop "$REGION" +repage "$COMMIT_PREFIX-region-preview.png" 2>/dev/null
-    tmp=$(magick compare -metric RMSE "$COMMIT_PREFIX-region-frozen.png" "$COMMIT_PREFIX-region-result.png" null: 2>&1)
-    R_FROZEN=$(sed -nE 's/.*\(([0-9.]+)\).*/\1/p' <<<"$tmp")
-    tmp=$(magick compare -metric RMSE "$COMMIT_PREFIX-region-preview.png" "$COMMIT_PREFIX-region-result.png" null: 2>&1)
-    R_PREVIEW=$(sed -nE 's/.*\(([0-9.]+)\).*/\1/p' <<<"$tmp")
+    PEAK=$(magick "$RESULT" "$SEL_CROP" -compose difference -composite -format '%[fx:maxima*255]' info: 2>/dev/null)
+    AE=$(magick compare -metric AE "$RESULT" "$SEL_CROP" null: 2>&1 | sed -nE 's/^([0-9]+).*/\1/p')
 fi
 if python3 -c "
 import sys
-f, p = float('${R_FROZEN:-1}'), float('${R_PREVIEW:-0}')
-sys.exit(0 if (f > 0.05 and f > 4 * max(p, 1e-6)) else 1)"; then
-    report "A3. 结果里确实有标注（区域对照）" 1 \
-        "标注区域 $REGION：结果 vs 未标注裁切 RMSE=$R_FROZEN ≫ 结果 vs 预览 RMSE=$R_PREVIEW"
+peak = float('${PEAK:-0}')
+ae = float('${AE:-0}')
+sys.exit(0 if (peak >= 100 and ae >= 500) else 1)"; then
+    report "A3. 结果里确实有标注" 1 \
+        "结果与同一次运行的未标注裁切比：峰值差=$PEAK（≥100，红椭圆 vs 浅底）、差异像素 $AE 个（≥500，椭圆描边量级）"
 else
-    report "A3. 结果里确实有标注（区域对照）" 0 \
-        "标注区域 $REGION：结果 vs 未标注裁切=$R_FROZEN，结果 vs 预览=$R_PREVIEW（应前者 >0.05 且 ≥4 倍）"
+    report "A3. 结果里确实有标注" 0 \
+        "结果 vs 同一运行的未标注裁切：峰值差=$PEAK（应 ≥100）、差异像素=$AE（应 ≥500）"
 fi
 
 ### C) A1/A2 判据未回归 --------------------------------------------------------
