@@ -1,16 +1,16 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-165557" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-169876" id= 1 run方式= Script<N>.run 
 HOTKEY_PORTAL_REQUESTING id=screenshot
 [info] [hotkey-portal] Activated 信号订阅: 成功 
 [info] [hotkey-portal] ShortcutsChanged 信号订阅: 成功 
-HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_21470/seashot_a5730f89 args=1 signature=
-[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_21470/seashot_s_dbd1e2f1" 
-HOTKEY_PORTAL_REQUEST BindShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_21470/seashot_3dbc0c2c args=4 signature=
-[info] [hotkey-portal] 已授权: "ok=1 denied=0 screenshot=(未绑定) latencyMs=3" 
-HOTKEY_PORTAL_BOUND ok=1 denied=0 screenshot=(未绑定) latencyMs=3
+HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_22178/seashot_a3d04930 args=1 signature=
+[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_22178/seashot_s_7bb960b1" 
+HOTKEY_PORTAL_REQUEST BindShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_22178/seashot_a778dcd9 args=4 signature=
+[info] [hotkey-portal] 已授权: "ok=1 denied=0 screenshot=(未绑定) latencyMs=2" 
+HOTKEY_PORTAL_BOUND ok=1 denied=0 screenshot=(未绑定) latencyMs=2
 HOTKEY_PORTAL_RELIST（应答里没有按键，再查一次当前绑定）
-HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_21470/seashot_12211fa7 args=2 signature=
+HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_22178/seashot_a7faea5f args=2 signature=
 HOTKEY_PORTAL_NO_TRIGGER（已授权，但系统没给按键 —— 可在设置里点「更改快捷键…」，或带 --hotkey-portal-configure 重跑）
 HOTKEY_PORTAL_FLOW ok=1 trigger=(未设置)
-[info] [kwin] 脚本已卸载 pluginName= "seashot-165557" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-169876" 

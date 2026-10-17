@@ -74,12 +74,18 @@ else
 fi
 
 ### D) 快捷键：写入 / 读回 / 换键 / 解绑（KGlobalAccel 跨进程持久化） ------------
+# ⚠️ 这段会改写用户的快捷键：先记住原值，测完**恢复**（开发时就是因为没恢复，
+#    把用户自己设好的 Ctrl+Alt+A 清掉了两次）。
+HOTKEY_BEFORE=$(timeout 60 "$SEASHOT" --hotkey-status 2>/dev/null \
+    | sed -nE 's/^HOTKEY configured=([^ ]+).*/\1/p' | head -1)
+[ -n "${HOTKEY_BEFORE:-}" ] || HOTKEY_BEFORE="none"
 "$SEASHOT" --set-hotkey "Ctrl+Alt+S" > "$OUT/p3-hotkey-1.txt" 2>/dev/null
 H1=$("$SEASHOT" --hotkey-status 2>/dev/null | tail -1)
 "$SEASHOT" --set-hotkey "Ctrl+Shift+F9" > "$OUT/p3-hotkey-2.txt" 2>/dev/null
 H2=$("$SEASHOT" --hotkey-status 2>/dev/null | tail -1)
 "$SEASHOT" --set-hotkey none > "$OUT/p3-hotkey-3.txt" 2>/dev/null
-H3=$("$SEASHOT" --hotkey-status 2>/dev/null | tail -1)
+H3=$("$SEASHOT" --hotkey-status 2>/dev/null | tail -1)   # 先采样"解绑后的状态"再恢复原值
+timeout 60 "$SEASHOT" --set-hotkey "$HOTKEY_BEFORE" > "$OUT/p3-restore-hotkey.txt" 2>/dev/null
 echo "$H1" > "$OUT/p3-hotkey-status.txt"
 echo "$H2" >> "$OUT/p3-hotkey-status.txt"
 echo "$H3" >> "$OUT/p3-hotkey-status.txt"
