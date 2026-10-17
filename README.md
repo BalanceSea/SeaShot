@@ -35,7 +35,7 @@ Wayland 下请用安装脚本安装（它会写 KWin 截图授权声明并刷新
 
 ## ✅ 验收
 
-每一步交付都有可重复执行的验收脚本（截图主链路、编辑器、就地标注 A1–A3.1、选区调整 B、贴图 C、长截图 D、OCR E、全局快捷键 F），证据在 `docs/acceptance/evidence/`，各阶段记录在 `docs/acceptance/*.md`。
+每一步交付都有可重复执行的验收脚本（截图主链路、编辑器、就地标注 A1–A3.1、选区调整 B、贴图 C、长截图 D、OCR E、全局快捷键 F），证据（截图 / 日志）与逐阶段记录只落在**本地** `docs/acceptance/`（已 gitignore，不进仓库）。
 
 ```bash
 cd build && ctest --output-on-failure && cd ..            # 11 套单元测试
@@ -54,7 +54,7 @@ for s in phase1 phase2 phase3 phase4 phaseA1 phaseA2 phaseA3 phaseA3-color \
 | [录制与导出](docs/recording.md) | PipeWire / 轮询回退、帧率与丢帧、中间文件、导出 GIF/MP4 |
 | [构建与安装](docs/build.md) | 依赖表、各发行版、安装脚本开关、Wayland 授权 |
 | [兼容性与限制](docs/limitations.md) | 后端差异、缩放、多屏、长截图与快捷键边界 |
-| [已知问题](docs/known-issues.md) | ISSUE-001~015：踩过的坑与结论 |
 | [交互与视觉规格](docs/ui-spec.md) | 界面规格与图标约定 |
-| [就地编辑计划](docs/plan-inplace-editor.md) | A1–F 各阶段设计与取舍 |
-| [验收记录](docs/acceptance/) | 每阶段的实测输出与截图证据（含 [演示图生成](docs/images/README.md)） |
+| [演示图生成](docs/images/README.md) | 用真实控件重新生成 README 配图 |
+
+> 本地开发文档（`docs/known-issues.md`、`docs/plan-inplace-editor.md`、`docs/next-session-plan.md`、`docs/acceptance/`）不入库，用 `ls docs/` 查看。
