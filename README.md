@@ -43,3 +43,7 @@ Wayland 下请用安装脚本安装（它会写 KWin 截图授权声明并刷新
 | [兼容性与限制](docs/limitations.md) | 后端差异、缩放、多屏、长截图与快捷键边界 |
 | [交互与视觉规格](docs/ui-spec.md) | 界面规格与图标约定 |
 | [演示图生成](docs/images/README.md) | 用真实控件重新生成 README 配图 |
+
+## 📄 开源协议
+
+本项目采用 [MIT License](LICENSE) 开源协议。
