@@ -1,7 +1,7 @@
 find_package(Qt6 REQUIRED COMPONENTS Test)
 
 set(SEASHOT_TESTS tst_screenmapper tst_selection tst_settings tst_annotation tst_settingsdialog tst_tray
-                 tst_gifencoder tst_gifrecorder)
+                 tst_gifencoder tst_gifrecorder tst_scrollstitcher)
 if(XCB_FOUND)
     list(APPEND SEASHOT_TESTS tst_ewmh)
 endif()
@@ -13,4 +13,4 @@ foreach(test_name ${SEASHOT_TESTS})
 endforeach()
 
 # 画布/配置界面测试要建 QWidget：用 offscreen 平台，避免测试时弹窗、也不依赖会话显示环境
-set_tests_properties(tst_annotation tst_settingsdialog tst_tray PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+set_tests_properties(tst_annotation tst_settingsdialog tst_tray tst_scrollstitcher PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")

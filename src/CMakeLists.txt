@@ -14,6 +14,7 @@ set(SEASHOT_CORE_SOURCES
     editor/AnnotationRenderer.cpp
     editor/AnnotationCanvas.cpp
     editor/EditorWindow.cpp
+    scroll/ScrollStitcher.cpp
     record/GifEncoder.cpp
     record/GifRecorder.cpp
     record/RecordingIndicator.cpp
@@ -45,6 +46,7 @@ set(SEASHOT_HEADERS
     editor/AnnotationRenderer.h
     editor/AnnotationCanvas.h
     editor/EditorWindow.h
+    scroll/ScrollStitcher.h
     record/GifEncoder.h
     record/GifRecorder.h
     record/RecordingIndicator.h
