@@ -28,6 +28,15 @@ CMakeUserPresets.json
 /probes/out/
 /docs/acceptance/
 
+# 🎬 本地宣传视频工程、素材与视频成片
+/promo-video/
+*.mp4
+*.webm
+*.mov
+*.mkv
+*.avi
+*.m4v
+
 # 📝 本地开发计划、会话笔记与环境记录
 /PLAN.md
 /docs/next-session-plan.md
