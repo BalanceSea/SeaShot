@@ -1,11 +1,11 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-153198" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-165699" id= 1 run方式= Script<N>.run 
 [info] [hotkey] 当前绑定: "Ctrl+Alt+F9" 
 [info] [app] 快捷键已更新: "Ctrl+Alt+F9" 实际生效: "Ctrl+Alt+F9" 
-HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_20025/seashot_b88b1102 args=1 signature=
-[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_20025/seashot_s_36e6c1b8" 
-HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_20025/seashot_f0a1a9ae args=2 signature=
+HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_21499/seashot_5c54c000 args=1 signature=
+[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_21499/seashot_s_98fee790" 
+HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_21499/seashot_63a83a99 args=2 signature=
 HOTKEY_PORTAL_STATE available=1 version=2 authorized=1 shortcuts=screenshot=(unbound),first-run-demo=Ctrl+Alt+A,seashot-test-new=(unbound),capture=Ctrl+Alt+F9
 HOTKEY configured=Ctrl+Alt+F9 actual=Ctrl+Alt+F9
-[info] [kwin] 脚本已卸载 pluginName= "seashot-153198" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-165699" 

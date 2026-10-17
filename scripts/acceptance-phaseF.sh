@@ -24,6 +24,9 @@ set -u
 cd "$(dirname "$0")/.."
 
 SEASHOT="$HOME/.local/bin/seashot"
+# 验收会起常驻实例：关掉"首次运行自动向系统申请快捷键授权"，
+# 否则系统授权对话框会弹出来干扰验收
+export SEASHOT_NO_FIRST_RUN_ASK=1
 OUT="docs/acceptance/evidence"
 mkdir -p "$OUT" docs/acceptance
 PASS=0

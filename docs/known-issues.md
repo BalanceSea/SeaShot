@@ -213,7 +213,9 @@ seashot --record --rect X,Y,W,H --seconds 3 --save /tmp/x.mp4
 | 4 | 授权成功但"没有按键" | `preferred_trigger` 要**大写 XDG 格式**：`Ctrl+Alt+S` 被 KDE 判成 `Unknown modifier "Ctrl"` 丢掉；要 `CTRL+ALT+S` |
 | 5 | **用户自己设好的 `Ctrl+Alt+A` 被清空** | portal 的 bind 会**写回**绑定：用 KGlobalAccel 已占用的 id（`capture`）发起一次**不带 preferred_trigger** 的 bind，就把那个键覆盖成 `none`。解法：代码永远带 `preferred_trigger`；验收脚本"测完恢复原值" |
 
-**另外两条 KDE 语义**（不算坑，但影响预期）：
+| 6 | "是否已授权"被误判成"没绑定"，于是多发起一次 bind（有覆盖用户按键的风险） | 两处各发了一次 `ListShortcuts`，先到的**空应答**被当成结论。解法：只发一次 list，同一结果同时喂给"是否已授权"和"要不要发起"；并且**已授权就绝不 bind** |
+
+**另外三条 KDE 语义**（不算坑，但影响预期）：
 - KDE 6 里 **KGlobalAccel 与 portal 共用同一份存储**（`kglobalshortcutsrc`）→ 已被 KGlobalAccel
   建过条目的 id 不会弹授权对话框；要让用户看到"首次授权"，发起用的 id 必须是新的
   （所以代码里 portal 用 `screenshot`，KGlobalAccel 用 `capture`）。

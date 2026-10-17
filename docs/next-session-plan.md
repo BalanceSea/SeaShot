@@ -287,7 +287,10 @@ cmake -S probes/cmake -B probes/build -G Ninja && cmake --build probes/build
 
 ## 8. 待用户决策的开放项
 
-0.5 **首次运行要不要自动发起一次 portal 授权**（从而立刻弹授权对话框）？现在要用户点一下入口。
+0.5 ~~首次运行要不要自动发起 portal 授权~~ → **已做**（2026-10-17）：常驻第一次启动时，
+  若"没配置键 + 门户里也没有绑定 + 没问过" → 自动发起一次（于是弹授权对话框）；
+  已经授权过则只打一行 `HOTKEY_FIRST_RUN already-authorized`，不打扰。
+  验收用 `SEASHOT_NO_FIRST_RUN_ASK=1` 关掉（phase3/phaseF 已加）。
 1. **GIF 剪贴板 MIME**：现挂 `image/gif`（聊天/浏览器可当动图粘）。
    若用户实际粘到某程序里变成文件或粘不进去 → 改挂 `text/uri-list`。**取决于用户粘到哪**。
 2. **`acceptance-phase4.sh` 的 F 段判据已按新行为修好**（ISSUE-012，已解决）：

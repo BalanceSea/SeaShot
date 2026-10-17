@@ -87,6 +87,28 @@ HOTKEY_PORTAL_REQUEST BindShortcuts ... shortcuts: QList(std::pair("first-run-de
 - `phaseD` 原来在「测试窗口被别的窗口盖住、只滚了一部分」时直接判 FAIL（实测 2260/2500）；
   现在会先**激活测试窗口**，仍被打断则报 **SKIP（环境遮挡）** —— 与 phase1 C 段一致。
 
+## 首次运行自动发起（后来加的）
+
+用户要求"应用自己注册、用户决定授权"，于是常驻实例**第一次**启动时会自动发起一次：
+- 条件（全满足才发起）：`shortcut/portalAsked` 未置位、`shortcut/hotkey` 为空、门户可用；
+- **先静默 `ListShortcuts`**：如果门户里已经有绑定（之前授权过）→ 什么都不做，只打
+  `HOTKEY_FIRST_RUN already-authorized trigger=...（不再打扰）`；
+  真的没有绑定才 `BindShortcuts` → 于是系统弹授权对话框，由用户允许/拒绝；
+- 无论结果如何都会把 `shortcut/portalAsked` 置 true —— **只问一次**（之后想再问就点设置里的按钮）。
+- 验收/自动化用 `SEASHOT_NO_FIRST_RUN_ASK=1` 关掉（否则系统对话框会挡住验收；phase3/phaseF 已加）。
+
+实现时踩到一个顺序坑：一开始"是否已授权"和"要不要发起"各自发了一次 `ListShortcuts`，
+先到的那个空应答被当成"没有绑定"→ 多发起了一次 bind —— 而 **bind 会带着 preferred_trigger 写回绑定**，
+有覆盖用户已有按键的风险（正是 ISSUE-014 第 5 条）。现在改成：只发**一次** list，
+同一个结果同时用于两件事；并且"已授权就绝不 bind"。
+
+## 关于 kglobalshortcutsrc 里的测试残留条目
+
+开发/调试过程中留下过 `screenshot=(none)`、`seashot-test-new=(none)` 两个空条目。
+**清理不掉**：把 `~/.config/kglobalshortcutsrc` 里对应的行删掉、并重启 `kglobalacceld`
+与 `xdg-desktop-portal-kde` 之后，只要再查一次（portal 会把它"记得"的 id 集合重新注册回去），
+它们就会再出现。它们没有绑键（`none`）、界面里不显示、不影响任何功能 —— 只能这样留着。
+
 ## 还没做的
 
 - **不主动弹窗**：目前首次授权要用户点一下设置/托盘里的入口（或命令行）。要不要在"第一次运行"

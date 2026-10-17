@@ -72,6 +72,9 @@ seashot --backend=x11 --list-windows # 显式选后端（XWayland 冒烟用）
 **「向系统申请注册（会弹授权对话框）」**（或托盘菜单「注册全局快捷键（由我申请）…」，
 或命令行 `seashot --hotkey-portal-request`）。系统会弹一个**授权对话框**列出请求的快捷键
 （预填一个键、可当场改），**你点允许它才生效**；拒绝/关掉则不注册。
+- **首次运行会自动问一次**：常驻实例第一次启动时（配置里没有键、门户里也没有绑定），
+  会自动发起注册 → 于是系统弹一次授权对话框，由你决定；之后**不再打扰**
+  （想再问就点设置里的按钮）。验收/自动化用 `SEASHOT_NO_FIRST_RUN_ASK=1` 关掉。
 - 想改键：同一页的「更改快捷键（系统对话框）…」，或 `--hotkey-portal-configure`
 - 看状态：`seashot --hotkey-portal-status`；`--hotkey-status` 会同时报"门户这条路"和
   "KGlobalAccel 那条路"的状态

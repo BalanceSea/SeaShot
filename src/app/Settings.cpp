@@ -18,6 +18,7 @@ constexpr const char *kAutoSave = "capture/autoSave";
 constexpr const char *kOpenEditor = "capture/openEditorAfterCapture";
 constexpr const char *kKeepShadow = "capture/keepShadowMargin";
 constexpr const char *kHotkey = "shortcut/hotkey";
+constexpr const char *kPortalAsked = "shortcut/portalAsked";
 constexpr const char *kGifFps = "record/fps";
 constexpr const char *kRecordFormat = "record/format";
 constexpr const char *kTrayPersistent = "ui/trayPersistent";
@@ -112,6 +113,16 @@ void Settings::setHotkey(const QString &value)
 {
     QSettings().setValue(QLatin1String(kHotkey), value);
     emit changed();
+}
+
+bool Settings::portalHotkeyAsked() const
+{
+    return QSettings().value(QLatin1String(kPortalAsked), false).toBool();
+}
+
+void Settings::setPortalHotkeyAsked(bool value)
+{
+    QSettings().setValue(QLatin1String(kPortalAsked), value);
 }
 
 QString Settings::recordFormat() const

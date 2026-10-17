@@ -175,6 +175,9 @@ private:
     class GlobalShortcutsPortal *ensureShortcutPortal();
     /// Phase F：常驻启动时静默检查"是否已授权"，是则监听 Activated
     void setupShortcutPortal();
+    /// Phase F：**首次运行**自动发起一次注册（于是系统会弹授权对话框，由用户决定）。
+    /// 已经授权过 / 已经用别的方式设过键 / 问过一次 → 都不再问。
+    void maybeAskForHotkeyOnFirstRun();
     /// Phase F：界面/托盘发起"让 SeaShot 申请注册"（会弹系统授权对话框）
     void requestHotkeyPortal();
     /// Phase F：打开系统的快捷键配置对话框
@@ -187,6 +190,7 @@ signals:
 private:
     std::unique_ptr<GlobalShortcutsPortal> m_shortcutPortal;
     bool m_portalRelistPending = false; ///< bind 应答没带按键 → 再 ListShortcuts 一次确认
+    bool m_firstRunAskPending = false;  ///< 首次运行：等 ListShortcuts 结果再决定要不要发起
     QRect virtualGeometry() const;
     bool isOneShot() const;
 

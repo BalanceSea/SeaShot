@@ -1,9 +1,9 @@
 == Phase F 验收（全局快捷键自注册 + 用户授权）==
-二进制: /home/balancesea/.local/bin/seashot (2026-10-17 09:19:27)
+二进制: /home/balancesea/.local/bin/seashot (2026-10-17 09:33:27)
 
 PASS  F. 门户可用（GlobalShortcuts）         available=1 version=2（xdg-desktop-portal-kde）
 PASS  F. 静默查询不弹窗且有结果         count=4 shortcuts=screenshot=(未绑定),first-run-demo=Ctrl+Alt+A,seashot-test-new=(未绑定),capture=Ctrl+Alt+A
-PASS  F. 请求注册不会挂死（有明确收尾） BindShortcuts 已发出；91ms 内收尾 → HOTKEY_PORTAL_FLOW ok=1 trigger=(未设置)
+PASS  F. 请求注册不会挂死（有明确收尾） BindShortcuts 已发出；93ms 内收尾 → HOTKEY_PORTAL_FLOW ok=1 trigger=(未设置)
 PASS  F. 常驻自检认出已授权的绑定      HOTKEY_PORTAL_STATE authorized id=first-run-demo trigger=Ctrl+Alt+A（按这个键就会截图）
 PASS  F. --hotkey-status 同时报两条路        HOTKEY_PORTAL_STATE available=1 version=2 authorized=1 shortcuts=screenshot=(unbound),first-run-demo=Ctrl+Alt+A,seashot-test-new=(unbound),capture=Ctrl+Alt+A · HOTKEY configured=Ctrl+Alt+A actual=Ctrl+Alt+A
 PASS  F. 原有 KGlobalAccel 路径未受影响    写入→读回→解绑→恢复都正常（HOTKEY_SET Ctrl+Alt+F9 actual=Ctrl+Alt+F9；HOTKEY configured=Ctrl+Alt+F9 actual=Ctrl+Alt+F9；HOTKEY_SET (none) actual=(未绑定)；恢复回 'Ctrl+Alt+A'：HOTKEY_SET Ctrl+Alt+A actual=Ctrl+Alt+A）

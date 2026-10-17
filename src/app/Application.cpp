@@ -815,6 +815,11 @@ void Application::startResident()
             startCapture();
         });
     }
+    // 顺序很重要：先决定"要不要首次运行问一次"，再由 setupShortcutPortal 发**唯一一次**
+    // ListShortcuts —— 那一次的结果同时用于"是否已授权"和"要不要发起注册"。
+    // （之前是两处各发一次 list，结果先到的那个空应答被当成"没有绑定"→ 多发起了一次 bind，
+    //   而 bind 会带着 preferred_trigger 写回绑定，有覆盖用户已有按键的风险 —— ISSUE-014 第 5 条。）
+    maybeAskForHotkeyOnFirstRun();
     setupShortcutPortal();
     applySettings();
 }
@@ -831,6 +836,28 @@ void Application::setupShortcutPortal()
     if (!GlobalShortcutsPortal::available(&version, &error))
         return;
     ensureShortcutPortal()->listShortcuts();
+}
+
+void Application::maybeAskForHotkeyOnFirstRun()
+{
+    // 只在**常驻启动**这条正常路径上做（--capture/--record 等一次性调用不会走到这里）。
+    // 验收/自动化用 SEASHOT_NO_FIRST_RUN_ASK=1 关掉（否则跑测试会被系统授权对话框挡住）。
+    if (qEnvironmentVariableIsSet("SEASHOT_NO_FIRST_RUN_ASK"))
+        return;
+    if (!m_settings || m_settings->portalHotkeyAsked())
+        return; // 问过了（允许或拒绝都算）—— 不再打扰
+    if (!m_settings->hotkey().isEmpty())
+        return; // 已经用 KGlobalAccel 那条路设过键，不必再问
+    uint version = 0;
+    QString error;
+    if (!GlobalShortcutsPortal::available(&version, &error)) {
+        QTextStream(stdout) << "HOTKEY_FIRST_RUN skip（没有 GlobalShortcuts 门户：" << error << "）\n";
+        QTextStream(stdout).flush();
+        return;
+    }
+    // 只置标志：真正"要不要发起"由紧随其后的那次 ListShortcuts 结果决定（见 listed 处理），
+    // 这样绝不会在"其实已经授权"的情况下盲目 bind（那会覆盖用户已有的键）。
+    m_firstRunAskPending = true;
 }
 
 GlobalShortcutsPortal *Application::ensureShortcutPortal()
@@ -939,6 +966,21 @@ GlobalShortcutsPortal *Application::ensureShortcutPortal()
                         applyPortalShortcut(trigger);
                         emit portalFlowFinished(true, trigger);
                     }
+                    return;
+                }
+                if (m_firstRunAskPending) {
+                    m_firstRunAskPending = false;
+                    if (!trigger.isEmpty()) {
+                        out << "HOTKEY_FIRST_RUN already-authorized trigger=" << trigger
+                            << "（不再打扰）\n";
+                        out.flush();
+                        return;
+                    }
+                    // 真的没绑定过 → 问一次：这次会弹系统授权对话框，由用户决定
+                    m_settings->setPortalHotkeyAsked(true); // 只问一次（无论结果）
+                    out << "HOTKEY_FIRST_RUN asking（首次运行：向系统申请注册，会弹授权对话框）\n";
+                    out.flush();
+                    requestHotkeyPortal();
                     return;
                 }
                 // 常驻启动时的静默自检：只报状态，不弹任何窗

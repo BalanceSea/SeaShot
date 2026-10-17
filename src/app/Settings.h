@@ -35,6 +35,9 @@ public:
 
     /// 全局快捷键（空 = 不绑定；PLAN 已定默认不绑定）
     QString hotkey() const;
+    /// 首次运行时"要不要申请门户授权"只问一次：问过（无论允许还是拒绝）就置 true。
+    bool portalHotkeyAsked() const;
+    void setPortalHotkeyAsked(bool value);
     void setHotkey(const QString &value);
 
     /// 录制中间格式：
