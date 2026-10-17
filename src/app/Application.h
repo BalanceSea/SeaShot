@@ -56,6 +56,8 @@ struct Options {
     QString pinPath; ///< --pin PATH：把一张图贴（钉）到屏幕上（Phase C）
     bool scrollCapture = false; ///< --scroll-capture：滚动截屏（Phase D）
     int scrollMs = 0;           ///< --scroll-ms N：滚动截屏最多跑 N 毫秒（0 = 用默认值）
+    QString ocrPath;            ///< --ocr PATH：对一张图做文字识别（Phase E）
+    QString ocrLangs;           ///< --ocr-langs "chi_sim+eng"：指定语言（默认自动）
     QString pinDemoOut; ///< --pin-demo PREFIX：贴图的自动化验收（Phase C）
     QString inplaceDemoOut; ///< --inplace-demo PATH：就地标注（Phase A1）的自动化验收
     QString benchCapturePath; ///< --bench-capture PATH：截全屏存盘并打印帧时间戳（给基准测试当观测者）
@@ -150,6 +152,10 @@ private:
     void onScrollFailed(const QString &error);
     /// Phase D：`--scroll-capture`（脚本式：给定矩形，跑到自己停/到时长上限就收工）
     int runScrollCaptureCli();
+    /// Phase E：对一张图做文字识别。interactive=true 时把结果弹成面板（否则只打印）
+    void startOcr(const QImage &image, bool interactive);
+    /// Phase E：`--ocr PATH`
+    int runOcrCli(const QString &path);
     QRect virtualGeometry() const;
     bool isOneShot() const;
 
@@ -190,6 +196,7 @@ private:
     /// 「完成」时上层要做的交付动作（Phase B/C：Enter / Ctrl+C / Ctrl+S / 贴图）
     Overlay::ConfirmAction m_pendingAction = Overlay::ConfirmAction::Plain;
     std::unique_ptr<ScrollCapturer> m_scrollCapturer;
+    QPointer<QWidget> m_ocrWindow; ///< OCR 结果面板（一次性 CLI 下要等它关掉再退）
     /// 屏幕上的贴图（Phase C）
     QVector<QPointer<PinWindow>> m_pins;
     bool m_quitWhenPinsClosed = false;

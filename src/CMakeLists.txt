@@ -14,6 +14,8 @@ set(SEASHOT_CORE_SOURCES
     editor/AnnotationRenderer.cpp
     editor/AnnotationCanvas.cpp
     editor/EditorWindow.cpp
+    ocr/OcrEngine.cpp
+    ocr/OcrWindow.cpp
     scroll/ScrollStitcher.cpp
     scroll/ScrollCapturer.cpp
     record/GifEncoder.cpp
@@ -47,6 +49,8 @@ set(SEASHOT_HEADERS
     editor/AnnotationRenderer.h
     editor/AnnotationCanvas.h
     editor/EditorWindow.h
+    ocr/OcrEngine.h
+    ocr/OcrWindow.h
     scroll/ScrollStitcher.h
     scroll/ScrollCapturer.h
     record/GifEncoder.h

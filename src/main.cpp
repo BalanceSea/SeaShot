@@ -118,6 +118,13 @@ int main(int argc, char **argv)
         QStringLiteral("bench-capture"),
         QStringLiteral("（诊断）抓一帧全屏存盘并打印帧时间戳，给拖动基准当观测者"),
         QStringLiteral("path"));
+    QCommandLineOption ocrOption(QStringLiteral("ocr"),
+                                 QStringLiteral("（Phase E）对一张图做文字识别，结果打到 stdout"),
+                                 QStringLiteral("path"));
+    QCommandLineOption ocrLangsOption(
+        QStringLiteral("ocr-langs"),
+        QStringLiteral("OCR 语言（默认自动：装了中英就用 chi_sim+eng）"),
+        QStringLiteral("langs"), QStringLiteral(""));
     QCommandLineOption scrollCaptureOption(
         QStringLiteral("scroll-capture"),
         QStringLiteral("滚动截屏（Phase D）：自己滚页面，SeaShot 定时抓帧拼成一张长图；"
@@ -168,6 +175,8 @@ int main(int argc, char **argv)
     parser.addOption(probePipewireLibOption);
     parser.addOption(portalTokenOption);
     parser.addOption(benchCaptureOption);
+    parser.addOption(ocrOption);
+    parser.addOption(ocrLangsOption);
     parser.addOption(scrollCaptureOption);
     parser.addOption(scrollMsOption);
     parser.addOption(pinOption);
@@ -199,6 +208,8 @@ int main(int argc, char **argv)
     options.toastDragBenchMs = parser.value(dragBenchOption).toInt();
     options.benchCapturePath = parser.value(benchCaptureOption);
     options.inplaceDemoOut = parser.value(inplaceDemoOption);
+    options.ocrPath = parser.value(ocrOption);
+    options.ocrLangs = parser.value(ocrLangsOption);
     options.scrollCapture = parser.isSet(scrollCaptureOption);
     options.scrollMs = parser.value(scrollMsOption).toInt();
     options.pinPath = parser.value(pinOption);

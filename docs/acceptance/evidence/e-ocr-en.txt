@@ -1,0 +1,9 @@
+[info] [wayland] ScreenShot2 Version = 5 
+[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-114694" id= 1 run方式= Script<N>.run 
+[info] [ocr] 识别完成 "语言=eng psm=3 行数=1 耗时=120ms" 
+OCR ok lang=eng psm=3 lines=1 elapsedMs=120
+OCR_TEXT_BEGIN
+Hello World OCR test 12345
+OCR_TEXT_END
+[info] [kwin] 脚本已卸载 pluginName= "seashot-114694" 

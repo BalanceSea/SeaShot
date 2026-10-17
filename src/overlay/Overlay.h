@@ -41,7 +41,7 @@ public:
     enum class Intent { Screenshot, Record };
 
     /// 「完成」时要求上层做哪种交付（对应 QQ/PixPin 的 Enter / Ctrl+C / Ctrl+S / 贴图）
-    enum class ConfirmAction { Plain, Copy, Save, Pin, Scroll };
+    enum class ConfirmAction { Plain, Copy, Save, Pin, Scroll, Ocr };
     Q_ENUM(ConfirmAction)
 
     explicit Overlay(QWidget *parent = nullptr);
@@ -160,7 +160,7 @@ private:
 
     /// 工具条里的一格。尺寸文字、颜色/粗细入口、分隔符也当成“格”，这样绘制/命中共用一条列表。
     struct BarCell {
-        enum class Kind { Tool, ColorSwatch, WidthPicker, SizeText, Scroll, Pin, Confirm, Cancel };
+        enum class Kind { Tool, ColorSwatch, WidthPicker, SizeText, Ocr, Scroll, Pin, Confirm, Cancel };
         Kind kind = Kind::Tool;
         ToolKind tool = ToolKind::Select;
         int keyNumber = 0;
@@ -227,6 +227,7 @@ private:
                               const QColor &color);
     static void drawPinIcon(QPainter &painter, const QRectF &box, const QColor &color);
     static void drawScrollIcon(QPainter &painter, const QRectF &box, const QColor &color);
+    static void drawOcrIcon(QPainter &painter, const QRectF &box, const QColor &color);
 
     QPointF toLogical(const QPointF &local) const;
     QRectF toLocal(const QRectF &logical) const;

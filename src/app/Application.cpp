@@ -17,6 +17,8 @@
 #include "record/GifRecorder.h"
 #include "record/PipeWireFrameSource.h"
 #include "record/PortalScreencast.h"
+#include "ocr/OcrEngine.h"
+#include "ocr/OcrWindow.h"
 #include "record/RecordingIndicator.h"
 #include "scroll/ScrollCapturer.h"
 #include "util/Clipboard.h"
@@ -164,6 +166,15 @@ Application::Application(const Options &options, QObject *parent)
                                                                        : "按设置");
                 m_pendingSelection = result;
                 m_pendingAction = action; // Phase B：Ctrl+C / Ctrl+S / Enter 分别对应不同交付
+                if (action == Overlay::ConfirmAction::Ocr) {
+                    // 文字识别：拿"屏幕上看到的那张选区图"（含标注）去识别，然后收掉覆盖层
+                    const QImage selection =
+                        m_overlay->renderSelection(m_overlay->frozenSelection());
+                    m_overlay->stopSelection();
+                    m_pendingAction = Overlay::ConfirmAction::Plain;
+                    startOcr(selection, true);
+                    return;
+                }
                 if (action == Overlay::ConfirmAction::Scroll) {
                     // 长截图不走"先截一张再交付"那条路：选区一定就直接开始拼
                     m_overlay->stopSelection();
@@ -316,7 +327,7 @@ bool Application::isOneShot() const
         || m_options.hasRect || !m_options.windowHandle.isEmpty() || m_options.overlayHoldMs > 0
         || !m_options.editPath.isEmpty() || !m_options.annotateOut.isEmpty()
         || m_options.hotkeyStatus || m_options.printConfig || m_options.record
-        || m_options.scrollCapture;
+        || m_options.scrollCapture || !m_options.ocrPath.isEmpty();
 }
 
 void Application::openEditor(const QImage &image, const QString &sourcePath)
@@ -1435,6 +1446,101 @@ int Application::runScrollCaptureCli()
     return QCoreApplication::exec();
 }
 
+void Application::startOcr(const QImage &image, bool interactive)
+{
+    QTextStream out(stdout);
+    if (image.isNull()) {
+        out << "OCR_ERROR 空图像\n";
+        out.flush();
+        return;
+    }
+    QStringList languages;
+    if (!m_options.ocrLangs.isEmpty())
+        languages = m_options.ocrLangs.split(QLatin1Char('+'), Qt::SkipEmptyParts);
+
+    OcrEngine::recognizeAsync(image, languages, 3, this, [this, interactive](const OcrResult &result) {
+        QTextStream stream(stdout);
+        if (!result.ok) {
+            stream << "OCR_ERROR " << result.error << "\n";
+            stream.flush();
+            if (interactive) {
+                auto *window = new OcrWindow();
+                m_ocrWindow = window;
+                window->setResult(result);
+                window->setAttribute(Qt::WA_DeleteOnClose, false);
+                connect(window, &OcrWindow::closed, this, [this]() {
+                    if (m_ocrWindow)
+                        m_ocrWindow->deleteLater();
+                    m_ocrWindow = nullptr;
+                    if (isOneShot())
+                        QCoreApplication::quit();
+                });
+                window->show();
+            } else if (isOneShot()) {
+                QCoreApplication::exit(3);
+            }
+            return;
+        }
+        stream << "OCR ok lang=" << result.languages << " psm=" << result.psm
+               << " lines=" << result.lines.size() << " elapsedMs=" << result.elapsedMs << "\n";
+        stream << "OCR_TEXT_BEGIN\n" << result.text << "OCR_TEXT_END\n";
+        stream.flush();
+
+        if (!interactive) {
+            if (isOneShot())
+                QCoreApplication::exit(0);
+            return;
+        }
+        auto *window = new OcrWindow();
+        m_ocrWindow = window;
+        window->setResult(result);
+        window->setAttribute(Qt::WA_DeleteOnClose, false);
+        connect(window, &OcrWindow::closed, this, [this]() {
+            if (m_ocrWindow)
+                m_ocrWindow->deleteLater();
+            m_ocrWindow = nullptr;
+            if (isOneShot())
+                QCoreApplication::quit();
+        });
+        window->show();
+        window->raise();
+        window->activateWindow();
+
+        // 验收用：OCR 动作模式下自动把两个复制入口都走一遍（复制全部 / 复制当前行），
+        // 然后退出 —— 这样"识别 + 面板 + 复制到剪贴板"可以在脚本里自动判。
+        if (qEnvironmentVariable("SEASHOT_INPLACE_DEMO_ACTION") == QLatin1String("ocr")) {
+            QTimer::singleShot(700, window, [window]() {
+                window->copyAll();
+                window->copySelection(); // 没选中时会复制光标所在行（面板默认就在第 1 行）
+                QTimer::singleShot(300, qApp, &QCoreApplication::quit);
+            });
+        }
+    });
+}
+
+int Application::runOcrCli(const QString &path)
+{
+    const QImage image(path);
+    if (image.isNull()) {
+        QTextStream(stderr) << "OCR_ERROR 无法读取 " << path << "\n";
+        return 2;
+    }
+    QStringList languages;
+    if (!m_options.ocrLangs.isEmpty())
+        languages = m_options.ocrLangs.split(QLatin1Char('+'), Qt::SkipEmptyParts);
+    const OcrResult result = OcrEngine::recognize(image, languages);
+    QTextStream out(stdout);
+    if (!result.ok) {
+        out << "OCR_ERROR " << result.error << "\n";
+        return 3;
+    }
+    out << "OCR ok lang=" << result.languages << " psm=" << result.psm
+        << " lines=" << result.lines.size() << " elapsedMs=" << result.elapsedMs << "\n";
+    out << "OCR_TEXT_BEGIN\n" << result.text << "OCR_TEXT_END\n";
+    out.flush();
+    return 0;
+}
+
 int Application::runPinFile(const QString &path)
 {
     QTextStream out(stdout);
@@ -2268,6 +2374,8 @@ int Application::runInplaceDemo(const QString &outPrefix)
                 postKey(Qt::Key_T, QString(), Qt::ControlModifier);
             else if (actionMode == QLatin1String("scroll"))
                 postKey(Qt::Key_L, QString(), Qt::ControlModifier);
+            else if (actionMode == QLatin1String("ocr"))
+                postKey(Qt::Key_O, QString(), Qt::ControlModifier);
             else
                 postKey(Qt::Key_Return, QStringLiteral("\r"));
             exitWorks = !m_overlay->isAnnotating();
@@ -2937,6 +3045,8 @@ int Application::run()
         }
         return QCoreApplication::exec();
     }
+    if (!m_options.ocrPath.isEmpty())
+        return runOcrCli(m_options.ocrPath);
     if (m_options.scrollCapture)
         return runScrollCaptureCli();
     if (m_options.listWindows)

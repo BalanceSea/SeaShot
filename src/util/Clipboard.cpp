@@ -70,6 +70,42 @@ bool Clipboard::copyFile(const QString &path, const QString &mimeType, QString *
     return true;
 }
 
+bool Clipboard::copyText(const QString &text, QString *error)
+{
+    if (text.isEmpty()) {
+        if (error)
+            *error = QStringLiteral("空文本，未写入剪贴板");
+        return false;
+    }
+    const QString wlCopy = QStandardPaths::findExecutable(QStringLiteral("wl-copy"));
+    if (!wlCopy.isEmpty()) {
+        QProcess process;
+        process.setProgram(wlCopy);
+        process.setArguments({QStringLiteral("--type"), QStringLiteral("text/plain;charset=utf-8")});
+        process.start();
+        if (process.waitForStarted(2000)) {
+            process.write(text.toUtf8());
+            process.closeWriteChannel();
+            if (process.waitForFinished(5000) && process.exitStatus() == QProcess::NormalExit
+                && process.exitCode() == 0) {
+                SS_INFO() << "[clipboard] 已通过 wl-copy 写入文本" << text.size() << "字";
+                return true;
+            }
+            if (error)
+                *error = QStringLiteral("wl-copy 失败(exit=%1)").arg(process.exitCode());
+        } else if (error) {
+            *error = QStringLiteral("wl-copy 启动失败");
+        }
+    } else if (error) {
+        *error = QStringLiteral("未找到 wl-copy（wl-clipboard 未安装）");
+    }
+    if (QGuiApplication::clipboard()) {
+        QGuiApplication::clipboard()->setText(text);
+        return true;
+    }
+    return false;
+}
+
 bool Clipboard::copyImage(const QImage &image, QString *error)
 {
     if (image.isNull()) {

@@ -1114,10 +1114,19 @@ QVector<Overlay::BarCell> Overlay::buildBarCells() const
         x = cell.rect.right() + kGroupGap - kBtnGap;
     }
 
+    { // 文字识别（OCR）
+        BarCell cell;
+        cell.kind = BarCell::Kind::Ocr;
+        cell.separatorBefore = 1;
+        cell.rect = QRectF(x, top, kBtnSize, kBtnSize);
+        cells.append(cell);
+        x += kBtnSize + kBtnGap;
+    }
+
     { // 长截图（滚动截屏）
         BarCell cell;
         cell.kind = BarCell::Kind::Scroll;
-        cell.separatorBefore = 1;
+        cell.separatorBefore = 0;
         cell.rect = QRectF(x, top, kBtnSize, kBtnSize);
         cells.append(cell);
         x += kBtnSize + kBtnGap;
@@ -1243,6 +1252,9 @@ void Overlay::activateCell(int index)
         setCursor(cell.tool == ToolKind::Select ? Qt::ArrowCursor : Qt::CrossCursor);
         update();
         break;
+    case BarCell::Kind::Ocr:
+        emit annotationConfirmed(m_selection, ConfirmAction::Ocr);
+        break;
     case BarCell::Kind::Scroll:
         emit annotationConfirmed(m_selection, ConfirmAction::Scroll);
         break;
@@ -1347,6 +1359,15 @@ void Overlay::drawToolbar(QPainter &painter) const
             painter.setPen(kSizeTextColor);
             painter.drawText(cell.rect, Qt::AlignCenter, selectionSizeText());
             break;
+        case BarCell::Kind::Ocr: {
+            if (pressed || hovered) {
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(pressed ? kBtnPress : kBtnHover);
+                painter.drawRoundedRect(cell.rect, 6, 6);
+            }
+            drawOcrIcon(painter, box, kIconColor);
+            break;
+        }
         case BarCell::Kind::Scroll: {
             if (pressed || hovered) {
                 painter.setPen(Qt::NoPen);
@@ -1407,6 +1428,9 @@ void Overlay::drawCellBubble(QPainter &painter, const BarCell &cell) const
         break;
     case BarCell::Kind::Scroll:
         text = QStringLiteral("长截图（滚动截屏）");
+        break;
+    case BarCell::Kind::Ocr:
+        text = QStringLiteral("文字识别（OCR）");
         break;
     case BarCell::Kind::ColorSwatch:
         text = QStringLiteral("颜色  ") + m_annotationColor.name();
@@ -1611,6 +1635,26 @@ void Overlay::drawToolIcon(QPainter &painter, ToolKind kind, const QRectF &box, 
         break;
     }
     }
+    painter.restore();
+}
+
+void Overlay::drawOcrIcon(QPainter &painter, const QRectF &box, const QColor &color)
+{
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const double w = box.width();
+    const double h = box.height();
+    QPen pen(color, 1.6);
+    pen.setCapStyle(Qt::RoundCap);
+    pen.setJoinStyle(Qt::RoundJoin);
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+    // 一个取景框 + 里面两条"文字线"（识别）
+    painter.drawRoundedRect(QRectF(box.left(), box.top() + h * 0.16, w, h * 0.68), 2, 2);
+    painter.drawLine(QPointF(box.left() + w * 0.18, box.top() + h * 0.38),
+                     QPointF(box.right() - w * 0.18, box.top() + h * 0.38));
+    painter.drawLine(QPointF(box.left() + w * 0.18, box.top() + h * 0.60),
+                     QPointF(box.left() + w * 0.62, box.top() + h * 0.60));
     painter.restore();
 }
 
@@ -2094,6 +2138,10 @@ void Overlay::keyPressEvent(QKeyEvent *event)
             }
             if (key == Qt::Key_L) {
                 emit annotationConfirmed(m_selection, ConfirmAction::Scroll); // 长截图
+                return;
+            }
+            if (key == Qt::Key_O) {
+                emit annotationConfirmed(m_selection, ConfirmAction::Ocr); // 文字识别
                 return;
             }
         }
