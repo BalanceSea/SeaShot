@@ -1,31 +1,31 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-129240" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-156207" id= 1 run方式= Script<N>.run 
 PORTAL_SCREENCAST_REGISTER appId=seashot ok=1
 PORTAL_SCREENCAST_BEGIN restoreToken=XakNXJWJS6RrhxlXRa7EvQ persistMode=2 portalVersion=5
-PORTAL_SCREENCAST_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_16962/seashot_9b16f45e
-PORTAL_SCREENCAST_REQUEST_HANDLE CreateSession actualPath=/org/freedesktop/portal/desktop/request/1_16962/seashot_9b16f45e
+PORTAL_SCREENCAST_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_20409/seashot_af6730cb
+PORTAL_SCREENCAST_REQUEST_HANDLE CreateSession actualPath=/org/freedesktop/portal/desktop/request/1_20409/seashot_af6730cb
 PORTAL_SCREENCAST_RESPONSE CreateSession code=0 keys=session_handle session_handleType=QString
-PORTAL_SCREENCAST_REQUEST SelectSources predictedPath=/org/freedesktop/portal/desktop/request/1_16962/seashot_bda78dba
-PORTAL_SCREENCAST_REQUEST_HANDLE SelectSources actualPath=/org/freedesktop/portal/desktop/request/1_16962/seashot_bda78dba
-PORTAL_SCREENCAST_REQUEST Start predictedPath=/org/freedesktop/portal/desktop/request/1_16962/seashot_3e8346d5
-PORTAL_SCREENCAST_REQUEST_HANDLE Start actualPath=/org/freedesktop/portal/desktop/request/1_16962/seashot_3e8346d5
-PORTAL_SCREENCAST_RESPONSE Start code=0 keys=restore_token,streams startLatencyMs=5
-[info] [portal] ScreenCast 会话建立: "ok=1 session=/org/freedesktop/portal/desktop/session/1_16962/seashot_s_b2a173dc streams=1 streamsPresent=1 node=90 usedRestoreToken=1 restoreToken=XakNXJWJS6RrhxlXRa7EvQ startLatencyMs=5" 
+PORTAL_SCREENCAST_REQUEST SelectSources predictedPath=/org/freedesktop/portal/desktop/request/1_20409/seashot_3f5644c5
+PORTAL_SCREENCAST_REQUEST_HANDLE SelectSources actualPath=/org/freedesktop/portal/desktop/request/1_20409/seashot_3f5644c5
+PORTAL_SCREENCAST_REQUEST Start predictedPath=/org/freedesktop/portal/desktop/request/1_20409/seashot_24a62381
+PORTAL_SCREENCAST_REQUEST_HANDLE Start actualPath=/org/freedesktop/portal/desktop/request/1_20409/seashot_24a62381
+PORTAL_SCREENCAST_RESPONSE Start code=0 keys=restore_token,streams startLatencyMs=10
+[info] [portal] ScreenCast 会话建立: "ok=1 session=/org/freedesktop/portal/desktop/session/1_20409/seashot_s_1818351b streams=1 streamsPresent=1 node=97 usedRestoreToken=1 restoreToken=XakNXJWJS6RrhxlXRa7EvQ startLatencyMs=10" 
 [info] [pipewire] 开始出帧 
-[info] [record] 编码器已启动 QSize(320, 240) 15 fps → "/home/balancesea/.cache/seashot/recording/seashot-record-129240.mkv" 
+[info] [record] 编码器已启动 QSize(320, 240) 15 fps → "/home/balancesea/.cache/seashot/recording/seashot-record-156207.mkv" 
 [info] [record] 开始录制（PipeWire 帧源） QRectF(300,200 320x240) 15 fps 帧尺寸 QSize(320, 240) 
-RECORD_SOURCE pipewire node=90 format="BGRA 1920x1080" frameSize=320x240
+RECORD_SOURCE pipewire node=97 format="BGRA 1920x1080" frameSize=320x240
 [info] [app] 录制帧源 = PipeWire "BGRA 1920x1080" 
 [info] [record] 指示器已套 layer-shell 
 RECORDING_INDICATOR_GEOMETRY x=300 y=154 w=300 h=40 regionTop=200 regionBottom=440
 RECORDING_INDICATOR region=300,200 320x240 fps=15 output=docs/acceptance/evidence/p4-basic.gif
 [info] [app] 将在 3 秒后自动停止录制 
 RECORD_STOP requested
-[info] [record] 停止采集：请求 46 帧 / 采到 46 / 丢 0 / 失败 0 用时 2994 ms 
-[info] [record] GIF 完成 "docs/acceptance/evidence/p4-basic.gif" 46 帧 30941 字节 
-RECORD ok path=docs/acceptance/evidence/p4-basic.gif frames=46 dropped=0 failed=0 elapsedMs=2994 fps=15.36
+[info] [record] 停止采集：请求 44 帧 / 采到 44 / 丢 0 / 失败 0 用时 2851 ms 
+[info] [record] GIF 完成 "docs/acceptance/evidence/p4-basic.gif" 44 帧 54702 字节 
+RECORD ok path=docs/acceptance/evidence/p4-basic.gif frames=44 dropped=0 failed=0 elapsedMs=2851 fps=15.43
 [info] [toast] layer-shell role 已应用 （铺满输出的固定表面） 
 TOAST image=320x240 display=320x240 scaled=0 anchor=300,200 320x240 card=425x288 bar=48 buttons=4 cardTopLeft=300,442 fixedSurface=1 autoHide=0
 [info] [toast] visible= true layerShell= true cardTopLeft= QPoint(300,442) autoHideMs= 0 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-129240" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-156207" 

@@ -1,1 +1,1 @@
-SNI=:1.16757/StatusNotifierItem Category=ApplicationStatus Status=Active Title=SeaShot
+SNI=:1.20341/StatusNotifierItem Category=ApplicationStatus Status=Active Title=SeaShot

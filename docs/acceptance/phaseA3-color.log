@@ -1,5 +1,5 @@
 == Phase A3.1 验收（颜色 / 粗细）==
-二进制: /home/balancesea/.local/bin/seashot (2026-10-17 08:47:10)
+二进制: /home/balancesea/.local/bin/seashot (2026-10-17 09:19:27)
 
 PASS  A3.1 工具条多了颜色/粗细两格  两格都在工具条内、互不重叠（工具条 220,568 662x40）
 PASS  A3.1 颜色面板：选色 → 标注跟着变色 点色块 → 当前颜色 #3daeff，新画矩形的颜色也是 #3daeff（面板不压选区）

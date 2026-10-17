@@ -1,7 +1,7 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-127648" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-155848" id= 1 run方式= Script<N>.run 
 [info] [hotkey] 当前绑定: "(未绑定)" 
 SETTINGS_OPENED file=/home/balancesea/.config/seashot/seashot.conf
 [info] [app] 收到退出信号，正在收尾（卸载 KWin 助手脚本） 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-127648" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-155848" 

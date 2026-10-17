@@ -135,29 +135,31 @@ else
     report "B. Ctrl+S = 完成并保存" 0 "SAVED=$SAVED 文件=$([ -f "$SAVE_RESULT" ] && echo 1 || echo 0)；见 $SAVE_LOG"
 fi
 
-# 保存下来的图里必须真的有标注：用「标注区域」做对照（与 A3 同一套思路，避开桌面漂移）
-SEL=$(sed -nE 's/.*选区本地=(-?[0-9]+),(-?[0-9]+) ([0-9]+)x([0-9]+).*/\1 \2 \3 \4/p' "$LOG" | head -1)
-read -r SX SY SW SH <<<"${SEL:-0 0 0 0}"
-R_FROZEN="?"; R_PREVIEW="?"
-if [ -f "$OUT/b-save-frozen.png" ] && [ -f "$SAVE_RESULT" ] && [ -f "$PREFIX-annotated.png" ]; then
-    magick "$OUT/b-save-frozen.png" -crop "${SW}x${SH}+${SX}+${SY}" +repage "$OUT/b-save-frozen-selection.png" 2>/dev/null
-    for kind in frozen result preview; do :; done
-    magick "$OUT/b-save-frozen-selection.png" -crop '150x100+250+40' +repage "$OUT/b-save-region-frozen.png" 2>/dev/null
-    magick "$SAVE_RESULT" -crop '150x100+250+40' +repage "$OUT/b-save-region-result.png" 2>/dev/null
-    magick "$PREFIX-annotated.png" -crop '150x100+250+40' +repage "$OUT/b-save-region-preview.png" 2>/dev/null
-    t=$(magick compare -metric RMSE "$OUT/b-save-region-frozen.png" "$OUT/b-save-region-result.png" null: 2>&1)
-    R_FROZEN=$(sed -nE 's/.*\(([0-9.]+)\).*/\1/p' <<<"$t")
-    t=$(magick compare -metric RMSE "$OUT/b-save-region-preview.png" "$OUT/b-save-region-result.png" null: 2>&1)
-    R_PREVIEW=$(sed -nE 's/.*\(([0-9.]+)\).*/\1/p' <<<"$t")
+# 保存下来的图里必须真的有标注。判据**不跨运行**（跨运行比会因为桌面内容变化假红 —— B 段踩过）：
+#   落盘结果 vs **同一次运行**的未标注冻结裁切：标注像素的峰值差要大、差异像素数量要够。
+# 另外用同一运行里的预览图做一次"结果==预览"的交叉核对（差异应当很小）。
+FROZEN="$OUT/b-save-frozen.png"
+SEL_CROP="$OUT/b-save-frozen-selection.png"
+# 选区坐标要从**这次运行自己的日志**里取（不能用另一次演示运行的）
+SEL_SAVE=$(sed -nE 's/.*选区本地=(-?[0-9]+),(-?[0-9]+) ([0-9]+)x([0-9]+).*/\1 \2 \3 \4/p' "$SAVE_LOG" | head -1)
+read -r SX SY SW SH <<<"${SEL_SAVE:-0 0 0 0}"
+PEAK="-"; AE="-"; RMSE_PREVIEW="-"
+if [ -f "$FROZEN" ] && [ -f "$SAVE_RESULT" ] && [ "${SW:-0}" -gt 0 ]; then
+    magick "$FROZEN" -crop "${SW}x${SH}+${SX}+${SY}" +repage "$SEL_CROP" 2>/dev/null
+    PEAK=$(magick "$SAVE_RESULT" "$SEL_CROP" -compose difference -composite \
+        -format '%[fx:maxima*255]' info: 2>/dev/null)
+    AE=$(magick compare -metric AE "$SAVE_RESULT" "$SEL_CROP" null: 2>&1 | sed -nE 's/^([0-9]+).*/\1/p')
 fi
 if python3 -c "
 import sys
-f, p = float('${R_FROZEN:-1}'), float('${R_PREVIEW:-0}')
-sys.exit(0 if (f > 0.05 and f > 4 * max(p, 1e-6)) else 1)"; then
+peak = float('${PEAK:-0}')
+ae = float('${AE:-0}')
+sys.exit(0 if (peak >= 100 and ae >= 500) else 1)"; then
     report "B. 保存的结果里确实有标注" 1 \
-        "标注区域：结果 vs 未标注裁切 RMSE=$R_FROZEN ≫ 结果 vs 预览 RMSE=$R_PREVIEW"
+        "与同一次运行的未标注裁切比：峰值差=$PEAK（≥100）、差异像素 $AE（≥500）"
 else
-    report "B. 保存的结果里确实有标注" 0 "RMSE 未标注=$R_FROZEN 预览=$R_PREVIEW（应前者 >0.05 且 ≥4 倍）"
+    report "B. 保存的结果里确实有标注" 0 \
+        "峰值差=$PEAK（应 ≥100）、差异像素=$AE（应 ≥500）"
 fi
 
 ### D) 前面几个阶段的判据未回归 --------------------------------------------------

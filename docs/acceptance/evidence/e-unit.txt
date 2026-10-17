@@ -1,7 +1,7 @@
 Test project /home/balancesea/Vibe Code/SeaShot/build
     Start 10: tst_ocrengine
-1/1 Test #10: tst_ocrengine ....................   Passed    0.58 sec
+1/1 Test #10: tst_ocrengine ....................   Passed    0.62 sec
 
 100% tests passed out of 1
 
-Total Test time (real) =   0.58 sec
+Total Test time (real) =   0.62 sec

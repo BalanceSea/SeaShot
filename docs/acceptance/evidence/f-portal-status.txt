@@ -1,9 +1,9 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-150684" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-153039" id= 1 run方式= Script<N>.run 
 HOTKEY_PORTAL available=1 version=2 error=(none)
-HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_19662/seashot_39ba9ce8 args=1 signature=
-[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_19662/seashot_s_8198e4f1" 
-HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_19662/seashot_6ec0500b args=2 signature=
+HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_19993/seashot_e331ae0c args=1 signature=
+[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_19993/seashot_s_3354953d" 
+HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_19993/seashot_d99e5715 args=2 signature=
 HOTKEY_PORTAL_LIST count=4 shortcuts=screenshot=(未绑定),first-run-demo=Ctrl+Alt+A,seashot-test-new=(未绑定),capture=Ctrl+Alt+A
-[info] [kwin] 脚本已卸载 pluginName= "seashot-150684" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-153039" 

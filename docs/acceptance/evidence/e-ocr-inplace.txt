@@ -1,6 +1,6 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-125659" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-152870" id= 1 run方式= Script<N>.run 
 [info] [overlay] layer-shell role 已应用（LayerOverlay，四边锚定） 
 [info] [app] 选择模式已启动，窗口快照 12 个； "覆盖层: layer-shell=已应用, 快照窗口数=12, 虚拟几何=1920x1080+0+0" 
 INPLACE_DEMO drag=220,180 -> 760,560
@@ -114,24 +114,21 @@ INPLACE_DEMO barOutsideSelection=1 barInsideSurface=1 gapQuiet=1 hover=1 hoverCe
 INPLACE_DEMO barGoesAboveWhenNoRoom=1 barClampedAtRightEdge=1 edgeBar=1250,168 662x40
 INPLACE_DEMO A2 PASS
 INPLACE_DEMO ALL PASS
-OCR ok lang=chi_sim+eng psm=3 lines=9 elapsedMs=570
+OCR ok lang=chi_sim+eng psm=3 lines=7 elapsedMs=441
 OCR_TEXT_BEGIN
-2
-2
-供 Phase E 验 收 用 .
-英 图 wx 上 & 荣 youer 〔肴
+Q youer minecraft s X | 8 FMAER - Youer X N
 
-e -2 (timeout 300 | 一 倩 命 Esstite_ 扬 蓦`亡鳙覆`=
-回
+.= stere( 1omology W
 
-5
-0CR 文 字 训 别 ( 用 月 1
-西 [
-
+网 砺 i
+3654 2029
+E
+o
+8
 OCR_TEXT_END
-OCR_WINDOW ok=1 lines=9 elapsedMs=570
-[info] [clipboard] 已通过 wl-copy 写入文本 120 字 
-OCR_COPY ok chars=120
-[info] [clipboard] 已通过 wl-copy 写入文本 1 字 
-OCR_COPY_LINE ok chars=1
-[info] [kwin] 脚本已卸载 pluginName= "seashot-125659" 
+OCR_WINDOW ok=1 lines=7 elapsedMs=441
+[info] [clipboard] 已通过 wl-copy 写入文本 89 字 
+OCR_COPY ok chars=89
+[info] [clipboard] 已通过 wl-copy 写入文本 43 字 
+OCR_COPY_LINE ok chars=43
+[info] [kwin] 脚本已卸载 pluginName= "seashot-152870" 

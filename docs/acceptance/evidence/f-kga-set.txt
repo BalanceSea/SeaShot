@@ -1,9 +1,9 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-150803" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-153188" id= 1 run方式= Script<N>.run 
 [info] [tray] KStatusNotifierItem 已创建 
 [info] [app] 托盘已创建 
 [info] [hotkey] 当前绑定: "Ctrl+Alt+F9" 
 [info] [app] 快捷键已更新: "Ctrl+Alt+F9" 实际生效: "Ctrl+Alt+F9" 
 HOTKEY_SET Ctrl+Alt+F9 actual=Ctrl+Alt+F9
-[info] [kwin] 脚本已卸载 pluginName= "seashot-150803" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-153188" 

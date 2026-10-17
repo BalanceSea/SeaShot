@@ -16,7 +16,7 @@ SeaShot 自检（Phase 1）
 [OK  ] 窗口枚举
        共 2 个窗口
        4600041 appId=steam frame=283,147 1280x800 stack=0
-       1200011 appId=QQ frame=653,194 1280x690 stack=1
+       1200011 appId=QQ frame=769,317 1280x690 stack=1
 [OK  ] 区域截图（32x32 探测）
        得到 32x32，scale=1
 [OK  ] 剪贴板（wl-copy）
@@ -31,7 +31,7 @@ SeaShot 自检（Phase 1）
        保存目录: /home/balancesea/Pictures/Screenshots
        截图后复制: 是
        保留阴影边距: 是
-       快捷键: (未绑定)
+       快捷键: Ctrl+Alt+A
 
 
 结果: 9 项检查，0 项致命失败

@@ -1,14 +1,14 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-126122" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-153660" id= 1 run方式= Script<N>.run 
 BACKEND wayland (Wayland 会话 + KDE 桌面（WAYLAND_DISPLAY=wayland-0）)
 后端: wayland
 ScreenShot2 Version: 5
 授权: ScreenShot2 授权通过（8x8 探测截图成功）
 输出: DP-3 1920x1080+0+0 scale=1
-KWin 助手脚本: 运行中 (pluginName=seashot-126122)
+KWin 助手脚本: 运行中 (pluginName=seashot-153660)
 快照窗口数: 13（最近 1 次收到推送）
-最近快照: 1 ms 前
+最近快照: 2 ms 前
 WINDOWS 13
 {96590f02-9da5-4b10-846f-2fd90dbb6287} appId=plasmashell pid=2370 active=0 normal=0 min=0 visible=1 stack=0 frame=0,0 1920x1080 excluded=0 title=
 {de148d74-8081-4064-8365-43a675ef46ee} appId=quickshell pid=2658 active=0 normal=1 min=0 visible=1 stack=12 frame=0,0 1920x1006 excluded=0 title=
@@ -16,11 +16,11 @@ WINDOWS 13
 {0245c7f7-340d-46fc-8c29-2f7c02453969} appId=quickshell pid=2658 active=0 normal=0 min=0 visible=1 stack=10 frame=0,941 1920x139 excluded=0 title=
 {ea8eade9-3e7d-4f8a-ad73-3071250f0e59} appId=quickshell pid=2658 active=0 normal=0 min=0 visible=1 stack=11 frame=1552,48 350x984 excluded=0 title=
 {870e720f-1d13-44e0-8cc8-13bc7adf4082} appId=org.kde.dolphin pid=14155 active=0 normal=1 min=0 visible=1 stack=4 frame=638.04,200.807 1257x698 excluded=0 title=docs — Dolphin
-{43e1076b-92be-4d35-b281-fbda60b298ba} appId=com.mitchellh.ghostty pid=14260 active=0 normal=1 min=0 visible=1 stack=6 frame=0,0 1920x1007 excluded=0 title=π - SeaShot
+{43e1076b-92be-4d35-b281-fbda60b298ba} appId=com.mitchellh.ghostty pid=14260 active=0 normal=1 min=0 visible=1 stack=6 frame=159.265,189.778 800x628 excluded=0 title=π - SeaShot
 {b7818c5a-b82d-40c7-b76f-4d7788d63fb2} appId=steam pid=71184 active=0 normal=1 min=1 visible=1 stack=2 frame=283,147 1280x800 excluded=0 title=Steam
-{ac91fd3a-4cd7-4cf7-8d3c-5556fe14d157} appId=open-orpheus pid=72905 active=0 normal=1 min=1 visible=1 stack=3 frame=0,0 1920x1007 excluded=0 title=我听见了，你的痛苦成立 - 供销社乐队
+{ac91fd3a-4cd7-4cf7-8d3c-5556fe14d157} appId=open-orpheus pid=72905 active=0 normal=1 min=1 visible=1 stack=3 frame=0,0 1920x1007 excluded=0 title=好久不见 - 陈奕迅
 {bc591038-ba9a-4224-933a-07601d336dc3} appId=com.microsoft.VSCode pid=99844 active=0 normal=1 min=0 visible=1 stack=5 frame=227,103 1466x800 excluded=0 title=next-session-plan.md - Visual Studio Code
-{45edb5c0-65be-4091-b9e8-6468bd5fe7db} appId=qq pid=6722 active=0 normal=1 min=0 visible=1 stack=8 frame=653,194 1280x690 excluded=0 title=QQ
-{d096baf0-2a0d-44e8-ba09-cbbcb34e3ec6} appId=microsoft-edge pid=102415 active=0 normal=1 min=0 visible=1 stack=7 frame=429.022,43.8855 1614x848 excluded=0 title=环境要求 - Youer 文档 和另外 3 个页面 - 个人 - Microsoft​ Edge
-{c9894c91-4fd7-4133-a1c1-41b47449c9fb} appId=seashot-probe-window pid=126070 active=1 normal=1 min=0 visible=1 stack=9 frame=660,289 600x428 excluded=0 title=seashot-probe-window
-[info] [kwin] 脚本已卸载 pluginName= "seashot-126122" 
+{45edb5c0-65be-4091-b9e8-6468bd5fe7db} appId=qq pid=6722 active=0 normal=1 min=0 visible=1 stack=7 frame=769,317 1280x690 excluded=0 title=QQ
+{d096baf0-2a0d-44e8-ba09-cbbcb34e3ec6} appId=microsoft-edge pid=102415 active=0 normal=1 min=0 visible=1 stack=8 frame=329.395,177.893 1614x848 excluded=0 title=仪表盘 - Xenon AI 和另外 7 个页面 - 个人 - Microsoft​ Edge
+{d2c73316-7d25-4d88-8452-5963d037f7f2} appId=seashot-probe-window pid=153477 active=1 normal=1 min=0 visible=1 stack=9 frame=660,289 600x428 excluded=0 title=seashot-probe-window
+[info] [kwin] 脚本已卸载 pluginName= "seashot-153660" 

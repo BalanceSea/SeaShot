@@ -1,8 +1,12 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-127614" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-155799" id= 1 run方式= Script<N>.run 
+HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_20362/seashot_d88bef31 args=1 signature=
 [info] [hotkey] 当前绑定: "(未绑定)" 
 [info] [app] 快捷键已更新: "(未绑定)" 实际生效: "(未绑定)" 
 SEASHOT_READY backend=wayland hotkey=(未绑定)
+[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_20362/seashot_s_f23f747" 
+HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_20362/seashot_d671a3d1 args=2 signature=
+HOTKEY_PORTAL_STATE authorized id=first-run-demo trigger=Ctrl+Alt+A
 [info] [app] 收到退出信号，正在收尾（卸载 KWin 助手脚本） 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-127614" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-155799" 
