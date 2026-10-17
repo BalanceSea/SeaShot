@@ -170,7 +170,9 @@ QImage snapshot(QWidget &widget)
     widget.ensurePolished();
     widget.show();
     QApplication::processEvents();
-    return widget.grab().toImage();
+    QImage image = widget.grab().toImage();
+    image.setDevicePixelRatio(1);
+    return image.scaled(widget.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
 }
 
 void stroke(Overlay &overlay, int key, QPointF from, QPointF to, QColor color, int width)

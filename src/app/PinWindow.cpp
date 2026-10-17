@@ -105,16 +105,9 @@ void PinWindow::ensureLayerShell()
             | LayerShellQt::Window::AnchorLeft | LayerShellQt::Window::AnchorRight));
         layerShell->setMargins(QMargins(0, 0, 0, 0));
         layerShell->setExclusiveZone(-1);
-        // 给贴图一个自己的 scope（= wlr-layer-shell 的 namespace），便于诊断时识别。
-        // ⚠️ 实测（2026-10-17，KWin 6.7）：KWin 给 layer-shell 表面报的 resourceClass
-        //    仍然是应用的 appId（"seashot"），**看不到这个 scope** ——
-        //    所以贴图会和覆盖层/结果浮层一样被本项目的"自排除"排除出截图
-        //    （任何进程的截屏都拍不到它，只有肉眼看得见）。
-        //    这是**有意的取舍**：贴图属于"本应用的 UI"，和覆盖层/浮层保持一致。
-        //    若将来希望它像 QQ 的钉图那样出现在后续截图里，需要在 KWin 侧按
-        //    namespace / window role 区分单个表面（目前做不到）。验收时用
-        //    SEASHOT_DISABLE_SELF_EXCLUSION=1 关掉自排除的观察者来看"人眼所见"。
-        layerShell->setScope(QStringLiteral("seashot-pin"));
+        // KWin exposes this namespace as onScreenDisplay. The helper can exclude
+        // auxiliary layers without also excluding ordinary SeaShot windows.
+        layerShell->setScope(QStringLiteral("on-screen-display"));
         // 贴图不抢键盘：点一下它才可能拿到焦点（OnDemand），需要 Esc 关时够用
         layerShell->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityOnDemand);
         m_layerShellApplied = true;

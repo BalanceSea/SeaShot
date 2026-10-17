@@ -332,6 +332,7 @@ void Toast::ensureLayerShell()
     }
     if (auto *layerShell = LayerShellQt::Window::get(handle)) {
         layerShell->setLayer(LayerShellQt::Window::LayerOverlay);
+        layerShell->setScope(QStringLiteral("on-screen-display"));
         if (m_fixedSurface) {
             // 表面铺满输出、不设边距：拖动只改卡片在表面内的偏移，KWin 无需重排图层
             layerShell->setAnchors(LayerShellQt::Window::Anchors(

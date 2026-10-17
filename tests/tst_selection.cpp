@@ -42,14 +42,20 @@ private slots:
         QVERIFY(!pickWindowAt(windows, QPointF(900, 900)).isValid());
     }
 
-    void skipsMinimizedAndOwnWindows()
+    void allowsOwnSettingsButSkipsExcludedWindows()
     {
         const QVector<WindowInfo> windows{
             makeWindow(QStringLiteral("minimized"), QRectF(0, 0, 500, 500), 5, false, QStringLiteral("app"), true),
             makeWindow(QStringLiteral("ours"), QRectF(0, 0, 500, 500), 4, false, QStringLiteral("seashot")),
             makeWindow(QStringLiteral("usable"), QRectF(0, 0, 500, 500), 1),
         };
-        QCOMPARE(pickWindowAt(windows, QPointF(10, 10)).id, QStringLiteral("usable"));
+        QCOMPARE(pickWindowAt(windows, QPointF(10, 10)).id, QStringLiteral("ours"));
+        auto excluded = windows;
+        excluded[1].excludedFromCapture = true;
+        QCOMPARE(pickWindowAt(excluded, QPointF(10, 10)).id, QStringLiteral("usable"));
+        excluded[1].excludedFromCapture = false;
+        excluded[1].captureOverlay = true;
+        QCOMPARE(pickWindowAt(excluded, QPointF(10, 10)).id, QStringLiteral("usable"));
     }
 
     void fallsBackToListOrderWhenStackUnknown()

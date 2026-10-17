@@ -66,7 +66,7 @@
 | 类型 | 依赖 |
 | --- | --- |
 | 🏗️ 构建工具 | 支持 C++20 的编译器、CMake ≥ 3.21、Ninja、pkg-config |
-| 🪟 界面与桌面 | Qt 6：Core、Gui、Widgets、DBus、Network、Test；KF6 GlobalAccel、KF6 StatusNotifierItem；LayerShellQt |
+| 🪟 界面与桌面 | Qt ≥ 6.5：Core、Gui、Widgets、DBus、Network、Test；KF6 GlobalAccel、KF6 StatusNotifierItem；LayerShellQt |
 | 🔌 X11 后端（可选） | `xcb`、`xcb-shm`、`xcb-ewmh`；缺失时自动关闭 X11 后端 |
 | 📡 PipeWire 帧源（可选） | `libpipewire-0.3`；缺失或不可用时回退截图轮询 |
 | 🎞️ 录制与导出 | `ffmpeg`，包含 FFV1、libx264 及 GIF 调色板滤镜；部分测试还需要 `ffprobe` |
@@ -102,6 +102,8 @@ cmake --build build -j 2
 > 🔑 **Wayland 下请通过安装脚本安装。** 脚本会写入 KWin 截图所需的 desktop 授权声明，并刷新 KDE 应用缓存。直接从构建目录运行，可能出现 `Error.NoAuthorized`。
 
 ## 📸 开始截图
+
+按下截图快捷键后，SeaShot 会先冻结当前画面，再显示选框，保留托盘菜单和右键菜单。设置、编辑器等普通窗口可以截图；截图选框、贴图和录制指示器仍会被排除。
 
 ```bash
 seashot                     # 常驻托盘

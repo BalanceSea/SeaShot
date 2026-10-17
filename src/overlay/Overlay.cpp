@@ -72,23 +72,6 @@ QIcon toolIconFor(ToolKind kind)
     return QIcon();
 }
 
-/// 把主题图标染成单色：图标主题给的都是符号图标，染色后与自绘图标观感一致，
-/// 并且能直接用强调色表示“当前工具”
-QPixmap tintedIcon(const QIcon &icon, const QSize &size, qreal dpr, const QColor &color)
-{
-    if (icon.isNull() || size.isEmpty())
-        return QPixmap();
-    const QSize deviceSize(qMax(1, int(size.width() * dpr)), qMax(1, int(size.height() * dpr)));
-    QPixmap pixmap = icon.pixmap(deviceSize, dpr, QIcon::Normal, QIcon::Off);
-    if (pixmap.isNull())
-        return QPixmap();
-    pixmap.setDevicePixelRatio(dpr);
-    QPainter painter(&pixmap);
-    painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
-    painter.fillRect(pixmap.rect(), color);
-    painter.end();
-    return pixmap;
-}
 } // namespace
 
 Overlay::Overlay(QWidget *parent)
@@ -120,6 +103,7 @@ void Overlay::applyLayerShell()
     }
     if (auto *layerShell = LayerShellQt::Window::get(handle)) {
         layerShell->setLayer(LayerShellQt::Window::LayerOverlay);
+        layerShell->setScope(QStringLiteral("on-screen-display"));
         layerShell->setAnchors(LayerShellQt::Window::Anchors(
             LayerShellQt::Window::AnchorTop | LayerShellQt::Window::AnchorBottom
             | LayerShellQt::Window::AnchorLeft | LayerShellQt::Window::AnchorRight));
@@ -153,14 +137,13 @@ void Overlay::setVirtualGeometry(const QRect &logicalGeometry)
     setGeometry(logicalGeometry);
 }
 
-void Overlay::startSelection()
+void Overlay::startSelection(const CaptureImage &frozen)
 {
     m_dragging = false;
     m_hasHover = false;
     m_hover = WindowInfo();
     m_stage = Stage::Selecting;
-    m_frozenFrame = QImage();
-    m_frozenPhysicalFrame = QImage();
+    setFrozenFrame(frozen.image, frozen.scale);
     m_selection = SelectionResult();
     m_currentTool = ToolKind::Select;
     m_hoverCell = -1;
@@ -197,6 +180,29 @@ void Overlay::stopSelection()
     m_pressedCell = -1;
 }
 
+void Overlay::setFrozenFrame(const QImage &physical, double scale)
+{
+    m_frozenScale = scale > 0.0 ? scale : 1.0;
+    m_frozenPhysicalFrame = physical;
+    m_frozenPhysicalFrame.setDevicePixelRatio(1);
+    if (physical.isNull()) {
+        m_frozenFrame = QImage();
+    } else if (qFuzzyCompare(m_frozenScale, 1.0)) {
+        m_frozenFrame = physical;
+    } else {
+        const QSize logicalSize(qMax(1, qRound(physical.width() / m_frozenScale)),
+                                qMax(1, qRound(physical.height() / m_frozenScale)));
+        m_frozenFrame = physical.scaled(logicalSize, Qt::IgnoreAspectRatio,
+                                        Qt::SmoothTransformation);
+    }
+    m_frozenFrame.setDevicePixelRatio(1);
+}
+
+void Overlay::beginAnnotating(const SelectionResult &selection)
+{
+    beginAnnotating(selection, m_frozenPhysicalFrame, m_frozenScale);
+}
+
 void Overlay::beginAnnotating(const SelectionResult &selection, const QImage &frozenPhysical,
                               double frozenScale)
 {
@@ -218,21 +224,8 @@ void Overlay::beginAnnotating(const SelectionResult &selection, const QImage &fr
     m_textEditIndex = -1;
     m_composedDirty = true;
 
-    // 冻结屏幕归一到**逻辑像素**：这样绘制就是严格的 1:1，不需要在 paint 里做任何缩放。
-    // 本机实测 scale=1（单输出），此时这一步是零成本的直通。
-    const double scale = (frozenScale > 0.0) ? frozenScale : 1.0;
-    m_frozenPhysicalFrame = frozenPhysical;
-    m_frozenScale = scale;
-    if (frozenPhysical.isNull()) {
-        m_frozenFrame = QImage();
-    } else if (qFuzzyCompare(scale, 1.0)) {
-        m_frozenFrame = frozenPhysical;
-    } else {
-        const QSize logicalSize(qMax(1, int(qRound(frozenPhysical.width() / scale))),
-                                qMax(1, int(qRound(frozenPhysical.height() / scale))));
-        m_frozenFrame = frozenPhysical.scaled(logicalSize, Qt::IgnoreAspectRatio,
-                                              Qt::SmoothTransformation);
-    }
+    // Keep the original physical pixels for export and a logical-size preview.
+    setFrozenFrame(frozenPhysical, frozenScale);
 
     // 保持同一个表面（layer-shell 已应用），只是继续画：不起新窗口、不重设 shell。
     if (!isVisible()) {
@@ -253,7 +246,7 @@ void Overlay::beginAnnotating(const SelectionResult &selection, const QImage &fr
     update();
 
     SS_INFO() << "[overlay] 进入就地标注阶段：选区" << m_selection.logicalRect << "冻结图"
-              << m_frozenFrame.width() << "x" << m_frozenFrame.height() << "(scale=" << scale
+              << m_frozenFrame.width() << "x" << m_frozenFrame.height() << "(scale=" << m_frozenScale
               << ") 表面" << width() << "x" << height() << "选区图" << m_frozenSelection.width()
               << "x" << m_frozenSelection.height();
 }
@@ -1342,10 +1335,10 @@ void Overlay::drawToolbar(QPainter &painter) const
             }
             // 图标优先用 ui/Theme 的语义图标（与编辑器工具栏一致），取不到才自绘回退
             const QColor tint = active ? kAccent : kIconColor;
-            const QPixmap themeIcon = tintedIcon(toolIconFor(cell.tool), box.size().toSize(),
-                                                devicePixelRatioF(), tint);
+            const QPixmap themeIcon = ui::tintedIcon(toolIconFor(cell.tool), box.size().toSize(),
+                                                    devicePixelRatioF(), tint);
             if (!themeIcon.isNull())
-                painter.drawPixmap(box.topLeft(), themeIcon);
+                painter.drawPixmap(box, themeIcon, QRectF(themeIcon.rect()));
             else
                 drawToolIcon(painter, cell.tool, box, tint);
             break;
@@ -1808,6 +1801,10 @@ void Overlay::paintEvent(QPaintEvent *)
         return;
     }
 
+    // Display the same frame that will be exported, even if a menu lost focus
+    // and disappeared from the live desktop when this overlay was shown.
+    if (!m_frozenFrame.isNull())
+        painter.drawImage(QPointF(0, 0), m_frozenFrame);
     // 压暗整屏
     painter.fillRect(rect(), QColor(0, 0, 0, kDimAlpha));
 

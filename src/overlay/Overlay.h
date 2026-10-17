@@ -58,8 +58,11 @@ public:
     bool isAnnotating() const { return m_stage == Stage::Annotating; }
 
     /// 显示覆盖层（会自动套 layer-shell role / X11 绕过 WM）
-    void startSelection();
+    void startSelection(const CaptureImage &frozen = {});
     void stopSelection();
+    bool hasFrozenFrame() const { return !m_frozenPhysicalFrame.isNull(); }
+    /// Enter annotation using the exact frame displayed during selection.
+    void beginAnnotating(const SelectionResult &selection);
 
     /// 进入就地标注阶段：选区已定，冻结屏幕按**逻辑像素 1:1** 画在覆盖层上。
     /// frozenPhysical 是整块虚拟桌面的截图（物理像素），frozenScale 是它的缩放因子。
@@ -171,6 +174,7 @@ private:
     };
 
     void applyLayerShell();
+    void setFrozenFrame(const QImage &physical, double scale);
     void paintAnnotating(QPainter &painter);
     /// 选区装饰（边框 + 8 手柄）的 8 个点（覆盖层本地坐标）
     QVector<QPointF> handlePoints() const;

@@ -13,6 +13,7 @@
 #include <QLocalSocket>
 #include <QProcess>
 #include <QSettings>
+#include <QScopeGuard>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -33,6 +34,8 @@ public:
     }
     void captureRect(const QRectF &rect, ImageCallback callback) override
     {
+        if (beforeCapture)
+            beforeCapture();
         CaptureImage image;
         image.scale = scale;
         image.image = QImage(QSize(qRound(rect.width() * scale), qRound(rect.height() * scale)),
@@ -46,6 +49,7 @@ public:
     int captures = 0;
     double scale = 1.0;
     int delayMs = 0;
+    std::function<void()> beforeCapture;
 };
 
 class TestApplication : public QObject
@@ -104,6 +108,84 @@ private slots:
         QCOMPARE(saved.size(), QSize(qRound(64 * scale), qRound(48 * scale)));
         QCOMPARE(saved.pixelColor(qRound(5 * scale), qRound(5 * scale)), QColor(Qt::red));
         QCOMPARE(saved.pixelColor(int(10 * scale), int(20 * scale)), QColor(Qt::green));
+    }
+
+    void freezesBeforeOverlayCanDismissMenu_data()
+    {
+        QTest::addColumn<double>("scale");
+        QTest::addColumn<bool>("annotate");
+        for (const double scale : {1.0, 1.25, 2.0}) {
+            QTest::newRow(qPrintable(QStringLiteral("%1-annotate").arg(scale))) << scale << true;
+            QTest::newRow(qPrintable(QStringLiteral("%1-direct").arg(scale))) << scale << false;
+        }
+    }
+
+    void freezesBeforeOverlayCanDismissMenu()
+    {
+        QFETCH(double, scale);
+        QFETCH(bool, annotate);
+        const auto old = qgetenv("SEASHOT_INPLACE_ANNOTATE");
+        const auto restore = qScopeGuard([old]() {
+            if (old.isNull())
+                qunsetenv("SEASHOT_INPLACE_ANNOTATE");
+            else
+                qputenv("SEASHOT_INPLACE_ANNOTATE", old);
+        });
+        qputenv("SEASHOT_INPLACE_ANNOTATE", annotate ? "1" : "0");
+        QTemporaryDir output;
+        Options options;
+        options.noCopy = true;
+        options.saveTo = output.filePath(QStringLiteral("menu.png"));
+        auto backend = std::make_unique<ChangingBackend>();
+        auto *source = backend.get();
+        source->scale = scale;
+        Application application(options, std::move(backend), nullptr);
+        bool capturedOverOverlay = false;
+        source->beforeCapture = [&]() {
+            capturedOverOverlay |= application.m_overlay->isVisible();
+        };
+        application.startCapture();
+        QTRY_VERIFY(application.m_overlay->isVisible());
+        QCOMPARE(source->captures, 1);
+        QVERIFY(!capturedOverOverlay);
+        QCOMPARE(application.m_overlay->frozenFrame().pixelColor(10, 200), QColor(Qt::red));
+        const auto preview = application.m_overlay->grab().toImage();
+        const QColor pixel = preview.pixelColor(10, qRound(200 * preview.devicePixelRatio()));
+        QVERIFY(pixel.red() > pixel.blue());
+
+        SelectionResult selection;
+        selection.logicalRect = QRectF(100, 100, 64, 48);
+        application.handleSelection(selection);
+        if (annotate) {
+            QTRY_VERIFY(application.m_overlay->isAnnotating());
+            application.m_overlay->annotationConfirmed(selection, Overlay::ConfirmAction::Plain);
+        }
+        QTRY_VERIFY(QFileInfo::exists(options.saveTo));
+        const QImage saved(options.saveTo);
+        QCOMPARE(source->captures, 1);
+        QCOMPARE(saved.size(), QSize(qRound(64 * scale), qRound(48 * scale)));
+        QCOMPARE(saved.pixelColor(saved.width() / 2, saved.height() / 2), QColor(Qt::red));
+    }
+
+    void cancelledCaptureDoesNotReopenFromLateFrame()
+    {
+        Options options;
+        options.noCopy = true;
+        auto backend = std::make_unique<ChangingBackend>();
+        auto *source = backend.get();
+        source->delayMs = 30;
+        Application application(options, std::move(backend), nullptr);
+        application.startCapture();
+        application.startCapture();
+        QCOMPARE(source->captures, 1);
+        QVERIFY(!application.m_overlay->isVisible());
+        application.m_overlay->selectionCancelled();
+        QTest::qWait(80);
+        QVERIFY(!application.m_overlay->isVisible());
+        application.startCapture();
+        QTRY_VERIFY(application.m_overlay->isVisible());
+        QCOMPARE(source->captures, 2);
+        application.m_overlay->selectionCancelled();
     }
 
     void scrollUsesThirtyMinuteFallback()

@@ -124,6 +124,7 @@ void RecordingIndicator::ensureLayerShell()
         return;
     if (auto *layerShell = LayerShellQt::Window::get(handle)) {
         layerShell->setLayer(LayerShellQt::Window::LayerOverlay);
+        layerShell->setScope(QStringLiteral("on-screen-display"));
         layerShell->setAnchors(LayerShellQt::Window::Anchors(LayerShellQt::Window::AnchorTop
                                                              | LayerShellQt::Window::AnchorLeft));
         layerShell->setExclusiveZone(-1);

@@ -31,7 +31,7 @@ public:
     QVector<WindowInfo> windows() const { return m_windows; }
     QString activeWindowId() const;
 
-    /// 把 appId 含 "seashot" 的窗口设成排除出截图（Phase 0 实测有效的自排除手段）
+    /// 只排除 SeaShot 的截图辅助层，普通设置、编辑器和菜单保持可截图。
     bool requestExcludeOwnWindows(bool value, QString *error);
 
     /// 是否有窗口被标记为排除出截图（验收用）

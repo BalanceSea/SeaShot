@@ -39,7 +39,7 @@ public:
     virtual QVector<WindowInfo> windows() const = 0;
     virtual void refresh() {}
 
-    /// 把本进程自己的窗口排除出截图（Wayland: KWin 脚本设 excludeFromCapture）
+    /// 把本进程的截图辅助层排除出截图，保留普通窗口（Wayland: KWin 脚本）。
     virtual bool excludeOwnWindows(bool value, QString *error)
     {
         Q_UNUSED(value)

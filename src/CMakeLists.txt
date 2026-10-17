@@ -3,6 +3,7 @@ set(SEASHOT_CORE_SOURCES
     core/SelectionModel.cpp
     geometry/ScreenMapper.cpp
     util/Clipboard.cpp
+    util/DesktopServices.cpp
     backend/BackendFactory.cpp
     backend/wayland/KWinBridge.cpp
     backend/wayland/ScreenShot2.cpp
@@ -38,6 +39,7 @@ set(SEASHOT_HEADERS
     core/SelectionModel.h
     geometry/ScreenMapper.h
     util/Clipboard.h
+    util/DesktopServices.h
     util/Log.h
     backend/CaptureBackend.h
     backend/BackendFactory.h

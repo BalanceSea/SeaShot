@@ -3,6 +3,7 @@
 #include "backend/CaptureBackend.h"
 #include "ui/Theme.h"
 #include "util/Log.h"
+#include "util/DesktopServices.h"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -18,11 +19,9 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QPalette>
-#include <QProcess>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QStackedWidget>
-#include <QStandardPaths>
 #include <QTextStream>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -350,13 +349,9 @@ void SettingsDialog::buildUi()
         updateHotkeyStatus();
     });
     connect(kdeButton, &QPushButton::clicked, this, [this]() {
-        const QString program = QStandardPaths::findExecutable(QStringLiteral("systemsettings"));
-        if (program.isEmpty()) {
-            m_hotkeyStatus->setText(QStringLiteral("找不到 systemsettings，请手动打开：系统设置 → 快捷键"));
-            return;
-        }
-        if (!QProcess::startDetached(program, {QStringLiteral("kcm_keys")}))
-            m_hotkeyStatus->setText(QStringLiteral("启动 systemsettings 失败"));
+        QString error;
+        if (!openKdeShortcutSettings(&error))
+            m_hotkeyStatus->setText(error);
     });
     connect(resetButton, &QPushButton::clicked, this, &SettingsDialog::resetToDefaults);
     connect(closeButton, &QPushButton::clicked, this, &QDialog::accept);

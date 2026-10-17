@@ -179,6 +179,7 @@ void WaylandBackend::captureWindow(const WindowInfo &window, ImageCallback callb
     QVariantMap options;
     // Phase 0 实测：无此选项时只返回客户区（不含标题栏/圆角/阴影）
     options.insert(QStringLiteral("include-decoration"), true);
+    options.insert(QStringLiteral("native-resolution"), true);
 
     const bool keepShadow = m_keepShadowMargin;
     m_shot2.captureWindow(window.id, options, [callback, keepShadow](const CaptureImage &result) {
@@ -196,18 +197,12 @@ void WaylandBackend::captureWindow(const WindowInfo &window, ImageCallback callb
 
 void WaylandBackend::captureRect(const QRectF &logicalRect, ImageCallback callback)
 {
-    // CaptureArea 收逻辑坐标（Phase 0 实测 scale=1 时一致）；取整策略统一走 ScreenMapper
-    const OutputInfo *output = m_mapper.outputAt(logicalRect.center());
-    QRect request;
-    if (output)
-        request = m_mapper.toPhysical(logicalRect, *output).translated(output->logicalGeometry.topLeft());
-    else
-        request = QRect(ScreenMapper::roundCoord(logicalRect.x()), ScreenMapper::roundCoord(logicalRect.y()),
-                        qMax(1, ScreenMapper::roundCoord(logicalRect.width())),
-                        qMax(1, ScreenMapper::roundCoord(logicalRect.height())));
-
+    // KWin accepts global logical coordinates and applies output scaling itself.
+    const QRect request = logicalRect.toAlignedRect();
+    const QVariantMap options{{QStringLiteral("native-resolution"), true},
+                              {QStringLiteral("hide-caller-windows"), false}};
     SS_INFO() << "[wayland] CaptureArea 请求矩形(逻辑坐标):" << request;
-    m_shot2.captureRect(request, {}, std::move(callback));
+    m_shot2.captureRect(request, options, std::move(callback));
 }
 
 void WaylandBackend::ensureHotkeyAction()

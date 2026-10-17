@@ -2,6 +2,7 @@
 #include "backend/wayland/WaylandBackend.h"
 
 #include <QDBusConnection>
+#include <QDBusArgument>
 #include <QDBusMessage>
 #include <QDBusUnixFileDescriptor>
 #include <QDBusVirtualObject>
@@ -17,10 +18,12 @@ class FakeScreenShotService : public QDBusVirtualObject
 public:
     int delayMs = 0;
     int completed = 0;
+    QDBusMessage lastRequest;
 
     QString introspect(const QString &) const override { return {}; }
     bool handleMessage(const QDBusMessage &message, const QDBusConnection &connection) override
     {
+        lastRequest = message;
         const auto fd = message.arguments().last().value<QDBusUnixFileDescriptor>();
         const int writer = ::dup(fd.fileDescriptor());
         if (writer < 0)
@@ -71,6 +74,38 @@ private slots:
         QTRY_VERIFY(weak.expired());
         QTRY_VERIFY(shot.findChildren<QTimer *>().isEmpty());
         QTRY_VERIFY(shot.findChildren<QSocketNotifier *>().isEmpty());
+    }
+
+    void areaKeepsLogicalCoordinatesAndOwnDialogs_data()
+    {
+        QTest::addColumn<double>("scale");
+        QTest::newRow("normal") << 1.0;
+        QTest::newRow("fractional") << 1.25;
+        QTest::newRow("hidpi") << 2.0;
+    }
+
+    void areaKeepsLogicalCoordinatesAndOwnDialogs()
+    {
+        QFETCH(double, scale);
+        WaylandBackend backend;
+        backend.m_mapper.setOutputs({{"test", QRect(-1600, 0, 1600, 1000), scale}});
+        const QRectF selected(-1500, 125, 320, 240);
+        bool completed = false;
+        backend.captureRect(selected, [&](const CaptureImage &image) {
+            QVERIFY(image.ok());
+            completed = true;
+        });
+        QTRY_VERIFY(completed);
+        const auto args = m_service.lastRequest.arguments();
+        QCOMPARE(m_service.lastRequest.member(), QStringLiteral("CaptureArea"));
+        QCOMPARE(args[0].toInt(), -1500);
+        QCOMPARE(args[1].toInt(), 125);
+        QCOMPARE(args[2].toUInt(), 320u);
+        QCOMPARE(args[3].toUInt(), 240u);
+        const auto options = qdbus_cast<QVariantMap>(args[4]);
+        QVERIFY(options.contains(QStringLiteral("hide-caller-windows")));
+        QVERIFY(!options.value(QStringLiteral("hide-caller-windows")).toBool());
+        QVERIFY(options.value(QStringLiteral("native-resolution")).toBool());
     }
 
     void permissionResponseAfterTimeoutIsSafe()

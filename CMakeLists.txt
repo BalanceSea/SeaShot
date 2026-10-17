@@ -9,7 +9,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets DBus Network Test)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Core Gui Widgets DBus Network Test)
 # 本机只装了 KF6 的独立包（没有 KF6 伞包 KF6Config.cmake），因此逐个查找
 find_package(KF6GlobalAccel REQUIRED)
 find_package(KF6StatusNotifierItem REQUIRED)

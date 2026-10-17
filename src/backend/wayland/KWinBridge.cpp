@@ -261,7 +261,7 @@ bool KWinBridge::ownWindowsExcluded() const
 {
     bool found = false;
     for (const WindowInfo &w : m_windows) {
-        if (w.appId.contains(QLatin1String("seashot"))) {
+        if (w.captureOverlay) {
             found = true;
             if (!w.excludedFromCapture)
                 return false;
@@ -347,6 +347,7 @@ void KWinBridge::Publish(const QString &json)
         info.normal = obj.value(QStringLiteral("normal")).toBool();
         info.visible = obj.value(QStringLiteral("visible")).toBool(true);
         info.excludedFromCapture = obj.value(QStringLiteral("excludedFromCapture")).toBool();
+        info.captureOverlay = obj.value(QStringLiteral("captureOverlay")).toBool();
         if (info.id.isEmpty() || info.frameGeometry.isEmpty())
             continue;
         windows.append(info);

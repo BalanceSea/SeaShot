@@ -1,5 +1,8 @@
 #include "ui/Theme.h"
 
+#include <QPainter>
+#include <QtMath>
+
 namespace seashot::ui {
 
 QIcon icon(const QStringList &names)
@@ -17,6 +20,25 @@ QIcon icon(const QStringList &names)
 QIcon icon(const QString &name)
 {
     return icon(QStringList{name});
+}
+
+QPixmap tintedIcon(const QIcon &icon, const QSize &size, qreal dpr, const QColor &color)
+{
+    if (icon.isNull() || size.isEmpty() || !qIsFinite(dpr) || dpr <= 0)
+        return QPixmap();
+    // QIcon uses logical sizes. Allocate the backing pixels once and paint into
+    // a fixed logical box; never multiply an icon request by DPR a second time.
+    QPixmap pixmap(QSize(qCeil(size.width() * dpr), qCeil(size.height() * dpr)));
+    pixmap.setDevicePixelRatio(dpr);
+    pixmap.fill(Qt::transparent);
+    QPainter painter(&pixmap);
+    const QRect box(QPoint(), size);
+    painter.setClipRect(box);
+    icon.paint(&painter, box, Qt::AlignCenter, QIcon::Normal, QIcon::Off);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+    painter.fillRect(box, color);
+    painter.end();
+    return pixmap;
 }
 
 CardColors cardColors(const QPalette &palette)

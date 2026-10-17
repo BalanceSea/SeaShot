@@ -35,6 +35,7 @@ struct WindowInfo {
     bool normal = true;
     bool visible = true;
     bool excludedFromCapture = false; ///< KWin 侧「排除出截图」标志（自检/验收用）
+    bool captureOverlay = false; ///< 本应用的选框、贴图、提示层或录制指示器
 
     bool isValid() const { return !id.isEmpty() && !frameGeometry.isEmpty(); }
 };

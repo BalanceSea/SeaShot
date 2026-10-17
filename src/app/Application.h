@@ -240,6 +240,8 @@ private:
     std::unique_ptr<RecordingIndicator> m_recordingIndicator;
     bool m_recordIntent = false; ///< 正在选择录制区域
     bool m_recordStarting = false; ///< 首帧/门户等待期间禁止重入
+    bool m_capturePreparing = false;
+    quint64 m_captureGeneration = 0; ///< Ignore frames from cancelled capture requests.
     bool m_keepAliveForRecording = false;
     QPointer<QWidget> m_settingsDialog;
     QString m_appliedHotkey;

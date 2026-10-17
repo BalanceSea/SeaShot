@@ -11,8 +11,6 @@
 #include <QTextStream>
 #include <limits>
 
-#include <LayerShellQt/Shell>
-
 int main(int argc, char **argv)
 {
     QApplication app(argc, argv);
@@ -25,9 +23,8 @@ int main(int argc, char **argv)
     QGuiApplication::setApplicationDisplayName(QStringLiteral("SeaShot"));
     QGuiApplication::setWindowIcon(seashot::ui::appIcon());
 
-    // layer-shell 必须在创建窗口前启用（Phase 0 已实测可用）
-    if (QGuiApplication::platformName().startsWith(QLatin1String("wayland")))
-        LayerShellQt::Shell::useLayerShell();
+    // Qt >= 6.5 supports per-window shells via LayerShellQt::Window::get().
+    // Do not force layer-shell globally: settings, editors and menus need xdg-shell.
 
     // 默认把 info 级日志打开：SeaShot 的诊断（[kwin]/[shot2]/[toast]/[app]）依赖它
     QLoggingCategory::setFilterRules(QStringLiteral("*.info=true\n*.debug=false"));

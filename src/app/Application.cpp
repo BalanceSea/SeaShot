@@ -24,6 +24,7 @@
 #include "record/RecordingIndicator.h"
 #include "scroll/ScrollCapturer.h"
 #include "util/Clipboard.h"
+#include "util/DesktopServices.h"
 #include "util/Log.h"
 #ifdef SEASHOT_WITH_X11
 #include "backend/x11/X11Backend.h"
@@ -164,6 +165,8 @@ Application::Application(const Options &options, std::unique_ptr<CaptureBackend>
     m_overlay = std::make_unique<Overlay>();
     connect(m_overlay.get(), &Overlay::selectionFinished, this, &Application::handleSelection);
     connect(m_overlay.get(), &Overlay::selectionCancelled, this, [this]() {
+        ++m_captureGeneration;
+        m_capturePreparing = false;
         m_recordIntent = false;
         m_overlay->stopSelection();
         SS_INFO() << "[app] 已取消截图";
@@ -199,6 +202,8 @@ Application::Application(const Options &options, std::unique_ptr<CaptureBackend>
                 finishSelectionPhase();
             });
     connect(m_overlay.get(), &Overlay::annotationCancelled, this, [this]() {
+        ++m_captureGeneration;
+        m_capturePreparing = false;
         m_overlay->stopSelection();
         SS_INFO() << "[app] 已取消截图（标注阶段）";
         if (isOneShot())
@@ -517,6 +522,10 @@ void Application::startRecordFlow()
 
 bool Application::startRecordingRequest(const RecordingRequest &request)
 {
+    if (m_capturePreparing || (m_overlay->isVisible() && !m_recordIntent)) {
+        QTextStream(stdout) << "RECORD_ERROR 正在截图，请先完成或取消\n";
+        return false;
+    }
     if (!m_backend || !m_backendError.isEmpty()) {
         SS_WARN() << "[app] 无法开始录制:" << m_backendError;
         QTextStream(stdout) << "RECORD_ERROR " << m_backendError << "\n";
@@ -1116,12 +1125,9 @@ void Application::applySettings()
         });
         connect(m_tray.get(), &Tray::settingsRequested, this, &Application::openSettings);
         connect(m_tray.get(), &Tray::shortcutSettingsRequested, this, [this]() {
-            const QString program = QStandardPaths::findExecutable(QStringLiteral("systemsettings"));
-            if (program.isEmpty()) {
-                SS_WARN() << "[app] 找不到 systemsettings";
-                return;
-            }
-            QProcess::startDetached(program, {QStringLiteral("kcm_keys")});
+            QString error;
+            if (!openKdeShortcutSettings(&error))
+                SS_WARN() << "[app]" << error;
         });
         connect(m_tray.get(), &Tray::portalHotkeyRequested, this,
                 &Application::requestHotkeyPortal);
@@ -1234,6 +1240,10 @@ void Application::startCapture()
         QTextStream(stdout) << "CAPTURE_ERROR " << m_backendError << "\n";
         return;
     }
+    if (m_capturePreparing || m_overlay->isVisible())
+        return;
+    m_capturePreparing = true;
+    const quint64 generation = ++m_captureGeneration;
     m_recordIntent = false;
     m_pendingAction = Overlay::ConfirmAction::Plain;
     m_overlay->setIntent(Overlay::Intent::Screenshot);
@@ -1243,16 +1253,29 @@ void Application::startCapture()
         qEnvironmentVariable("SEASHOT_INPLACE_ANNOTATE") != QLatin1String("0");
     m_overlay->setAnnotationEnabled(inplaceAnnotate);
     m_backend->refresh();
+    if (generation != m_captureGeneration)
+        return;
     const QVector<WindowInfo> windows = m_backend->windows();
-    m_overlay->setWindows(windows);
-    m_overlay->setVirtualGeometry(virtualGeometry());
-    m_overlay->startSelection();
-    // 覆盖层窗口是刚创建的：再要求一次自排除（KWin 脚本也会给新窗口自动打标记，
-    // 这里是双保险，避免「覆盖层出现在自己的截图里」）
-    QString excludeError;
-    m_selfExclusion = m_backend->excludeOwnWindows(true, &excludeError);
-    SS_INFO() << "[app] 选择模式已启动，窗口快照" << windows.size() << "个；"
-              << m_overlay->diagnostics();
+    const QRect geometry = virtualGeometry();
+    const QPointer<Application> guard(this);
+    // Capture before showing or focusing the overlay. Popups can disappear as
+    // soon as it takes keyboard focus; selection and export must use this frame.
+    m_backend->captureRect(geometry, [guard, generation, windows, geometry](const CaptureImage &image) {
+        if (!guard || guard->m_captureGeneration != generation)
+            return;
+        guard->m_capturePreparing = false;
+        if (!image.ok()) {
+            guard->finishCapture(image);
+            return;
+        }
+        guard->m_overlay->setWindows(windows);
+        guard->m_overlay->setVirtualGeometry(geometry);
+        guard->m_overlay->startSelection(image);
+        QString excludeError;
+        guard->m_selfExclusion = guard->m_backend->excludeOwnWindows(true, &excludeError);
+        SS_INFO() << "[app] 已冻结画面并启动选择模式，窗口快照" << windows.size() << "个；"
+                  << guard->m_overlay->diagnostics();
+    });
 }
 
 void Application::handleSelection(const SelectionResult &result)
@@ -1265,6 +1288,13 @@ void Application::handleSelection(const SelectionResult &result)
     }
     m_pendingSelection = result;
 
+    if (m_overlay->hasFrozenFrame()) {
+        m_overlay->beginAnnotating(result);
+        if (!m_overlay->annotationEnabled())
+            finishSelectionPhase();
+        return;
+    }
+
     // Phase A1：交互式截图**不退出覆盖层**，就地冻结屏幕并进入标注阶段
     // （对齐 QQ/PixPin：选完直接在屏幕上标注，不打开独立窗口）。
     if (m_overlay->annotationEnabled()) {
@@ -1276,6 +1306,10 @@ void Application::handleSelection(const SelectionResult &result)
 
 void Application::enterAnnotationPhase()
 {
+    if (m_overlay->hasFrozenFrame()) {
+        m_overlay->beginAnnotating(m_pendingSelection);
+        return;
+    }
     // 冻结屏幕必须**不含覆盖层自己**：支持自排除时可以直接抓（覆盖层不入镜），
     // 否则先把覆盖层藏起来再抓。
     // Phase 0 实测：隐藏后 16ms 抓到的仍可能是含覆盖层的陈旧帧，所以留 250ms。
@@ -1284,21 +1318,27 @@ void Application::enterAnnotationPhase()
         m_overlay->hide();
 
     const int delayMs = selfExcluded ? 0 : 250;
-    QTimer::singleShot(delayMs, this, [this]() {
+    const quint64 generation = m_captureGeneration;
+    QTimer::singleShot(delayMs, this, [this, generation]() {
+        if (generation != m_captureGeneration)
+            return;
         if (!m_backend) {
             finishSelectionPhase();
             return;
         }
         const QRect geometry = virtualGeometry();
         SS_INFO() << "[app] 抓取冻结屏幕" << geometry << "自排除=" << m_selfExclusion;
-        m_backend->captureRect(QRectF(geometry), [this](const CaptureImage &image) {
+        const QPointer<Application> guard(this);
+        m_backend->captureRect(QRectF(geometry), [guard, generation](const CaptureImage &image) {
+            if (!guard || guard->m_captureGeneration != generation)
+                return;
             if (!image.ok()) {
                 // 拿不到冻结图就不硬撑：退回原来的"选完直接截图"行为，截图本身仍然可用
                 SS_WARN() << "[app] 冻结屏幕失败，退回直接截图：" << image.error;
-                finishSelectionPhase();
+                guard->finishSelectionPhase();
                 return;
             }
-            m_overlay->beginAnnotating(m_pendingSelection, image.image, image.scale);
+            guard->m_overlay->beginAnnotating(guard->m_pendingSelection, image.image, image.scale);
         });
     });
 }

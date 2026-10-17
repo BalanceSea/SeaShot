@@ -2,7 +2,7 @@
 //
 // 职责：
 //   ① 把窗口快照（id/几何/栈序/状态）推给 seashot 进程；
-//   ② 执行命令，目前只有一条：把 seashot 自己的窗口设成「排除出截图」
+//   ② 只把 SeaShot 的选框、贴图、提示层和录制指示器排除出截图；保留普通窗口
 //      （Phase 0 实测：layer-shell 覆盖层会被 CaptureArea 拍到，
 //       而 w.excludeFromCapture = true 能让它从截图里消失）。
 //
@@ -27,18 +27,32 @@ function appIdOfLoose(w) {
     }
 }
 
-function applyExcludeTo(window) {
-    if (!excludeState.active || !window || window.deleted)
-        return false;
+function isOwnWindow(window) {
     // 只匹配 appId 完全等于 "seashot"（或 "seashot." 前缀），**不做子串匹配**：
     // 否则 "seashot-probe-window" 这类第三方窗口会被误标成排除出截图，
     // 而 KWin 对已排除的窗口会直接取消截图（实测 Error.Cancelled）。
     const appId = appIdOfLoose(window);
-    if (appId !== excludeState.match && appId.indexOf(excludeState.match + ".") !== 0)
+    return appId === excludeState.match || appId.indexOf(excludeState.match + ".") === 0;
+}
+
+function isCaptureOverlay(window) {
+    if (!window || !isOwnWindow(window))
         return false;
+    // The auxiliary layer-shell surfaces use namespace "on-screen-display".
+    // Named titles also cover the non-Wayland fallback, without excluding menus.
+    const title = String(window.caption || "");
+    return boolOf(window, "onScreenDisplay", false)
+        || ["seashot-overlay", "seashot-pin", "seashot-toast", "seashot-recording"].indexOf(title) >= 0;
+}
+
+function applyExcludeTo(window) {
+    if (!excludeState.active || !window || window.deleted || !isOwnWindow(window))
+        return false;
+    const excluded = excludeState.value && isCaptureOverlay(window);
     try {
-        if (!!window.excludeFromCapture !== excludeState.value)
-            window.excludeFromCapture = excludeState.value;
+        // Explicitly clear old blanket exclusion on settings, editors and menus.
+        if (!!window.excludeFromCapture !== excluded)
+            window.excludeFromCapture = excluded;
         return true;
     } catch (e) {
         print("[seashot] 设置 excludeFromCapture 失败: " + e);
@@ -121,9 +135,12 @@ function publishSnapshot() {
             stackIndex: (stack[id] === undefined ? -1 : stack[id]),
             active: active,
             minimized: boolOf(w, "minimized", false),
-            normal: boolOf(w, "normalWindow", false),
+            normal: boolOf(w, "normalWindow", false) || boolOf(w, "dialog", false)
+                || boolOf(w, "popupMenu", false) || boolOf(w, "dropdownMenu", false)
+                || boolOf(w, "appletPopup", false),
             visible: boolOf(w, "visible", true),
-            excludedFromCapture: excluded
+            excludedFromCapture: excluded,
+            captureOverlay: isCaptureOverlay(w)
         });
     }
     const json = JSON.stringify({ windows: windows });
@@ -192,7 +209,7 @@ function watchWindow(w) {
         return;
     // 新出现的窗口（含我们自己的覆盖层/浮层）也要自动带上自排除标记
     applyExcludeTo(w);
-    const hook = function () { scheduleSnapshot(); };
+    const hook = function () { applyExcludeTo(w); scheduleSnapshot(); };
     const names = ["captionChanged", "desktopFileNameChanged", "activeChanged", "minimizedChanged",
                    "fullScreenChanged", "skipTaskbarChanged", "maximizedChanged",
                    "frameGeometryChanged", "excludeFromCaptureChanged"];

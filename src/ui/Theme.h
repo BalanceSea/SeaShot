@@ -65,6 +65,9 @@ CardColors cardColors(const QPalette &palette);
 QIcon icon(const QStringList &names);
 QIcon icon(const QString &name);
 
+/// Render a monochrome icon in logical pixels at the requested display scale.
+QPixmap tintedIcon(const QIcon &icon, const QSize &size, qreal dpr, const QColor &color);
+
 // ── 语义图标（集中在这里，改主题只需改这一处）────────────────────────
 QIcon iconEdit();        ///< 编辑
 QIcon iconSaveAs();      ///< 另存为

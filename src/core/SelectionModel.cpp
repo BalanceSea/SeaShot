@@ -4,14 +4,13 @@
 
 namespace seashot {
 
-WindowInfo pickWindowAt(const QVector<WindowInfo> &windows, const QPointF &logicalPoint,
-                        const QString &ownAppId)
+WindowInfo pickWindowAt(const QVector<WindowInfo> &windows, const QPointF &logicalPoint)
 {
     WindowInfo best;
     for (const WindowInfo &w : windows) {
         if (!w.isValid() || !w.normal || !w.visible || w.minimized)
             continue;
-        if (!ownAppId.isEmpty() && w.appId == ownAppId)
+        if (w.captureOverlay || w.excludedFromCapture)
             continue;
         if (!w.frameGeometry.contains(logicalPoint))
             continue;
