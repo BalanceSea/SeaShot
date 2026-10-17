@@ -68,6 +68,17 @@ seashot --backend=x11 --list-windows # 显式选后端（XWayland 冒烟用）
 
 ## 快捷键
 
+**推荐：让 SeaShot 自己向系统申请注册（Wayland/门户）** —— 点「设置 → 全局快捷键」里的
+**「向系统申请注册（会弹授权对话框）」**（或托盘菜单「注册全局快捷键（由我申请）…」，
+或命令行 `seashot --hotkey-portal-request`）。系统会弹一个**授权对话框**列出请求的快捷键
+（预填一个键、可当场改），**你点允许它才生效**；拒绝/关掉则不注册。
+- 想改键：同一页的「更改快捷键（系统对话框）…」，或 `--hotkey-portal-configure`
+- 看状态：`seashot --hotkey-portal-status`；`--hotkey-status` 会同时报"门户这条路"和
+  "KGlobalAccel 那条路"的状态
+- 说明：KDE 6 里 KGlobalAccel 与门户**共用同一份快捷键存储**，所以已经被 KGlobalAccel 建过条目的
+  id 不会再弹授权（想重新体验首次授权：停 `plasma-kglobalaccel.service`、从
+  `~/.config/kglobalshortcutsrc` 的 `[seashot]` 段删掉那个 id，再发起）
+
 三种方式（互不冲突）：
 
 - **SeaShot 配置界面**（`seashot --settings` 或托盘菜单「设置…」）：直接按录快捷键，

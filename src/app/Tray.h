@@ -32,6 +32,7 @@ signals:
     void recordToggleRequested();
     void settingsRequested();
     void shortcutSettingsRequested();
+    void portalHotkeyRequested(); ///< Phase F：让 SeaShot 自己向系统申请注册（用户授权）
     void quitRequested();
 
 private:

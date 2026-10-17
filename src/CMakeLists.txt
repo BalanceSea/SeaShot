@@ -14,6 +14,7 @@ set(SEASHOT_CORE_SOURCES
     editor/AnnotationRenderer.cpp
     editor/AnnotationCanvas.cpp
     editor/EditorWindow.cpp
+    hotkey/GlobalShortcutsPortal.cpp
     ocr/OcrEngine.cpp
     ocr/OcrWindow.cpp
     scroll/ScrollStitcher.cpp
@@ -49,6 +50,7 @@ set(SEASHOT_HEADERS
     editor/AnnotationRenderer.h
     editor/AnnotationCanvas.h
     editor/EditorWindow.h
+    hotkey/GlobalShortcutsPortal.h
     ocr/OcrEngine.h
     ocr/OcrWindow.h
     scroll/ScrollStitcher.h

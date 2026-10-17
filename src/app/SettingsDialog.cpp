@@ -216,6 +216,24 @@ void SettingsDialog::buildUi()
     m_hotkeyStatus->setWordWrap(true);
     keyForm->addRow(QString(), m_hotkeyStatus);
 
+    // Phase F：让 SeaShot 自己向系统申请注册（用户在系统对话框里授权/改键）
+    auto *portalButton = new QPushButton(QStringLiteral("向系统申请注册（会弹授权对话框）"), keyPage);
+    portalButton->setObjectName(QStringLiteral("portalRequestHotkey"));
+    portalButton->setToolTip(QStringLiteral(
+        "由 SeaShot 自己向系统注册全局快捷键：系统会弹一个对话框列出请求的快捷键，\n"
+        "你可以允许、拒绝，或当场改成别的键。授权结果由桌面记住，之后不再弹窗。"));
+    auto *portalConfigure = new QPushButton(QStringLiteral("更改快捷键（系统对话框）…"), keyPage);
+    portalConfigure->setObjectName(QStringLiteral("portalConfigureHotkey"));
+    portalConfigure->setToolTip(QStringLiteral("打开系统的快捷键配置对话框，改这一次的绑定"));
+    auto *portalRow = new QHBoxLayout();
+    portalRow->addWidget(portalButton);
+    portalRow->addWidget(portalConfigure);
+    portalRow->addStretch(1);
+    keyForm->addRow(QStringLiteral("自己申请注册"), portalRow);
+    connect(portalButton, &QPushButton::clicked, this, &SettingsDialog::hotkeyPortalRequested);
+    connect(portalConfigure, &QPushButton::clicked, this,
+            &SettingsDialog::hotkeyPortalConfigureRequested);
+
     auto *kdeButton = new QPushButton(QStringLiteral("打开 KDE 快捷键设置…"), keyPage);
     kdeButton->setObjectName(QStringLiteral("openKdeKeys"));
     kdeButton->setIcon(ui::iconSettings());
@@ -405,6 +423,12 @@ void SettingsDialog::resetToDefaults()
     QTextStream(stdout) << "SETTINGS_RESET\n";
 }
 
+void SettingsDialog::setPortalStatus(const QString &text)
+{
+    m_portalStatusText = text;
+    updateHotkeyStatus();
+}
+
 void SettingsDialog::updateHotkeyStatus()
 {
     if (!m_hotkeyStatus)
@@ -416,10 +440,12 @@ void SettingsDialog::updateHotkeyStatus()
         m_backend->setHotkey(QKeySequence(configured), &error);
         actual = error.isEmpty() ? QStringLiteral("已注册") : error;
     }
-    m_hotkeyStatus->setText(
-        QStringLiteral("当前：%1（配置里的值）· 注册状态：%2\n"
-                       "KDE 的系统设置里也能给 SeaShot 的 capture 动作单独改键。")
-            .arg(configured.isEmpty() ? QStringLiteral("未绑定") : configured, actual));
+    QString text = QStringLiteral("当前：%1（配置里的值）· 注册状态：%2\n"
+                                  "KDE 的系统设置里也能给 SeaShot 的 capture 动作单独改键。")
+                       .arg(configured.isEmpty() ? QStringLiteral("未绑定") : configured, actual);
+    if (!m_portalStatusText.isEmpty())
+        text += QStringLiteral("\n") + m_portalStatusText;
+    m_hotkeyStatus->setText(text);
 }
 
 } // namespace seashot

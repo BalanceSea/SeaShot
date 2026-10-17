@@ -118,6 +118,32 @@ int main(int argc, char **argv)
         QStringLiteral("bench-capture"),
         QStringLiteral("（诊断）抓一帧全屏存盘并打印帧时间戳，给拖动基准当观测者"),
         QStringLiteral("path"));
+    QCommandLineOption hotkeyPortalStatusOption(
+        QStringLiteral("hotkey-portal-status"),
+        QStringLiteral("（Phase F）报告 xdg-desktop-portal 的 GlobalShortcuts 可用性与当前绑定"));
+    QCommandLineOption hotkeyPortalRequestOption(
+        QStringLiteral("hotkey-portal-request"),
+        QStringLiteral("（Phase F）让 SeaShot 自己向系统申请注册全局快捷键（首次会弹授权对话框，"
+                       "由你决定允不允许）"));
+    QCommandLineOption hotkeyPortalTriggerOption(
+        QStringLiteral("hotkey-portal-trigger"),
+        QStringLiteral("（Phase F）期望的按键，如 CTRL+ALT+S；留空 = 在系统对话框里自己选"),
+        QStringLiteral("keys"), QStringLiteral(""));
+    QCommandLineOption hotkeyPortalMsOption(
+        QStringLiteral("hotkey-portal-ms"),
+        QStringLiteral("（Phase F）等用户在对话框上应答的上限（毫秒）"),
+        QStringLiteral("ms"), QStringLiteral("180000"));
+    QCommandLineOption hotkeyPortalListenOption(
+        QStringLiteral("hotkey-portal-listen-ms"),
+        QStringLiteral("（Phase F）授权成功后继续监听多久（毫秒；0 = 立刻退出，负/极大 = 一直等）"),
+        QStringLiteral("ms"), QStringLiteral("0"));
+    QCommandLineOption hotkeyPortalIdOption(
+        QStringLiteral("hotkey-portal-id"),
+        QStringLiteral("（Phase F）快捷键 id（默认 capture；换个新 id 会重新走一次授权）"),
+        QStringLiteral("id"), QStringLiteral(""));
+    QCommandLineOption hotkeyPortalConfigureOption(
+        QStringLiteral("hotkey-portal-configure"),
+        QStringLiteral("（Phase F）授权后顺带打开系统的快捷键配置对话框（让用户改键）"));
     QCommandLineOption ocrOption(QStringLiteral("ocr"),
                                  QStringLiteral("（Phase E）对一张图做文字识别，结果打到 stdout"),
                                  QStringLiteral("path"));
@@ -175,6 +201,13 @@ int main(int argc, char **argv)
     parser.addOption(probePipewireLibOption);
     parser.addOption(portalTokenOption);
     parser.addOption(benchCaptureOption);
+    parser.addOption(hotkeyPortalStatusOption);
+    parser.addOption(hotkeyPortalRequestOption);
+    parser.addOption(hotkeyPortalTriggerOption);
+    parser.addOption(hotkeyPortalMsOption);
+    parser.addOption(hotkeyPortalListenOption);
+    parser.addOption(hotkeyPortalIdOption);
+    parser.addOption(hotkeyPortalConfigureOption);
     parser.addOption(ocrOption);
     parser.addOption(ocrLangsOption);
     parser.addOption(scrollCaptureOption);
@@ -208,6 +241,13 @@ int main(int argc, char **argv)
     options.toastDragBenchMs = parser.value(dragBenchOption).toInt();
     options.benchCapturePath = parser.value(benchCaptureOption);
     options.inplaceDemoOut = parser.value(inplaceDemoOption);
+    options.hotkeyPortalStatus = parser.isSet(hotkeyPortalStatusOption);
+    options.hotkeyPortalRequest = parser.isSet(hotkeyPortalRequestOption);
+    options.hotkeyPortalTrigger = parser.value(hotkeyPortalTriggerOption);
+    options.hotkeyPortalMs = parser.value(hotkeyPortalMsOption).toInt();
+    options.hotkeyPortalListenMs = parser.value(hotkeyPortalListenOption).toInt();
+    options.hotkeyPortalId = parser.value(hotkeyPortalIdOption);
+    options.hotkeyPortalConfigure = parser.isSet(hotkeyPortalConfigureOption);
     options.ocrPath = parser.value(ocrOption);
     options.ocrLangs = parser.value(ocrLangsOption);
     options.scrollCapture = parser.isSet(scrollCaptureOption);

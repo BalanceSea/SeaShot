@@ -200,6 +200,26 @@ seashot --record --rect X,Y,W,H --seconds 3 --save /tmp/x.mp4
 - **验收影响**：`scripts/acceptance-phaseC.sh` 的像素判据会给"贴图进程 + 观察者进程"
   都加 `SEASHOT_DISABLE_SELF_EXCLUSION=1`，关掉自排除后截到的才是人眼所见。
 
+### ISSUE-014 全局快捷键走 portal 时的 5 个坑（含一个会清掉用户已有按键的）
+
+- **状态**：**已完成**（Phase F，2026-10-17；细节与实测见 `docs/acceptance/phaseF.md`）
+- 这些坑都不报错、或者报得很难懂，逐个记录：
+
+| # | 现象 | 根因 / 解法 |
+| --- | --- | --- |
+| 1 | `BindShortcuts` 报 `消息的类型"(osa{sv})"与预期"(oa(sa{sv})sa{sv})"不匹配` | `QVariant::fromValue(QList<QPair<QString,QVariantMap>>)` 里那一项被 Qt **静默丢掉**（4 参数变 3）。解法：用带流运算符的结构体 `PortalShortcutEntry` + `Q_DECLARE_METATYPE` + `qDBusRegisterMetaType` |
+| 2 | `BindShortcuts` 成功了，但代码里的回调一行都不打印 | **`Qt::UniqueConnection` 对 lambda 无效** —— Qt 直接不建立连接。解法：信号只在 `ensureShortcutPortal()` 里接一次 |
+| 3 | `ConfigureShortcuts` 调用后 portal 日志里根本没有这次调用 | `session_handle` 是 D-Bus 的 `o`（对象路径），塞 `QString` 发不出去；`QDBus::NoBlock` 看不到错误。解法：`QDBusObjectPath` + `QDBus::Block` + 打印错误 |
+| 4 | 授权成功但"没有按键" | `preferred_trigger` 要**大写 XDG 格式**：`Ctrl+Alt+S` 被 KDE 判成 `Unknown modifier "Ctrl"` 丢掉；要 `CTRL+ALT+S` |
+| 5 | **用户自己设好的 `Ctrl+Alt+A` 被清空** | portal 的 bind 会**写回**绑定：用 KGlobalAccel 已占用的 id（`capture`）发起一次**不带 preferred_trigger** 的 bind，就把那个键覆盖成 `none`。解法：代码永远带 `preferred_trigger`；验收脚本"测完恢复原值" |
+
+**另外两条 KDE 语义**（不算坑，但影响预期）：
+- KDE 6 里 **KGlobalAccel 与 portal 共用同一份存储**（`kglobalshortcutsrc`）→ 已被 KGlobalAccel
+  建过条目的 id 不会弹授权对话框；要让用户看到"首次授权"，发起用的 id 必须是新的
+  （所以代码里 portal 用 `screenshot`，KGlobalAccel 用 `capture`）。
+- 没有"忘记授权"的 API：重新走授权要停 `plasma-kglobalaccel.service` + 从
+  `kglobalshortcutsrc` 的 `[seashot]` 段删掉那个 id。
+
 ## 已修（留档，避免回归）
 
 ### ISSUE-012 `acceptance-phase4.sh` 的 F 段判据与延迟导出行为不同步

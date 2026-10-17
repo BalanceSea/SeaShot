@@ -247,6 +247,9 @@ bash scripts/acceptance-phaseA3-color.sh
 # 就地编辑（Phase B）验收：拖手柄改选区 / 方向键微调 / Ctrl+A 全选 / Ctrl+C 复制 / Ctrl+S 保存
 bash scripts/acceptance-phaseB.sh
 
+# 全局快捷键（Phase F）验收：门户可用性/静默查询/请求不挂死/常驻自检/KGlobalAccel 未回归
+bash scripts/acceptance-phaseF.sh
+
 # 贴图（Phase C）验收：拖动/缩放/右键菜单/多张并存/全屏之上仍可见（约 40s，会弹一个全屏白底参照窗）
 bash scripts/acceptance-phaseC.sh
 
@@ -272,8 +275,19 @@ cmake -S probes/cmake -B probes/build -G Ninja && cmake --build probes/build
 
 ---
 
+## 7.5 全局快捷键（Phase F，2026-10-17 加）
+
+用户要求："让应用可以自己注册全局快捷键 让用户自己决定授权还是不授权" →
+走 **xdg-desktop-portal `GlobalShortcuts`**：应用发起 → **系统弹授权对话框** → 用户允许/拒绝。
+- 入口：设置里的「向系统申请注册（会弹授权对话框）」/ 托盘「注册全局快捷键（由我申请）…」/
+  `seashot --hotkey-portal-request`；状态：`seashot --hotkey-portal-status`、`--hotkey-status`（两条路都报）。
+- 用户**已实测通过**：授权对话框 → 允许 → `first-run-demo=Ctrl+Alt+A` 落地 → 按键即截图。
+- 坑与 KDE 语义（共 5 个坑 + 2 条语义）见 `docs/known-issues.md` ISSUE-014；
+  验收见 `docs/acceptance/phaseF.md`（8/8）与 `scripts/acceptance-phaseF.sh`。
+
 ## 8. 待用户决策的开放项
 
+0.5 **首次运行要不要自动发起一次 portal 授权**（从而立刻弹授权对话框）？现在要用户点一下入口。
 1. **GIF 剪贴板 MIME**：现挂 `image/gif`（聊天/浏览器可当动图粘）。
    若用户实际粘到某程序里变成文件或粘不进去 → 改挂 `text/uri-list`。**取决于用户粘到哪**。
 2. **`acceptance-phase4.sh` 的 F 段判据已按新行为修好**（ISSUE-012，已解决）：

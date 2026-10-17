@@ -17,6 +17,7 @@
 #include "record/GifRecorder.h"
 #include "record/PipeWireFrameSource.h"
 #include "record/PortalScreencast.h"
+#include "hotkey/GlobalShortcutsPortal.h"
 #include "ocr/OcrEngine.h"
 #include "ocr/OcrWindow.h"
 #include "record/RecordingIndicator.h"
@@ -26,6 +27,8 @@
 #ifdef SEASHOT_WITH_X11
 #include "backend/x11/X11Backend.h"
 #endif
+
+#include <algorithm>
 
 #include <QApplication>
 #include <QCoreApplication>
@@ -327,7 +330,8 @@ bool Application::isOneShot() const
         || m_options.hasRect || !m_options.windowHandle.isEmpty() || m_options.overlayHoldMs > 0
         || !m_options.editPath.isEmpty() || !m_options.annotateOut.isEmpty()
         || m_options.hotkeyStatus || m_options.printConfig || m_options.record
-        || m_options.scrollCapture || !m_options.ocrPath.isEmpty();
+        || m_options.scrollCapture || !m_options.ocrPath.isEmpty()
+        || m_options.hotkeyPortalStatus || m_options.hotkeyPortalRequest;
 }
 
 void Application::openEditor(const QImage &image, const QString &sourcePath)
@@ -811,7 +815,173 @@ void Application::startResident()
             startCapture();
         });
     }
+    setupShortcutPortal();
     applySettings();
+}
+
+void Application::setupShortcutPortal()
+{
+    // Phase F：常驻启动时**静默**看一眼"用户之前授权过没有"：
+    //   · 授权过 → 走 portal 这条路（监听 Activated → 与快捷键回调同一条路径）；
+    //   · 没授权过 → 什么都不做（**不主动弹窗**，那会每次启动打扰用户）。
+    //     由「设置 → 全局快捷键」的按钮 / 托盘菜单 「注册全局快捷键（由我申请）…」 / CLI 发起，
+    //     用户自己决定授权还是不授权。
+    uint version = 0;
+    QString error;
+    if (!GlobalShortcutsPortal::available(&version, &error))
+        return;
+    ensureShortcutPortal()->listShortcuts();
+}
+
+GlobalShortcutsPortal *Application::ensureShortcutPortal()
+{
+    if (m_shortcutPortal)
+        return m_shortcutPortal.get();
+    m_shortcutPortal = std::make_unique<GlobalShortcutsPortal>();
+    // ⚠️ 信号**只在这里接一次**，而且不要给 lambda 传 Qt::UniqueConnection：
+    //    那个标志只对成员函数指针有效，用 lambda 时 Qt 干脆**不建立连接**
+    //    （实测：BindShortcuts 明明成功了，回调一行都没打印）。
+    connect(m_shortcutPortal.get(), &GlobalShortcutsPortal::activated, this,
+            [this](const QString &shortcutId) {
+                QTextStream stream(stdout);
+                stream << "HOTKEY_PORTAL_ACTIVATED id=" << shortcutId << "\n";
+                stream.flush();
+                // ⚠️ 不按固定 id 过滤：这个 id 是"当年发起注册时用的名字"。
+                //    同一台机器上可能因为历史/调试而不同（实测：用户授权的是 first-run-demo，
+                //    而默认 id 是 screenshot）—— 会话里只会来我们自己的 id，全收。
+                if (m_recorder && m_recorder->isRecording())
+                    stopRecording();
+                else
+                    startCapture();
+            });
+    connect(m_shortcutPortal.get(), &GlobalShortcutsPortal::shortcutsChanged, this,
+            [this](const GlobalShortcutsPortal::Result &result) {
+                QTextStream stream(stdout);
+                QString trigger;
+                for (const auto &item : result.shortcuts) {
+                    if (!item.trigger.isEmpty())
+                        trigger = item.trigger;
+                }
+                stream << "HOTKEY_PORTAL_CHANGED " << result.describe() << "\n";
+                stream.flush();
+                if (!trigger.isEmpty()) {
+                    applyPortalShortcut(trigger);
+                    emit portalFlowFinished(true, trigger);
+                }
+            });
+    connect(m_shortcutPortal.get(), &GlobalShortcutsPortal::bound, this,
+            [this](const GlobalShortcutsPortal::Result &result) {
+                QTextStream stream(stdout);
+                if (!result.ok) {
+                    stream << "HOTKEY_PORTAL_DENIED " << result.describe() << "\n";
+                    stream.flush();
+                    emit portalFlowFinished(false, QString());
+                    return;
+                }
+                QString trigger;
+                for (const auto &item : result.shortcuts) {
+                    if (!item.trigger.isEmpty())
+                        trigger = item.trigger;
+                }
+                stream << "HOTKEY_PORTAL_BOUND " << result.describe() << "\n";
+                stream.flush();
+                if (!trigger.isEmpty()) {
+                    applyPortalShortcut(trigger);
+                    emit portalFlowFinished(true, trigger);
+                    return;
+                }
+                // 应答里没带按键（KDE 的 BindShortcuts 应答常常只有 id）：
+                // 再静默 ListShortcuts 一次，看用户在系统对话框里到底选了什么键。
+                stream << "HOTKEY_PORTAL_RELIST（应答里没有按键，再查一次当前绑定）\n";
+                stream.flush();
+                m_portalRelistPending = true;
+                m_shortcutPortal->listShortcuts();
+            });
+    connect(m_shortcutPortal.get(), &GlobalShortcutsPortal::listed, this,
+            [this](const GlobalShortcutsPortal::Result &result) {
+                if (!result.ok) {
+                    SS_INFO() << "[hotkey-portal] 查询绑定失败（当作未授权）：" << result.error;
+                    if (m_portalRelistPending) {
+                        m_portalRelistPending = false;
+                        QTextStream out(stdout);
+                        out << "HOTKEY_PORTAL_ERROR " << result.error << "\n";
+                        out.flush();
+                        emit portalFlowFinished(false, QString());
+                    }
+                    return;
+                }
+                QString trigger;
+                QString triggerId;
+                for (const auto &shortcut : result.shortcuts) {
+                    if (shortcut.trigger.isEmpty())
+                        continue;
+                    // 优先默认 id，其次任意一条（同上一段的理由：id 名可能不是默认那个）
+                    if (trigger.isEmpty()
+                        || shortcut.id == GlobalShortcutsPortal::shortcutId()) {
+                        trigger = shortcut.trigger;
+                        triggerId = shortcut.id;
+                    }
+                }
+                Q_UNUSED(triggerId)
+                QTextStream out(stdout);
+                if (m_portalRelistPending) {
+                    m_portalRelistPending = false;
+                    if (trigger.isEmpty()) {
+                        out << "HOTKEY_PORTAL_NO_TRIGGER（已授权，但系统没给按键 —— 可在设置里点"
+                               "「更改快捷键…」，或带 --hotkey-portal-configure 重跑）\n";
+                        out.flush();
+                        if (m_options.hotkeyPortalConfigure)
+                            configureHotkeyPortal();
+                        emit portalFlowFinished(true, QString());
+                    } else {
+                        out << "HOTKEY_PORTAL_TRIGGER " << trigger << "\n";
+                        out.flush();
+                        applyPortalShortcut(trigger);
+                        emit portalFlowFinished(true, trigger);
+                    }
+                    return;
+                }
+                // 常驻启动时的静默自检：只报状态，不弹任何窗
+                out << (trigger.isEmpty()
+                            ? QStringLiteral("HOTKEY_PORTAL_STATE not-authorized")
+                            : QStringLiteral("HOTKEY_PORTAL_STATE authorized id=%1 trigger=%2")
+                                  .arg(triggerId, trigger))
+                    << "\n";
+                out.flush();
+            });
+    return m_shortcutPortal.get();
+}
+
+void Application::requestHotkeyPortal()
+{
+    QTextStream out(stdout);
+    uint version = 0;
+    QString error;
+    if (!GlobalShortcutsPortal::available(&version, &error)) {
+        out << "HOTKEY_PORTAL_ERROR " << error << "\n";
+        out.flush();
+        emit portalFlowFinished(false, QString());
+        return;
+    }
+    GlobalShortcutsPortal *portal = ensureShortcutPortal();
+    GlobalShortcutsPortal::Shortcut shortcut;
+    shortcut.id = m_options.hotkeyPortalId.isEmpty() ? GlobalShortcutsPortal::shortcutId()
+                                                     : m_options.hotkeyPortalId;
+    shortcut.description = QStringLiteral("截图（SeaShot 截图）");
+    // 把期望的按键一起发过去：系统授权对话框会**预填**这个键，用户直接允许即可；
+    // 也可以当场改成别的键。传空的话对话框里就是空的，用户得自己敲一个（体验差）。
+    const QString preferred = (m_settings && !m_settings->hotkey().isEmpty())
+        ? m_settings->hotkey()
+        : QStringLiteral("Ctrl+Alt+S");
+    shortcut.preferredTrigger = GlobalShortcutsPortal::toXdgTrigger(preferred);
+    out << "HOTKEY_PORTAL_REQUESTING id=" << shortcut.id << "\n";
+    out.flush();
+    portal->requestBind({shortcut}, qMax(1000, m_options.hotkeyPortalMs));
+}
+
+void Application::configureHotkeyPortal()
+{
+    ensureShortcutPortal()->configure();
 }
 
 void Application::applySettings()
@@ -841,6 +1011,8 @@ void Application::applySettings()
             }
             QProcess::startDetached(program, {QStringLiteral("kcm_keys")});
         });
+        connect(m_tray.get(), &Tray::portalHotkeyRequested, this,
+                &Application::requestHotkeyPortal);
         connect(m_tray.get(), &Tray::quitRequested, qApp, &QCoreApplication::quit);
         SS_INFO() << "[app] 托盘已创建";
     } else if (!m_settings->trayPersistent() && m_tray) {
@@ -895,6 +1067,10 @@ void Application::openSettings()
     }
     m_settingsDialog = dialog;
     connect(dialog, &QObject::destroyed, this, [this]() { m_settingsDialog = nullptr; });
+    connect(dialog, &SettingsDialog::hotkeyPortalRequested, this,
+            &Application::requestHotkeyPortal);
+    connect(dialog, &SettingsDialog::hotkeyPortalConfigureRequested, this,
+            &Application::configureHotkeyPortal);
     connect(dialog, &SettingsDialog::hotkeyChanged, this, &Application::applyHotkey);
     dialog->show();
     dialog->raise();
@@ -1516,6 +1692,110 @@ void Application::startOcr(const QImage &image, bool interactive)
             });
         }
     });
+}
+
+int Application::runHotkeyPortalStatus()
+{
+    QTextStream out(stdout);
+    uint version = 0;
+    QString error;
+    const bool ok = GlobalShortcutsPortal::available(&version, &error);
+    out << "HOTKEY_PORTAL available=" << (ok ? 1 : 0) << " version=" << version
+        << " error=" << (error.isEmpty() ? QStringLiteral("(none)") : error) << "\n";
+    out.flush();
+    if (!ok)
+        return 1;
+
+    // 静默列一次当前绑定（没有授权过就是空列表 —— 这一步不会弹窗）
+    GlobalShortcutsPortal portal;
+    QEventLoop loop;
+    int count = -1;
+    QStringList triggers;
+    connect(&portal, &GlobalShortcutsPortal::listed, this,
+            [&](const GlobalShortcutsPortal::Result &result) {
+                count = result.shortcuts.size();
+                for (const auto &shortcut : result.shortcuts)
+                    triggers << QStringLiteral("%1=%2").arg(
+                        shortcut.id, shortcut.trigger.isEmpty() ? QStringLiteral("(未绑定)")
+                                                                : shortcut.trigger);
+                if (!result.ok)
+                    triggers << QStringLiteral("error=%1").arg(result.error);
+                loop.quit();
+            });
+    QTimer::singleShot(20000, &loop, &QEventLoop::quit);
+    portal.listShortcuts();
+    loop.exec();
+    portal.closeSession();
+    out << "HOTKEY_PORTAL_LIST count=" << count
+        << " shortcuts=" << (triggers.isEmpty() ? QStringLiteral("(空)") : triggers.join(QLatin1Char(',')))
+        << "\n";
+    out.flush();
+    return count >= 0 ? 0 : 1;
+}
+
+int Application::runHotkeyPortalRequest()
+{
+    QTextStream out(stdout);
+    uint version = 0;
+    QString error;
+    if (!GlobalShortcutsPortal::available(&version, &error)) {
+        out << "HOTKEY_PORTAL_ERROR " << error << "\n";
+        out.flush();
+        return 2;
+    }
+    int code = 1;
+    QString finalTrigger;
+    QEventLoop loop;
+    connect(this, &Application::portalFlowFinished, &loop,
+            [&](bool ok, const QString &trigger) {
+                code = ok ? 0 : 3;
+                finalTrigger = trigger;
+                out << (ok ? "HOTKEY_PORTAL_FLOW ok=1 trigger="
+                           : "HOTKEY_PORTAL_FLOW ok=0 trigger=")
+                    << (trigger.isEmpty() ? QStringLiteral("(未设置)") : trigger) << "\n";
+                out.flush();
+                loop.quit();
+            });
+    // 兜底：等用户应答的上限（授权对话框/配置对话框都可能开很久）
+    QTimer::singleShot(qMax(1000, m_options.hotkeyPortalMs), &loop, &QEventLoop::quit);
+    requestHotkeyPortal();
+    loop.exec();
+
+    // 授权成功且要求停留时：留在这里等按键 —— 好把"授权 → 按一下 → 真的截图"验完
+    if (code == 0 && m_options.hotkeyPortalListenMs != 0 && m_shortcutPortal) {
+        const int listenMs = m_options.hotkeyPortalListenMs < 0 ? 3600000
+                                                               : m_options.hotkeyPortalListenMs;
+        out << "HOTKEY_PORTAL_LISTENING ms=" << listenMs << "（按一下那个键就会截图）\n";
+        out.flush();
+        QEventLoop listenLoop;
+        connect(m_shortcutPortal.get(), &GlobalShortcutsPortal::activated, &listenLoop,
+                [&out, &listenLoop](const QString &shortcutId) {
+                    QTextStream stream(stdout);
+                    stream << "HOTKEY_PORTAL_ACTIVATED id=" << shortcutId << "\n";
+                    stream.flush();
+                    QTimer::singleShot(800, &listenLoop, &QEventLoop::quit);
+                });
+        QTimer::singleShot(listenMs, &listenLoop, &QEventLoop::quit);
+        listenLoop.exec();
+    }
+    if (m_shortcutPortal)
+        m_shortcutPortal->closeSession();
+    return code;
+}
+
+void Application::applyPortalShortcut(const QString &trigger)
+{
+    // 授权成功后：把结果记进配置（供界面/CLI 显示），并接上"按下就截图"。
+    // 注意 portal 的**授权**由桌面按 app id 记住，我们这里只存"实际生效的按键"用于展示。
+    if (!m_settings)
+        return;
+    if (!trigger.isEmpty())
+        m_settings->setHotkey(trigger);
+    QTextStream out(stdout);
+    out << "HOTKEY_PORTAL_APPLIED trigger="
+        << (trigger.isEmpty() ? QStringLiteral("(未返回按键，需在系统对话框里确认)") : trigger)
+        << "\n";
+    out.flush();
 }
 
 int Application::runOcrCli(const QString &path)
@@ -3004,6 +3284,41 @@ int Application::run()
         return runPrintConfig();
     if (m_options.hotkeyStatus) {
         applyHotkey(m_settings->hotkey());
+        // Phase F：顺带静默报告门户那条路的状态（谁在真正生效，一眼就能看出来）
+        {
+            uint version = 0;
+            QString portalError;
+            if (GlobalShortcutsPortal::available(&version, &portalError)) {
+                GlobalShortcutsPortal portal;
+                QEventLoop loop;
+                QStringList triggers;
+                int boundCount = 0;
+                connect(&portal, &GlobalShortcutsPortal::listed, &loop,
+                        [&triggers, &boundCount, &loop](const GlobalShortcutsPortal::Result &result) {
+                            // 直接数"有 trigger 的"条目，别拿显示字符串去 contains（全角/半角括号会坑）
+                            for (const auto &shortcut : result.shortcuts) {
+                                if (!shortcut.trigger.isEmpty())
+                                    ++boundCount;
+                                triggers << QStringLiteral("%1=%2").arg(
+                                    shortcut.id, shortcut.trigger.isEmpty()
+                                                     ? QStringLiteral("(unbound)")
+                                                     : shortcut.trigger);
+                            }
+                            loop.quit();
+                        });
+                QTimer::singleShot(8000, &loop, &QEventLoop::quit);
+                portal.listShortcuts();
+                loop.exec();
+                portal.closeSession();
+                const bool authorized = boundCount > 0;
+                out << "HOTKEY_PORTAL_STATE available=1 version=" << version
+                    << " authorized=" << (authorized ? 1 : 0) << " shortcuts="
+                    << (triggers.isEmpty() ? QStringLiteral("(空)") : triggers.join(QLatin1Char(',')))
+                    << "\n";
+            } else {
+                out << "HOTKEY_PORTAL_STATE available=0 error=" << portalError << "\n";
+            }
+        }
         out << "HOTKEY configured="
             << (m_settings->hotkey().isEmpty() ? QStringLiteral("(none)") : m_settings->hotkey())
             << " actual=" << (m_backend ? m_backend->hotkeyStatus() : QStringLiteral("-")) << "\n";
@@ -3067,6 +3382,10 @@ int Application::run()
         }
         return QCoreApplication::exec();
     }
+    if (m_options.hotkeyPortalStatus)
+        return runHotkeyPortalStatus();
+    if (m_options.hotkeyPortalRequest)
+        return runHotkeyPortalRequest();
     if (!m_options.ocrPath.isEmpty())
         return runOcrCli(m_options.ocrPath);
     if (m_options.scrollCapture)

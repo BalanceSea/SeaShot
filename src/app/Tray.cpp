@@ -30,6 +30,9 @@ Tray::Tray(QObject *parent)
     connect(settingsAction, &QAction::triggered, this, &Tray::settingsRequested);
     QAction *keysAction = m_menu->addAction(QStringLiteral("KDE 快捷键设置…"));
     connect(keysAction, &QAction::triggered, this, &Tray::shortcutSettingsRequested);
+    // Phase F：由 SeaShot 自己向系统申请注册（系统弹授权对话框，用户决定允不允许）
+    QAction *portalKeyAction = m_menu->addAction(QStringLiteral("注册全局快捷键（由我申请）…"));
+    connect(portalKeyAction, &QAction::triggered, this, &Tray::portalHotkeyRequested);
     m_menu->addSeparator();
     QAction *quitAction = m_menu->addAction(QStringLiteral("退出 SeaShot"));
     connect(quitAction, &QAction::triggered, this, &Tray::quitRequested);

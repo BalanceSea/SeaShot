@@ -28,6 +28,7 @@ class GifRecorder;
 class RecordingIndicator;
 class PinWindow;
 class ScrollCapturer;
+class GlobalShortcutsPortal;
 
 struct Options {
     QString backend = QStringLiteral("auto"); ///< auto|wayland|x11
@@ -58,6 +59,14 @@ struct Options {
     int scrollMs = 0;           ///< --scroll-ms N：滚动截屏最多跑 N 毫秒（0 = 用默认值）
     QString ocrPath;            ///< --ocr PATH：对一张图做文字识别（Phase E）
     QString ocrLangs;           ///< --ocr-langs "chi_sim+eng"：指定语言（默认自动）
+    /// Phase F：全局快捷键走 xdg-desktop-portal GlobalShortcuts（应用自己申请、用户授权）
+    bool hotkeyPortalStatus = false; ///< --hotkey-portal-status：报告门户可用性与当前绑定
+    bool hotkeyPortalRequest = false;///< --hotkey-portal-request：发起注册（第一次会弹授权对话框）
+    QString hotkeyPortalTrigger;     ///< --hotkey-portal-trigger：期望的按键（空 = 让用户在对话框里选）
+    int hotkeyPortalMs = 180000;     ///< --hotkey-portal-ms：等用户应答的上限
+    int hotkeyPortalListenMs = 0;    ///< --hotkey-portal-listen-ms：授权后继续监听按键多久（0=不等）
+    QString hotkeyPortalId;          ///< --hotkey-portal-id：快捷键 id（默认 screenshot）
+    bool hotkeyPortalConfigure = false; ///< --hotkey-portal-configure：授权后打开系统的改键对话框
     QString pinDemoOut; ///< --pin-demo PREFIX：贴图的自动化验收（Phase C）
     QString inplaceDemoOut; ///< --inplace-demo PATH：就地标注（Phase A1）的自动化验收
     QString benchCapturePath; ///< --bench-capture PATH：截全屏存盘并打印帧时间戳（给基准测试当观测者）
@@ -156,6 +165,28 @@ private:
     void startOcr(const QImage &image, bool interactive);
     /// Phase E：`--ocr PATH`
     int runOcrCli(const QString &path);
+    /// Phase F：`--hotkey-portal-status`（静默查可用性与当前绑定）
+    int runHotkeyPortalStatus();
+    /// Phase F：`--hotkey-portal-request`（发起注册；第一次会弹系统授权对话框）
+    int runHotkeyPortalRequest();
+    /// Phase F：把 portal 授权结果记进配置，并接上"按下就截图"
+    void applyPortalShortcut(const QString &trigger);
+    /// Phase F：懒加载 portal 对象并**只接一次**信号（回调都在这里）
+    class GlobalShortcutsPortal *ensureShortcutPortal();
+    /// Phase F：常驻启动时静默检查"是否已授权"，是则监听 Activated
+    void setupShortcutPortal();
+    /// Phase F：界面/托盘发起"让 SeaShot 申请注册"（会弹系统授权对话框）
+    void requestHotkeyPortal();
+    /// Phase F：打开系统的快捷键配置对话框
+    void configureHotkeyPortal();
+
+signals:
+    /// Phase F：一次 portal 申请流程结束（授权成功 / 被拒绝 / 超时）
+    void portalFlowFinished(bool ok, const QString &trigger);
+
+private:
+    std::unique_ptr<GlobalShortcutsPortal> m_shortcutPortal;
+    bool m_portalRelistPending = false; ///< bind 应答没带按键 → 再 ListShortcuts 一次确认
     QRect virtualGeometry() const;
     bool isOneShot() const;
 

@@ -31,6 +31,10 @@ public:
 signals:
     /// 用户在界面里改了快捷键（Application 负责真正注册）
     void hotkeyChanged(const QString &sequence);
+    /// Phase F：用户点了「向系统申请注册」——由 Application 发起 portal 请求（会弹授权对话框）
+    void hotkeyPortalRequested();
+    /// Phase F：用户点了「更改快捷键（系统对话框）」——由 Application 打开系统的配置对话框
+    void hotkeyPortalConfigureRequested();
 
 private:
     void buildUi();
@@ -39,7 +43,11 @@ private:
     void chooseSaveDir();
     void resetToDefaults();
     void updateHotkeyStatus();
+    /// Phase F：把 portal 的可用性/绑定状态写进状态标签（由 Application 回填）
+public:
+    void setPortalStatus(const QString &text);
 
+    QString m_portalStatusText; ///< Phase F：portal 状态（由 Application 回填）
     Settings *m_settings = nullptr;
     CaptureBackend *m_backend = nullptr;
 
