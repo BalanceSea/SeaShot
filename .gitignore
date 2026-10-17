@@ -1,13 +1,62 @@
-# 构建目录
-probes/build/
-build/
-# 探测产生的二进制与临时文件
-probes/out/shot2probe
-probes/out/testwindow
-probes/out/*.raw
-probes/out/tmp*.png
-probes/out/diff*.png
-probes/out/33-diff.png
-# 构建日志
-build.log
-build-configure.log
+# 🏗️ CMake / Ninja 构建产物
+/build/
+/build-*/
+/cmake-build-*/
+/probes/build/
+/probes/build-*/
+/CMakeFiles/
+/CMakeCache.txt
+/cmake_install.cmake
+/CTestTestfile.cmake
+/Testing/
+/Makefile
+/build.ninja
+/.ninja_*
+/compile_commands.json
+CMakeUserPresets.json
+*_autogen/
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+
+# 🧪 本机探测、验收截图、视频和日志；保留脚本与测试源码
+/probes/out/
+/docs/acceptance/
+
+# 📝 本地开发计划、会话笔记与环境记录
+/PLAN.md
+/docs/next-session-plan.md
+/docs/plan-inplace-editor.md
+/docs/repair-plan-*.md
+/docs/phase0-findings.md
+/docs/known-issues.md
+/docs/local/
+
+# 🔐 本地配置、授权 token 和运行时文件
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+*.token
+*.sock
+*.sock.lock
+
+# 🧹 日志、缓存、编辑器与系统临时文件
+*.log
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+/.cache/
+/.codex/
+/.idea/
+/.vscode/
+.DS_Store
+Thumbs.db

@@ -1,3 +1,0 @@
-HOTKEY configured=Ctrl+Alt+S actual=(未绑定)
-HOTKEY configured=Ctrl+Shift+F9 actual=(未绑定)
-HOTKEY configured=(none) actual=(未绑定)

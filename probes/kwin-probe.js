@@ -4,7 +4,7 @@
 // 本脚本不修改任何窗口状态，只把 JSON 打到 KWin 日志（journal）里。
 // 加载方式：
 //   qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.loadScript \
-//       "/home/balancesea/Vibe Code/SeaShot/probes/kwin-probe.js" "seashot-probe0"
+//       "$PWD/probes/kwin-probe.js" "seashot-probe0"
 //   qdbus6 org.kde.KWin /Scripting org.kde.kwin.Scripting.start
 
 function rectOf(getter) {

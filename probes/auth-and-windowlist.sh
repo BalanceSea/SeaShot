@@ -26,7 +26,12 @@ try_area "无 desktop 文件"
 
 echo
 echo "### 2) 恢复 desktop 文件，观察授权生效延迟"
-cp -f "$PROBE_DESK" "$DESK"
+while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+        Exec=*) printf 'Exec=%s\n' "$BIN" ;;
+        *) printf '%s\n' "$line" ;;
+    esac
+done < "$PROBE_DESK" > "$DESK"
 kbuildsycoca6 --noincremental >/dev/null 2>&1
 for i in $(seq 1 12); do
     sleep 3

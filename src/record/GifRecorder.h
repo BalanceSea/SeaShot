@@ -1,12 +1,4 @@
-// 录制器：按帧率轮询后端截图并把帧喂给 GifEncoder。
-//
-// 为什么用"轮询截图"而不是 portal ScreenCast：
-//  - Phase 0 已实测 KWin 6.7 **没有**录制 D-Bus 接口；portal 路线需要 PipeWire 客户端
-//    消费（libpipewire/gst 具备，但要引入新依赖与流线程/协商代码，且每次会话要用户授权）；
-//  - PLAN 的 Phase 4 要求"帧采集由 SeaShot 自己完成"，轮询 `CaptureBackend::captureRect()`
-//    正好落在既有链路上：Wayland 走 ScreenShot2、X11 走 MIT-SHM，两条后端一套代码；
-//  - 代价是时序不完美（非严格等间隔）、CPU 更高。验收里会给出实测的丢帧率与帧率误差。
-// portal ScreenCast（更平滑/更高帧率）留作后续增强，见 docs/known-issues.md。
+// 录制器：PipeWire 或截图轮询取帧；按实际经过时间补帧，保持导出时长。
 #pragma once
 
 #include "core/Types.h"
@@ -74,6 +66,7 @@ public:
     bool deferExport() const { return m_deferExport; }
     /// 把已保留的无损中间文件导出成 path（按扩展名定格式）。仅延迟导出模式下有意义。
     bool exportTo(const QString &path, QString *error);
+    bool hasPendingExport() const;
     QImage lastFrame() const { return m_lastFrame; }
 
     friend class TestGifRecorder;
@@ -89,6 +82,7 @@ signals:
 private:
     void tick();
     bool beginRecording(const QImage &firstFrame, QString *error);
+    bool writeFrameAtTime(const QImage &frame, qint64 elapsedMs, QString *error);
     void onFrame(const CaptureImage &image);
     void finishEncoding();
 
@@ -108,6 +102,7 @@ private:
     bool m_deferExport = false;
     bool m_lossless = true;
     qint64 m_lastSpaceCheckMs = 0;
+    quint64 m_sessionId = 0;
     int m_fps = 15;
 };
 

@@ -1,1 +1,0 @@
-SCROLLPAGE window=600x500 at 200,150 page=600x3000 step=120 interval=300 start=3000ms

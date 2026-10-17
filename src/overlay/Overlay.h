@@ -98,6 +98,8 @@ public:
     const QImage &composedSelection() const { return m_composedSelection; }
     /// 把标注渲染进任意一张选区图（导出/复制调它；与预览同一实现，不允许绕过）
     QImage renderSelection(const QImage &source) const;
+    /// 从冻结的原始物理像素生成结果；标注按冻结图缩放比例合成。
+    CaptureImage annotatedCapture() const;
     int selectedIndex() const { return m_selectedIndex; }
     /// A3 验收用的一行状态
     QString annotationStatus() const;
@@ -249,6 +251,8 @@ private:
     Stage m_stage = Stage::Selecting;
     bool m_annotationEnabled = false;
     QImage m_frozenFrame;        ///< 整屏冻结图（已归一到逻辑像素，1:1 可画）
+    QImage m_frozenPhysicalFrame;
+    double m_frozenScale = 1.0;
     SelectionResult m_selection; ///< Annotating 阶段固定的选区
 
     // ── A3 标注状态 ───────────────────────────────────────

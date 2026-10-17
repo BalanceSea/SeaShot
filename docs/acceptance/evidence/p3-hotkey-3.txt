@@ -1,1 +1,0 @@
-HOTKEY_SET (none) actual=(未绑定)

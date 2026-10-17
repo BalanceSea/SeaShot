@@ -1,5 +1,6 @@
 // EWMH 属性解析（X11 后端的可测部分）
 #include "backend/x11/Ewmh.h"
+#include "backend/x11/X11Backend.h"
 
 #include <QtTest>
 
@@ -24,6 +25,18 @@ class TestEwmh : public QObject
     Q_OBJECT
 
 private slots:
+    void keyboardMappingUsesRowOffsetsAndStaysInBounds()
+    {
+        const quint32 symbols[] = {10, 11, 20, 21, 30, 31, 40, 41};
+        QCOMPARE(X11Backend::findKeycode(symbols, 2, 8, 10), 8u);
+        QCOMPARE(X11Backend::findKeycode(symbols, 2, 8, 21), 9u);
+        QCOMPARE(X11Backend::findKeycode(symbols, 2, 8, 40), 11u);
+        QCOMPARE(X11Backend::findKeycode(symbols, 2, 8, 41), 11u);
+        QCOMPARE(X11Backend::findKeycode(symbols, 2, 8, 99), 0u);
+        QCOMPARE(X11Backend::findKeycode(symbols, 0, 8, 10), 0u);
+        QCOMPARE(X11Backend::findKeycode({}, 2, 8, 10), 0u);
+    }
+
     void parsesFrameExtents()
     {
         bool ok = false;

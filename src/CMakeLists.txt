@@ -112,3 +112,7 @@ qt_add_resources(seashot_core "kwinscript"
 
 add_executable(seashot main.cpp)
 target_link_libraries(seashot PRIVATE seashot_core)
+
+# README 配图：显式构建时才生成，使用真实控件和合成示例，不抓取用户桌面。
+add_executable(seashot_readme_demo EXCLUDE_FROM_ALL ../probes/readme-demo.cpp)
+target_link_libraries(seashot_readme_demo PRIVATE seashot_core)

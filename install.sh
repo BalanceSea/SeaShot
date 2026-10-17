@@ -12,6 +12,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="${BUILD_DIR:-$ROOT/build}"
 BINDIR="${BINDIR:-$HOME/.local/bin}"
 APPDIR="${APPDIR:-$HOME/.local/share/applications}"
+ICONDIR="${ICONDIR:-$HOME/.local/share/icons/hicolor}"
 BIN="$BINDIR/seashot"
 
 DO_BUILD=1
@@ -40,8 +41,16 @@ if [ ! -x "$SEASHOT_BINARY" ]; then
     echo "找不到构建产物（试过 $BUILD_DIR/seashot 与 $BUILD_DIR/src/seashot）" >&2
     exit 1
 fi
-install -Dm755 "$SEASHOT_BINARY" "$BIN"
+if ! cmp -s "$SEASHOT_BINARY" "$BIN"; then
+    install -Dm755 "$SEASHOT_BINARY" "$BIN"
+fi
 echo "   $BIN"
+
+echo "== 安装 SeaShot 应用图标 =="
+install -Dm644 "$ROOT/resources/icons/seashot.png" "$ICONDIR/512x512/apps/seashot.png"
+if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+    gtk-update-icon-cache -f -t "$ICONDIR" >/dev/null 2>&1 || true
+fi
 
 echo "== 写 desktop 文件（含截图授权属性）=="
 mkdir -p "$APPDIR"
@@ -53,7 +62,7 @@ GenericName=截图工具
 Comment=KDE Plasma 6 (Wayland/X11) 截图工具
 Exec=$BIN
 TryExec=$BIN
-Icon=camera-photo
+Icon=seashot
 Terminal=false
 NoDisplay=false
 Categories=Graphics;Utility;Qt;KDE;

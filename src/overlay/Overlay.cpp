@@ -160,6 +160,7 @@ void Overlay::startSelection()
     m_hover = WindowInfo();
     m_stage = Stage::Selecting;
     m_frozenFrame = QImage();
+    m_frozenPhysicalFrame = QImage();
     m_selection = SelectionResult();
     m_currentTool = ToolKind::Select;
     m_hoverCell = -1;
@@ -191,6 +192,7 @@ void Overlay::stopSelection()
     hide();
     m_stage = Stage::Selecting;
     m_frozenFrame = QImage();
+    m_frozenPhysicalFrame = QImage();
     m_hoverCell = -1;
     m_pressedCell = -1;
 }
@@ -219,6 +221,8 @@ void Overlay::beginAnnotating(const SelectionResult &selection, const QImage &fr
     // 冻结屏幕归一到**逻辑像素**：这样绘制就是严格的 1:1，不需要在 paint 里做任何缩放。
     // 本机实测 scale=1（单输出），此时这一步是零成本的直通。
     const double scale = (frozenScale > 0.0) ? frozenScale : 1.0;
+    m_frozenPhysicalFrame = frozenPhysical;
+    m_frozenScale = scale;
     if (frozenPhysical.isNull()) {
         m_frozenFrame = QImage();
     } else if (qFuzzyCompare(scale, 1.0)) {
@@ -932,6 +936,26 @@ QImage Overlay::renderSelection(const QImage &source) const
 {
     // 导出/复制与预览共用这一条出路（renderAnnotations），不另写一套画法
     return renderAnnotations(source, m_document.items());
+}
+
+CaptureImage Overlay::annotatedCapture() const
+{
+    CaptureImage result;
+    result.scale = m_frozenScale;
+    const QRectF local = localSelectionRect();
+    const QRect pixels = QRectF(local.x() * result.scale, local.y() * result.scale,
+                                local.width() * result.scale, local.height() * result.scale)
+                             .toAlignedRect().intersected(m_frozenPhysicalFrame.rect());
+    if (pixels.isEmpty()) {
+        result.error = QStringLiteral("冻结选区图像为空");
+        return result;
+    }
+    result.image = renderAnnotations(m_frozenPhysicalFrame.copy(pixels), m_document.items(),
+                                      result.scale);
+    if (result.image.isNull()) {
+        result.error = QStringLiteral("冻结选区图像为空");
+    }
+    return result;
 }
 
 void Overlay::refreshComposed(int skipIndex)

@@ -1,9 +1,0 @@
-[info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-182765" id= 1 run方式= Script<N>.run 
-HOTKEY_PORTAL available=1 version=2 error=(none)
-HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_23428/seashot_9d8eba4f args=1 signature=
-[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_23428/seashot_s_526563b9" 
-HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_23428/seashot_44aaf137 args=2 signature=
-HOTKEY_PORTAL_LIST count=2 shortcuts=screenshot=Ctrl+Alt+A,capture=Ctrl+Alt+A
-[info] [kwin] 脚本已卸载 pluginName= "seashot-182765" 

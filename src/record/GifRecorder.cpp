@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QStorageInfo>
 #include <QFileInfo>
+#include <QPointer>
 #include <QThread>
 #include <QTimer>
 
@@ -33,7 +34,7 @@ GifRecorder::~GifRecorder()
 bool GifRecorder::startFromProvider(FrameProvider provider, const QSize &frameSize,
                                   const QRectF &logicalRect, int fps, QString *error)
 {
-    if (m_recording) {
+    if (m_recording || m_finishing) {
         if (error)
             *error = QStringLiteral("已经在录制中");
         return false;
@@ -58,6 +59,7 @@ bool GifRecorder::startFromProvider(FrameProvider provider, const QSize &frameSi
     m_lastFrame = QImage();
     m_inFlight = false;
     m_finishing = false;
+    ++m_sessionId;
 
     // 等第一帧（流刚从 portal 起来时可能有几十毫秒延迟）
     QImage first;
@@ -101,6 +103,7 @@ bool GifRecorder::beginRecording(const QImage &firstFrame, QString *error)
     m_stats.requested = 1;
     m_stats.captured = 1;
     m_lastFrame = firstFrame;
+    m_lastSpaceCheckMs = 0;
     m_elapsed.start();
     m_recording = true;
     m_timer.start(1000 / m_fps);
@@ -110,7 +113,7 @@ bool GifRecorder::beginRecording(const QImage &firstFrame, QString *error)
 
 bool GifRecorder::start(CaptureBackend *backend, const QRectF &logicalRect, int fps, QString *error)
 {
-    if (m_recording) {
+    if (m_recording || m_finishing) {
         if (error)
             *error = QStringLiteral("已经在录制中");
         return false;
@@ -127,6 +130,8 @@ bool GifRecorder::start(CaptureBackend *backend, const QRectF &logicalRect, int 
     }
 
     m_backend = backend;
+    m_frameProvider = nullptr;
+    ++m_sessionId;
     m_region = logicalRect;
     m_fps = qBound(1, fps, 60);
     m_stats = Stats();
@@ -136,49 +141,41 @@ bool GifRecorder::start(CaptureBackend *backend, const QRectF &logicalRect, int 
     m_finishing = false;
 
     // 先用一帧确定尺寸（同时也验证这一块真的截得到）
-    CaptureImage first;
-    bool got = false;
+    struct FirstFrame {
+        CaptureImage image;
+        bool received = false;
+    };
+    const auto first = std::make_shared<FirstFrame>();
     QEventLoop loop;
+    const QPointer<QEventLoop> waitingLoop(&loop);
     QTimer timeout;
     timeout.setSingleShot(true);
     QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
-    backend->captureRect(m_region, [&](const CaptureImage &image) {
-        first = image;
-        got = true;
-        loop.quit();
+    backend->captureRect(m_region, [first, waitingLoop](const CaptureImage &image) {
+        if (!waitingLoop)
+            return;
+        first->image = image;
+        first->received = true;
+        waitingLoop->quit();
     });
     // 回调可能是同步的（例如测试用的假后端）：已拿到就不必再进事件循环
-    if (!got) {
+    if (!first->received) {
         timeout.start(15000);
         loop.exec();
     }
-    if (!got || !first.ok()) {        if (error)
-            *error = first.error.isEmpty() ? QStringLiteral("首帧截图超时") : first.error;
+    if (!first->received || !first->image.ok()) {
+        if (error)
+            *error = first->image.error.isEmpty() ? QStringLiteral("首帧截图超时")
+                                                 : first->image.error;
         return false;
     }
 
-    m_frameSize = first.image.size();
-    m_encoder = std::make_unique<GifEncoder>();
-    if (!m_encoder->start(m_frameSize, m_fps, error)) {
-        m_encoder.reset();
+    m_frameSize = first->image.image.size();
+    if (!beginRecording(first->image.image, error))
         return false;
-    }
-    if (!m_encoder->writeFrame(first.image, error)) {
-        m_encoder->abort();
-        m_encoder.reset();
-        return false;
-    }
-
-    m_stats.requested = 1;
-    m_stats.captured = 1;
-    m_lastFrame = first.image;
-    m_elapsed.start();
-    m_recording = true;
-    m_timer.start(1000 / m_fps);
 
     SS_INFO() << "[record] 开始录制" << m_region << m_fps << "fps 帧尺寸" << m_frameSize
               << "输出" << (m_outputPath.isEmpty() ? QStringLiteral("(未指定)") : m_outputPath);
-    emit started(m_region, m_fps);
     return true;
 }
 
@@ -204,7 +201,23 @@ void GifRecorder::tick()
         onFrame(frame);
         return;
     }
-    m_backend->captureRect(m_region, [this](const CaptureImage &image) { onFrame(image); });
+    const QPointer<GifRecorder> recorder(this);
+    const quint64 session = m_sessionId;
+    m_backend->captureRect(m_region, [recorder, session](const CaptureImage &image) {
+        if (recorder && recorder->m_sessionId == session)
+            recorder->onFrame(image);
+    });
+}
+
+bool GifRecorder::writeFrameAtTime(const QImage &frame, qint64 elapsedMs, QString *error)
+{
+    const qint64 frameIndex = elapsedMs * m_fps / 1000;
+    // 原始视频没有逐帧时间戳：漏掉的时间段必须用上一帧补足。
+    while (m_encoder->frameCount() < frameIndex) {
+        if (!m_encoder->writeFrame(m_lastFrame, error))
+            return false;
+    }
+    return m_encoder->frameCount() > frameIndex || m_encoder->writeFrame(frame, error);
 }
 
 void GifRecorder::onFrame(const CaptureImage &image)
@@ -228,7 +241,7 @@ void GifRecorder::onFrame(const CaptureImage &image)
     }
 
     QString error;
-    if (!m_encoder->writeFrame(image.image, &error)) {
+    if (!writeFrameAtTime(image.image, m_elapsed.elapsed(), &error)) {
         ++m_stats.failed;
         SS_WARN() << "[record] 写帧失败：" << error;
         emit progress();
@@ -282,6 +295,12 @@ bool GifRecorder::exportTo(const QString &path, QString *error)
     return true;
 }
 
+bool GifRecorder::hasPendingExport() const
+{
+    return m_deferExport && !m_recording && !m_finishing && m_encoder
+        && QFile::exists(m_encoder->intermediatePath());
+}
+
 void GifRecorder::stop()
 {
     if (!m_recording)
@@ -290,6 +309,14 @@ void GifRecorder::stop()
     m_recording = false;
     m_finishing = true;
     m_stats.elapsedMs = m_elapsed.elapsed();
+    const qint64 frames = qMax<qint64>(1, (m_stats.elapsedMs * m_fps + 999) / 1000);
+    QString error;
+    while (m_encoder && m_encoder->frameCount() < frames) {
+        if (!m_encoder->writeFrame(m_lastFrame, &error)) {
+            SS_WARN() << "[record] 补足末尾时长失败：" << error;
+            break;
+        }
+    }
     SS_INFO() << "[record] 停止采集：请求" << m_stats.requested << "帧 / 采到" << m_stats.captured
               << "/ 丢" << m_stats.dropped << "/ 失败" << m_stats.failed << "用时"
               << m_stats.elapsedMs << "ms";
@@ -333,9 +360,11 @@ void GifRecorder::finishEncoding()
 
 void GifRecorder::abort()
 {
+    ++m_sessionId;
     m_timer.stop();
     m_recording = false;
     m_finishing = false;
+    m_frameProvider = nullptr;
     if (m_encoder) {
         m_encoder->abort();
         m_encoder.reset();

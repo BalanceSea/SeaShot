@@ -1,8 +1,0 @@
-### 1) 移除 desktop 文件后的授权状态
---- 无 desktop 文件: shot2probe area 0 0 8 8
-== method: CaptureArea
-
-### 2) 恢复 desktop 文件，观察授权生效延迟
-attempt 1 (+3s): 
-attempt 2 (+6s): 
-attempt 3 (+9s): 

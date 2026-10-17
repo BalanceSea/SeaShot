@@ -11,10 +11,12 @@
 #include <QPointer>
 #include <QRectF>
 #include <QString>
+#include <QTimer>
 
 #include <memory>
 
 class QLocalServer;
+class QLockFile;
 class QWidget;
 
 namespace seashot {
@@ -79,23 +81,34 @@ struct Options {
     int probePipewireLib = 0;        ///< >0 时：用 libpipewire 直连取这么多帧（与录制器同一套代码）
 };
 
+struct RecordingRequest {
+    bool hasRect = false;
+    QRectF rect;
+    QString saveTo;
+    int seconds = 0;
+    bool quitWhenFinished = false;
+};
+
 class Application : public QObject
 {
     Q_OBJECT
 
 public:
     explicit Application(const Options &options, QObject *parent = nullptr);
+    Application(const Options &options, std::unique_ptr<CaptureBackend> backend, QObject *parent);
     ~Application() override;
 
     /// 返回进程退出码
     int run();
 
 private:
+    friend class TestApplication;
     /// 打开编辑器（截图结果浮层上的「编辑」按钮、以及 --edit 都走这里）
     void openEditor(const QImage &image, const QString &sourcePath);
     /// 录制流程（Phase 4）
     void startRecordFlow();
-    void beginRecording(const SelectionResult &selection);
+    bool startRecordingRequest(const RecordingRequest &request);
+    bool beginRecording(const SelectionResult &selection);
     void stopRecording();
     void onRecordingFinished(const QString &gifPath, int captured, int dropped, int failed,
                              qint64 elapsedMs, const QString &error);
@@ -211,6 +224,7 @@ private:
     static QString socketPath();
     static bool sendToExistingInstance(const QString &command);
     bool startServer();
+    void handleInstanceCommand(const QString &command);
 
     Options m_options;
     std::unique_ptr<Settings> m_settings;
@@ -225,11 +239,15 @@ private:
     std::unique_ptr<GifRecorder> m_recorder;
     std::unique_ptr<RecordingIndicator> m_recordingIndicator;
     bool m_recordIntent = false; ///< 正在选择录制区域
+    bool m_recordStarting = false; ///< 首帧/门户等待期间禁止重入
     bool m_keepAliveForRecording = false;
     QPointer<QWidget> m_settingsDialog;
     QString m_appliedHotkey;
     bool m_hotkeyApplied = false;
     QLocalServer *m_server = nullptr;
+    std::unique_ptr<QLockFile> m_instanceLock;
+    RecordingRequest m_recordingRequest;
+    QTimer m_recordStopTimer;
     QString m_backendError;
     QString m_backendReason;
     bool m_selfExclusion = false;
@@ -243,8 +261,6 @@ private:
     int m_recordingPipeWireFd = -1;
     bool m_keepAliveForToast = false; ///< 一次性 CLI 下：等浮层消失再退出进程
     bool m_editorOpened = false; ///< 开过编辑器（一次性 CLI 下要等它关掉再退）
-    /// 就地标注快照（A3）：标注坐标 = 选区图坐标，抓图后直接 renderAnnotations 就能合成
-    QVector<Annotation> m_pendingAnnotations;
     /// 「完成」时上层要做的交付动作（Phase B/C：Enter / Ctrl+C / Ctrl+S / 贴图）
     Overlay::ConfirmAction m_pendingAction = Overlay::ConfirmAction::Plain;
     std::unique_ptr<ScrollCapturer> m_scrollCapturer;

@@ -53,9 +53,15 @@ QVariantMap toMap(const QDBusMessage &reply)
 } // namespace
 
 struct ScreenShot2::Request {
+    ~Request()
+    {
+        if (fd >= 0)
+            ::close(fd);
+    }
     int fd = -1;
     QSocketNotifier *notifier = nullptr;
     QDBusPendingCallWatcher *watcher = nullptr;
+    QTimer *timeout = nullptr;
     QByteArray data;
     qint64 expected = -1;
     QVariantMap result;
@@ -63,7 +69,6 @@ struct ScreenShot2::Request {
     QElapsedTimer timer;
     bool replySeen = false;
     bool finished = false;
-    bool stallTimerArmed = false;
     QString method;
 };
 
@@ -149,6 +154,8 @@ void ScreenShot2::start(const QString &method, const QVariantList &args, const Q
     request->watcher = new QDBusPendingCallWatcher(pending, this);
     connect(request->watcher, &QDBusPendingCallWatcher::finished, this,
             [this, request](QDBusPendingCallWatcher *watcher) {
+                if (request->finished)
+                    return;
                 request->replySeen = true;
                 const QDBusMessage reply = watcher->reply();
                 if (reply.type() == QDBusMessage::ErrorMessage) {
@@ -178,7 +185,11 @@ void ScreenShot2::start(const QString &method, const QVariantList &args, const Q
     });
 
     // 兜底：超时收尾（含"响应到了但数据不完整"的情况）
-    QTimer::singleShot(kReplyTimeoutMs, this, [this, request]() { maybeFinish(request, true); });
+    request->timeout = new QTimer(this);
+    request->timeout->setSingleShot(true);
+    connect(request->timeout, &QTimer::timeout, this,
+            [this, request]() { maybeFinish(request, true); });
+    request->timeout->start(kReplyTimeoutMs);
 }
 
 void ScreenShot2::maybeFinish(const std::shared_ptr<Request> &request, bool force)
@@ -213,6 +224,12 @@ void ScreenShot2::finish(const std::shared_ptr<Request> &request, const QString 
     if (request->finished)
         return;
     request->finished = true;
+
+    if (request->timeout) {
+        request->timeout->stop();
+        request->timeout->deleteLater();
+        request->timeout = nullptr;
+    }
 
     if (request->notifier) {
         request->notifier->setEnabled(false);
@@ -255,8 +272,11 @@ void ScreenShot2::finish(const std::shared_ptr<Request> &request, const QString 
               << request->timer.elapsed() << "ms" << out.image.width() << "x" << out.image.height()
               << (out.error.isEmpty() ? QString() : out.error);
 
-    if (request->callback)
-        request->callback(out);
+    // 输出图已复制完成：立即释放原始像素和回调，不等兜底定时器。
+    request->data = QByteArray();
+    auto callback = std::move(request->callback);
+    if (callback)
+        callback(out);
 }
 
 } // namespace seashot

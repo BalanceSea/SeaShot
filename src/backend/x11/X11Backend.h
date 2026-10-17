@@ -15,6 +15,7 @@
 #include <xcb/xcb.h>
 #include <xcb/shm.h>
 #include <xcb/xcb_ewmh.h>
+#include <span>
 
 namespace seashot {
 
@@ -38,6 +39,9 @@ public:
     QString diagnostics() const override;
 
     bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) override;
+    /// 每个 keycode 占连续的 perKeycode 个 keysym；找不到时返回 0。
+    static quint32 findKeycode(std::span<const quint32> keysyms, int perKeycode,
+                               quint8 firstKeycode, quint32 keysym);
 
 private:
     QByteArray getProperty(quint32 window, xcb_atom_t property, xcb_atom_t type, bool *ok = nullptr) const;

@@ -4,6 +4,7 @@
 
 #include <QEventLoop>
 #include <QGuiApplication>
+#include <QPointer>
 #include <QScreen>
 #include <QTimer>
 
@@ -43,21 +44,29 @@ void WaylandBackend::collectOutputs()
 
 bool WaylandBackend::probePermission(QString *detail)
 {
-    bool ok = false;
-    QString message;
+    struct State {
+        bool ok = false;
+        QString message;
+    };
+    const auto state = std::make_shared<State>();
     QEventLoop loop;
+    const QPointer<QEventLoop> waitingLoop(&loop);
     QTimer timeout;
     timeout.setSingleShot(true);
     QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
 
-    m_shot2.captureRect(QRect(0, 0, 8, 8), {}, [&](const CaptureImage &result) {
-        ok = result.ok();
-        message = result.error;
-        loop.quit();
+    m_shot2.captureRect(QRect(0, 0, 8, 8), {}, [state, waitingLoop](const CaptureImage &result) {
+        if (!waitingLoop)
+            return;
+        state->ok = result.ok();
+        state->message = result.error;
+        waitingLoop->quit();
     });
     timeout.start(kPermissionProbeTimeoutMs);
     loop.exec();
 
+    const bool ok = state->ok;
+    QString message = state->message;
     if (!ok && message.isEmpty())
         message = QStringLiteral("截图探测超时（%1ms）").arg(kPermissionProbeTimeoutMs);
 

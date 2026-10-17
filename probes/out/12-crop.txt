@@ -1,2 +1,0 @@
-capturewindow=600x400 frame=600x428 推得边距 dx=0 dy=-14
-CROP_X=0 CROP_Y=-14

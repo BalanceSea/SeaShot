@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QFile>
 #include <QProcess>
+#include <QTemporaryDir>
 #include <QtTest>
 
 using namespace seashot;
@@ -13,6 +14,39 @@ class TestGifEncoder : public QObject
     Q_OBJECT
 
 private slots:
+    void oddSizedMp4IsPadded_data()
+    {
+        QTest::addColumn<bool>("lossless");
+        QTest::newRow("lossless-to-mp4") << true;
+        QTest::newRow("direct-mp4") << false;
+    }
+
+    void oddSizedMp4IsPadded()
+    {
+        if (!GifEncoder::ffmpegAvailable())
+            QSKIP("ffmpeg required");
+        QFETCH(bool, lossless);
+        QTemporaryDir output;
+        const QString path = output.filePath(QStringLiteral("odd.mp4"));
+        GifEncoder encoder;
+        encoder.setLossless(lossless);
+        QString error;
+        QVERIFY2(encoder.start(QSize(63, 47), 10, &error), qPrintable(error));
+        QImage frame(63, 47, QImage::Format_ARGB32);
+        frame.fill(Qt::red);
+        QVERIFY2(encoder.writeFrame(frame, &error), qPrintable(error));
+        QVERIFY2(encoder.finish(path, &error), qPrintable(error));
+        QProcess probe;
+        probe.start(QStringLiteral("ffprobe"), {"-v", "error", "-show_entries",
+                    "stream=codec_name,width,height", "-of", "default=noprint_wrappers=1", path});
+        QVERIFY(probe.waitForFinished(10000));
+        QCOMPARE(probe.exitCode(), 0);
+        const QByteArray metadata = probe.readAllStandardOutput();
+        QVERIFY(metadata.contains("codec_name=h264"));
+        QVERIFY(metadata.contains("width=64"));
+        QVERIFY(metadata.contains("height=48"));
+    }
+
     void rawInputArgsCarrySizeAndFps()
     {
         const QStringList args = GifEncoder::rawInputArgs(QSize(320, 240), 15, QStringLiteral("/tmp/x.mkv"));

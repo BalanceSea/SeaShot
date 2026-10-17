@@ -30,6 +30,7 @@
 #endif
 
 #include <algorithm>
+#include <limits>
 
 #include <QApplication>
 #include <QCoreApplication>
@@ -51,6 +52,8 @@
 #include <QGuiApplication>
 #include <QLocalServer>
 #include <QLocalSocket>
+#include <QLockFile>
+#include <QScopedValueRollback>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QKeyEvent>
@@ -102,8 +105,14 @@ QString sizeText(const QImage &image)
 } // namespace
 
 Application::Application(const Options &options, QObject *parent)
+    : Application(options, std::unique_ptr<CaptureBackend>(), parent)
+{
+}
+
+Application::Application(const Options &options, std::unique_ptr<CaptureBackend> backend, QObject *parent)
     : QObject(parent)
     , m_options(options)
+    , m_backend(std::move(backend))
 {
     m_settings = std::make_unique<Settings>(this);
 
@@ -118,7 +127,8 @@ Application::Application(const Options &options, QObject *parent)
     m_backendReason = m_choice.reason;
 
     QString error;
-    m_backend.reset(BackendFactory::create(m_choice, &error));
+    if (!m_backend)
+        m_backend.reset(BackendFactory::create(m_choice, &error));
     if (m_backend) {
         if (auto *wayland = dynamic_cast<WaylandBackend *>(m_backend.get()))
             wayland->setKeepShadowMargin(m_settings->keepShadowMargin());
@@ -154,8 +164,8 @@ Application::Application(const Options &options, QObject *parent)
     m_overlay = std::make_unique<Overlay>();
     connect(m_overlay.get(), &Overlay::selectionFinished, this, &Application::handleSelection);
     connect(m_overlay.get(), &Overlay::selectionCancelled, this, [this]() {
+        m_recordIntent = false;
         m_overlay->stopSelection();
-        m_pendingAnnotations.clear();
         SS_INFO() << "[app] 已取消截图";
         if (isOneShot())
             QCoreApplication::exit(0);
@@ -190,7 +200,6 @@ Application::Application(const Options &options, QObject *parent)
             });
     connect(m_overlay.get(), &Overlay::annotationCancelled, this, [this]() {
         m_overlay->stopSelection();
-        m_pendingAnnotations.clear();
         SS_INFO() << "[app] 已取消截图（标注阶段）";
         if (isOneShot())
             QCoreApplication::exit(0);
@@ -207,6 +216,8 @@ Application::Application(const Options &options, QObject *parent)
     connect(m_scrollCapturer.get(), &ScrollCapturer::failed, this, &Application::onScrollFailed);
 
     m_recorder = std::make_unique<GifRecorder>();
+    m_recordStopTimer.setSingleShot(true);
+    connect(&m_recordStopTimer, &QTimer::timeout, this, &Application::stopRecording);
     m_recordingIndicator = std::make_unique<RecordingIndicator>();
     connect(m_recorder.get(), &GifRecorder::stoppedForSpace, this, [](qint64 available) {
         SS_WARN() << "[app] 录制因临时空间不足提前停止，剩余" << available / 1048576 << "MB";
@@ -272,49 +283,103 @@ bool Application::sendToExistingInstance(const QString &command)
     socket.connectToServer(socketPath());
     if (!socket.waitForConnected(300))
         return false;
-    socket.write(command.toUtf8());
-    socket.flush();
-    socket.waitForBytesWritten(500);
+    if (socket.write(command.toUtf8() + '\n') < 0)
+        return false;
+    while (socket.bytesToWrite() > 0) {
+        if (!socket.waitForBytesWritten(500))
+            return false;
+    }
     socket.disconnectFromServer();
     return true;
 }
 
 bool Application::startServer()
 {
+    auto lock = std::make_unique<QLockFile>(socketPath() + QStringLiteral(".lock"));
+    if (!lock->tryLock(0)) {
+        SS_WARN() << "[app] 已有实例持有服务锁";
+        return false;
+    }
     QLocalServer::removeServer(socketPath());
     m_server = new QLocalServer(this);
     if (!m_server->listen(socketPath())) {
         SS_WARN() << "[app] 无法监听" << socketPath() << m_server->errorString();
+        delete m_server;
+        m_server = nullptr;
         return false;
     }
+    m_instanceLock = std::move(lock);
     connect(m_server, &QLocalServer::newConnection, this, [this]() {
-        QLocalSocket *socket = m_server->nextPendingConnection();
-        connect(socket, &QLocalSocket::readyRead, this, [this, socket]() {
-            const QString command = QString::fromUtf8(socket->readAll()).trimmed();
-            SS_INFO() << "[app] 收到实例间命令:" << command;
-            if (command == QLatin1String("capture"))
-                startCapture();
-            else if (command == QLatin1String("record"))
-                startRecordFlow();
-            else if (command.startsWith(QLatin1String("record-rect "))) {
-                const QStringList parts = command.mid(12).split(QLatin1Char(','));
-                if (parts.size() == 4) {
-                    SelectionResult selection;
-                    selection.mode = SelectionMode::Rect;
-                    selection.logicalRect = QRectF(parts.at(0).toDouble(), parts.at(1).toDouble(),
-                                                  parts.at(2).toDouble(), parts.at(3).toDouble());
-                    beginRecording(selection);
-                } else {
-                    SS_WARN() << "[app] record-rect 参数不对:" << command;
+        while (m_server->hasPendingConnections()) {
+            QLocalSocket *socket = m_server->nextPendingConnection();
+            const auto buffer = std::make_shared<QByteArray>();
+            const auto receive = [this, socket, buffer](bool closed) {
+                buffer->append(socket->readAll());
+                if (buffer->size() > 1024 * 1024) {
+                    socket->abort();
+                    return;
                 }
-            } else if (command == QLatin1String("stop-record"))
-                stopRecording();
-            else if (command == QLatin1String("quit"))
-                QCoreApplication::quit();
-            socket->disconnectFromServer();
-        });
+                const qsizetype end = buffer->indexOf('\n');
+                if (end < 0 && !closed)
+                    return;
+                const QByteArray command = end >= 0 ? buffer->left(end) : *buffer;
+                buffer->clear();
+                if (!command.isEmpty())
+                    handleInstanceCommand(QString::fromUtf8(command).trimmed());
+                if (socket->state() != QLocalSocket::UnconnectedState)
+                    socket->disconnectFromServer();
+            };
+            connect(socket, &QLocalSocket::readyRead, this, [receive]() { receive(false); });
+            connect(socket, &QLocalSocket::disconnected, this, [receive]() { receive(true); });
+            connect(socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater);
+            if (socket->bytesAvailable() > 0)
+                receive(false);
+        }
     });
     return true;
+}
+
+void Application::handleInstanceCommand(const QString &command)
+{
+    SS_INFO() << "[app] 收到实例间命令:" << command;
+    if (command.startsWith(QLatin1Char('{'))) {
+        const QJsonObject message = QJsonDocument::fromJson(command.toUtf8()).object();
+        if (message.value(QStringLiteral("command")).toString() != QLatin1String("record"))
+            return;
+        RecordingRequest request;
+        request.saveTo = message.value(QStringLiteral("saveTo")).toString();
+        request.seconds = message.value(QStringLiteral("seconds")).toInt();
+        if (request.seconds < 0 || request.seconds > std::numeric_limits<int>::max() / 1000)
+            return;
+        const QJsonArray rect = message.value(QStringLiteral("rect")).toArray();
+        request.hasRect = !rect.isEmpty();
+        if (request.hasRect) {
+            if (rect.size() != 4)
+                return;
+            request.rect = QRectF(rect.at(0).toDouble(), rect.at(1).toDouble(),
+                                   rect.at(2).toDouble(), rect.at(3).toDouble());
+            if (!request.rect.isValid())
+                return;
+        }
+        startRecordingRequest(request);
+    } else if (command == QLatin1String("capture")) {
+        startCapture();
+    } else if (command == QLatin1String("record")) {
+        startRecordFlow();
+    } else if (command.startsWith(QLatin1String("record-rect "))) {
+        const QStringList parts = command.mid(12).split(QLatin1Char(','));
+        if (parts.size() == 4) {
+            RecordingRequest request;
+            request.hasRect = true;
+            request.rect = QRectF(parts.at(0).toDouble(), parts.at(1).toDouble(),
+                                   parts.at(2).toDouble(), parts.at(3).toDouble());
+            startRecordingRequest(request);
+        }
+    } else if (command == QLatin1String("stop-record")) {
+        stopRecording();
+    } else if (command == QLatin1String("quit")) {
+        QCoreApplication::quit();
+    }
 }
 
 bool Application::isOneShot() const
@@ -443,14 +508,30 @@ QRect Application::virtualGeometry() const
 
 void Application::startRecordFlow()
 {
-    if (!m_backend || !m_backendError.isEmpty()) {
-        SS_WARN() << "[app] 无法开始录制:" << m_backendError;
-        QTextStream(stdout) << "RECORD_ERROR " << m_backendError << "\n";
-        return;
-    }
     if (m_recorder->isRecording()) {
         stopRecording();
         return;
+    }
+    startRecordingRequest(RecordingRequest());
+}
+
+bool Application::startRecordingRequest(const RecordingRequest &request)
+{
+    if (!m_backend || !m_backendError.isEmpty()) {
+        SS_WARN() << "[app] 无法开始录制:" << m_backendError;
+        QTextStream(stdout) << "RECORD_ERROR " << m_backendError << "\n";
+        return false;
+    }
+    if (m_recordStarting || m_recorder->isRecording() || m_recorder->isFinishing() || m_recordIntent) {
+        QTextStream(stdout) << "RECORD_ERROR 已有录制正在进行或收尾\n";
+        return false;
+    }
+    m_recordingRequest = request;
+    if (request.hasRect) {
+        SelectionResult selection;
+        selection.mode = SelectionMode::Rect;
+        selection.logicalRect = request.rect;
+        return beginRecording(selection);
     }
     m_recordIntent = true;
     m_overlay->setIntent(Overlay::Intent::Record);
@@ -464,6 +545,7 @@ void Application::startRecordFlow()
     QString excludeError;
     m_selfExclusion = m_backend->excludeOwnWindows(true, &excludeError);
     SS_INFO() << "[app] 录制选择模式已启动";
+    return true;
 }
 
 QString Application::defaultGifPath() const
@@ -471,25 +553,29 @@ QString Application::defaultGifPath() const
     return m_settings->defaultSavePath(QStringLiteral("gif"));
 }
 
-void Application::beginRecording(const SelectionResult &selection)
+bool Application::beginRecording(const SelectionResult &selection)
 {
+    if (m_recordStarting || m_recorder->isRecording() || m_recorder->isFinishing())
+        return false;
+    const QScopedValueRollback<bool> starting(m_recordStarting, true);
     m_recordIntent = false;
     if (!m_backend)
-        return;
+        return false;
 
     const QRectF wanted = selection.mode == SelectionMode::Window ? selection.window.frameGeometry
                                                                   : selection.logicalRect;
     const QRectF region = wanted.intersected(QRectF(virtualGeometry()));
     if (region.width() < 2 || region.height() < 2) {
         QTextStream(stdout) << "RECORD_ERROR 录制区域无效\n";
-        return;
+        return false;
     }
 
-    const QString path = m_options.saveTo.isEmpty() ? defaultGifPath() : m_options.saveTo;
+    const QString path = m_recordingRequest.saveTo.isEmpty() ? defaultGifPath()
+                                                            : m_recordingRequest.saveTo;
     m_recorder->setOutputPath(path);
     // 交互式录制：先只收尾无损中间文件，格式由用户在浮层工具栏上选（GIF / MP4）。
     // 脚本式（--save 给了路径）保持一次到底：按扩展名直接产出，便于验收与自动化。
-    m_recorder->setDeferExport(m_options.saveTo.isEmpty());
+    m_recorder->setDeferExport(m_recordingRequest.saveTo.isEmpty());
     // 中间格式由配置决定：无损（转 GIF/MP4 只损失一次，临时文件 ≈554MB/分钟）
     // 还是直接录 MP4（临时文件小，转 GIF 多一次有损）
     m_recorder->setLossless(m_settings->recordLossless());
@@ -506,7 +592,7 @@ void Application::beginRecording(const SelectionResult &selection)
         if (!m_recorder->start(m_backend.get(), region, m_settings->gifFps(), &error)) {
             SS_WARN() << "[app] 录制启动失败:" << error;
             QTextStream(stdout) << "RECORD_ERROR " << error << "\n";
-            return;
+            return false;
         }
     }
     m_recordingIndicator->showFor(region, m_recorder->fps(), path);
@@ -514,10 +600,12 @@ void Application::beginRecording(const SelectionResult &selection)
         m_tray->setRecording(true);
     m_keepAliveForRecording = true;
 
-    if (m_options.seconds > 0) {
-        SS_INFO() << "[app] 将在" << m_options.seconds << "秒后自动停止录制";
-        QTimer::singleShot(m_options.seconds * 1000, this, &Application::stopRecording);
+    m_recordStopTimer.stop();
+    if (m_recordingRequest.seconds > 0) {
+        SS_INFO() << "[app] 将在" << m_recordingRequest.seconds << "秒后自动停止录制";
+        m_recordStopTimer.start(m_recordingRequest.seconds * 1000);
     }
+    return true;
 }
 
 bool Application::startPipeWireRecording(const QRectF &region, int fps, QString *error)
@@ -635,6 +723,7 @@ void Application::stopPipeWireRecording()
 
 void Application::stopRecording()
 {
+    m_recordStopTimer.stop();
     if (!m_recorder || !m_recorder->isRecording()) {
         SS_INFO() << "[app] 当前没有在录制";
         return;
@@ -713,6 +802,8 @@ void Application::exportRecordingMp4()
 void Application::onRecordingFinished(const QString &gifPath, int captured, int dropped,
                                       int failed, qint64 elapsedMs, const QString &error)
 {
+    m_recordStopTimer.stop();
+    stopPipeWireRecording();
     QTextStream out(stdout);
     if (m_recordingIndicator)
         m_recordingIndicator->hideIndicator();
@@ -722,7 +813,7 @@ void Application::onRecordingFinished(const QString &gifPath, int captured, int 
     if (!error.isEmpty()) {
         out << "RECORD_ERROR " << error << "\n";
         out.flush();
-        if (isOneShot())
+        if (m_recordingRequest.quitWhenFinished)
             QCoreApplication::exit(3);
         return;
     }
@@ -737,10 +828,10 @@ void Application::onRecordingFinished(const QString &gifPath, int captured, int 
     // 录制结束：**自动打开**「保存/导出」窗口的录制页 —— 格式由用户在那里选。
     // （原来是结果浮层上的两个按钮；用户要求把"保存录制"和"另存为"统一进一个界面。）
     // 脚本式（--save）已经"一次到底"导出了，不弹窗、直接退出。
-    const bool scripted = isOneShot() && !m_options.saveTo.isEmpty();
+    const bool scripted = !m_recordingRequest.saveTo.isEmpty();
     if (!scripted)
         openSaveExport(true);
-    if (scripted)
+    if (scripted && m_recordingRequest.quitWhenFinished)
         QTimer::singleShot(0, qApp, &QCoreApplication::quit);
 }
 
@@ -1144,7 +1235,6 @@ void Application::startCapture()
         return;
     }
     m_recordIntent = false;
-    m_pendingAnnotations.clear();
     m_pendingAction = Overlay::ConfirmAction::Plain;
     m_overlay->setIntent(Overlay::Intent::Screenshot);
     // Phase A1：交互式截图才开就地标注（脚本式调用压根不走 startCapture）。
@@ -1215,9 +1305,20 @@ void Application::enterAnnotationPhase()
 
 void Application::finishSelectionPhase()
 {
-    // A3：先把就地标注快照下来再隐藏覆盖层（stopSelection 会清掉文档状态）。
-    // 标注存的就是「选区图像坐标」，所以之后对抓到的选区图直接 renderAnnotations 即可。
-    m_pendingAnnotations = m_overlay->document().items();
+    if (m_overlay->isAnnotating()) {
+        // 交付用户刚才看到的冻结画面，后台窗口变化不会影响结果。
+        const CaptureImage image = m_overlay->annotatedCapture();
+        m_lastAnchorRect = m_pendingSelection.logicalRect.toAlignedRect();
+        const int count = m_overlay->document().count();
+        m_overlay->stopSelection();
+        if (count > 0) {
+            QTextStream(stdout) << "ANNOTATED count=" << count << " size=" << image.image.width()
+                                << "x" << image.image.height() << "\n";
+        }
+        finishCapture(image);
+        return;
+    }
+    // 未进入标注阶段时，隐藏覆盖层后按选区抓取实时画面。
     m_overlay->stopSelection();
 
     // 支持自排除时可以直接截图（覆盖层不会入镜）；否则先隐藏覆盖层再等一帧。
@@ -1258,18 +1359,6 @@ void Application::finishCapture(const CaptureImage &image)
 
     m_lastImage = image.image;
 
-    // A3：把就地标注合成进结果（与预览同一实现 renderAnnotations，不另写一套画法）。
-    // 只有交互式就地标注阶段才会有 m_pendingAnnotations；脚本式调用永远是空的。
-    // ⚠️ 合成之后，下游（剪贴板/保存/浮层/编辑器）一律必须用 result，
-    //    用 image.image 就会“画了但结果里没有”（验收里踩到过）。
-    if (!m_pendingAnnotations.isEmpty()) {
-        m_lastImage = renderAnnotations(image.image, m_pendingAnnotations);
-        out << "ANNOTATED count=" << m_pendingAnnotations.size() << " size="
-            << m_lastImage.width() << "x" << m_lastImage.height() << "\n";
-        SS_INFO() << "[app] 已把" << m_pendingAnnotations.size() << "个就地标注合成进结果"
-                  << image.image.size() << "->" << m_lastImage.size();
-        m_pendingAnnotations.clear();
-    }
     const QImage &result = m_lastImage;
 
     // Phase B：Ctrl+C / Ctrl+S 是"明确要求"，覆盖设置里的开关；Enter/✓ 走设置
@@ -1359,8 +1448,7 @@ void Application::openSaveExport(bool recordingPage)
                 &Application::copyRecordingGif);
     }
     m_saveExport->setScreenshot(m_lastImage, m_lastSavedPath);
-    const bool hasRecording = m_recorder && m_recorder->deferExport()
-        && !m_recorder->isRecording() && m_recorder->stats().captured > 0;
+    const bool hasRecording = m_recorder && m_recorder->hasPendingExport();
     if (m_recorder) {
         const GifRecorder::Stats stats = m_recorder->stats();
         m_saveExport->setRecording(stats.captured, stats.elapsedMs, QString(), hasRecording);
@@ -3421,34 +3509,29 @@ int Application::run()
         return 1;
     }
     if (m_options.record) {
-        // 有常驻实例 → 把录制请求转给它（这样托盘/快捷键的停止路径完全一致）
-        if (m_options.hasRect) {
-            const QString command = QStringLiteral("record-rect %1,%2,%3,%4")
-                                        .arg(m_options.rect.x())
-                                        .arg(m_options.rect.y())
-                                        .arg(m_options.rect.width())
-                                        .arg(m_options.rect.height());
-            if (sendToExistingInstance(command)) {
-                out << "RECORD_FORWARDED rect=" << m_options.rect.x() << "," << m_options.rect.y()
-                    << " " << m_options.rect.width() << "x" << m_options.rect.height() << "\n";
-                out.flush();
-                return 0;
-            }
-        } else if (sendToExistingInstance(QStringLiteral("record"))) {
-            out << "RECORD_FORWARDED interactive\n";
+        RecordingRequest request;
+        request.hasRect = m_options.hasRect;
+        request.rect = m_options.rect;
+        request.seconds = m_options.seconds;
+        request.saveTo = m_options.saveTo.isEmpty() ? QString()
+                                                    : QFileInfo(m_options.saveTo).absoluteFilePath();
+        request.quitWhenFinished = true;
+        QJsonObject message{{QStringLiteral("command"), QStringLiteral("record")},
+                             {QStringLiteral("seconds"), request.seconds},
+                             {QStringLiteral("saveTo"), request.saveTo}};
+        if (request.hasRect) {
+            message.insert(QStringLiteral("rect"), QJsonArray{request.rect.x(), request.rect.y(),
+                                                               request.rect.width(), request.rect.height()});
+        }
+        const QString command = QString::fromUtf8(QJsonDocument(message).toJson(QJsonDocument::Compact));
+        if (sendToExistingInstance(command)) {
+            out << "RECORD_FORWARDED " << (request.hasRect ? "rect" : "interactive") << "\n";
             out.flush();
             return 0;
         }
 
-        startServer();
-        if (m_options.hasRect) {
-            SelectionResult selection;
-            selection.mode = SelectionMode::Rect;
-            selection.logicalRect = m_options.rect;
-            beginRecording(selection);
-        } else {
-            startRecordFlow();
-        }
+        if (!startServer() || !startRecordingRequest(request))
+            return 3;
         return QCoreApplication::exec();
     }
     if (m_options.hotkeyPortalStatus)
@@ -3503,7 +3586,8 @@ int Application::run()
             out << "FORWARDED_TO_RUNNING_INSTANCE\n";
             return 0;
         }
-        startServer();
+        if (!startServer())
+            return 1;
         return showOverlayAndHold();
     }
     if (m_options.capture) {
@@ -3513,17 +3597,20 @@ int Application::run()
             out.flush();
             return 0;
         }
-        startServer();
+        if (!startServer())
+            return 1;
         startCapture();
         return QCoreApplication::exec();
     }
 
     // 无参数：常驻
     if (sendToExistingInstance(QStringLiteral("capture-already-running-check"))) {
-        startResident();
-        return QCoreApplication::exec();
+        out << "SEASHOT_ALREADY_RUNNING\n";
+        out.flush();
+        return 0;
     }
-    startServer();
+    if (!startServer())
+        return 1;
     startResident();
     out << "SEASHOT_READY backend=" << (m_backend ? m_backend->name() : QStringLiteral("none"))
         << " hotkey=" << (m_settings->hotkey().isEmpty() ? QStringLiteral("(未绑定)")

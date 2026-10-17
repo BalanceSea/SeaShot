@@ -9,6 +9,7 @@
 #include <QLoggingCategory>
 #include <QRegularExpression>
 #include <QTextStream>
+#include <limits>
 
 #include <LayerShellQt/Shell>
 
@@ -158,8 +159,8 @@ int main(int argc, char **argv)
         QStringLiteral(""));
     QCommandLineOption scrollMsOption(
         QStringLiteral("scroll-ms"),
-        QStringLiteral("滚动截屏最多跑 N 毫秒（默认 20000）"),
-        QStringLiteral("ms"), QStringLiteral("20000"));
+        QStringLiteral("滚动截屏最多跑 N 毫秒（未指定时采用 30 分钟兜底）"),
+        QStringLiteral("ms"), QStringLiteral("0"));
     QCommandLineOption pinOption(QStringLiteral("pin"),
                                  QStringLiteral("把一张 PNG 贴（钉）到屏幕上（Phase C）"),
                                  QStringLiteral("path"));
@@ -237,7 +238,13 @@ int main(int argc, char **argv)
     options.printConfig = parser.isSet(printConfigOption);
     options.record = parser.isSet(recordOption);
     options.recordStop = parser.isSet(recordStopOption);
-    options.seconds = parser.value(secondsOption).toInt();
+    bool secondsValid = false;
+    options.seconds = parser.value(secondsOption).toInt(&secondsValid);
+    if (!secondsValid || options.seconds < 0
+        || options.seconds > std::numeric_limits<int>::max() / 1000) {
+        QTextStream(stderr) << "--seconds 需要有效的非负秒数\n";
+        return 2;
+    }
     options.toastDragBenchMs = parser.value(dragBenchOption).toInt();
     options.benchCapturePath = parser.value(benchCaptureOption);
     options.inplaceDemoOut = parser.value(inplaceDemoOption);

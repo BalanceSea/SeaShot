@@ -112,18 +112,23 @@ QImage regionEffectPatch(const QImage &source, const QRectF &region, ToolKind ki
     return patch;
 }
 
-void drawRegionEffect(QPainter &painter, const QImage &source, const Annotation &annotation)
+void drawRegionEffect(QPainter &painter, const QImage &source, const Annotation &annotation,
+                      double annotationScale)
 {
     if (!isRegionEffect(annotation.kind))
         return;
     const QRectF region = annotation.bounds();
-    const QImage patch = regionEffectPatch(source, region, annotation.kind, annotation.width);
+    const QRectF pixels(region.x() * annotationScale, region.y() * annotationScale,
+                        region.width() * annotationScale, region.height() * annotationScale);
+    const QImage patch = regionEffectPatch(source, pixels, annotation.kind,
+                                           qMax(1, qRound(annotation.width * annotationScale)));
     if (patch.isNull())
         return;
     painter.drawImage(region.toAlignedRect(), patch);
 }
 
-QImage renderAnnotations(const QImage &source, const QVector<Annotation> &annotations)
+QImage renderAnnotations(const QImage &source, const QVector<Annotation> &annotations,
+                         double annotationScale)
 {
     if (source.isNull())
         return source;
@@ -136,11 +141,12 @@ QImage renderAnnotations(const QImage &source, const QVector<Annotation> &annota
     QPainter painter(&target);
     painter.setRenderHint(QPainter::Antialiasing, true);
     painter.setRenderHint(QPainter::TextAntialiasing, true);
+    painter.scale(annotationScale, annotationScale);
     for (const Annotation &annotation : annotations) {
         if (isRegionEffect(annotation.kind)) {
             // 区域特效覆盖在「当前已画的内容」之上：所以后画的模糊会遮住先画的箭头，
             // 与画布预览的顺序语义一致（两边都走这个函数）。
-            drawRegionEffect(painter, target, annotation);
+            drawRegionEffect(painter, target, annotation, annotationScale);
         } else {
             annotation.draw(painter);
         }

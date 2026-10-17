@@ -385,8 +385,10 @@ bool X11Backend::grabHotkey(const QKeySequence &sequence, QString *error)
             *error = QStringLiteral("X11 未连接");
         return false;
     }
-    if (sequence.isEmpty())
+    if (sequence.isEmpty()) {
+        ungrabHotkey();
         return true;
+    }
 
     const int key = sequence[0].toCombined() & ~Qt::KeyboardModifierMask;
     const quint32 keysym = keysymForQtKey(key);
@@ -398,7 +400,7 @@ bool X11Backend::grabHotkey(const QKeySequence &sequence, QString *error)
 
     // 在键盘映射里找该 keysym 对应的 keycode
     const quint8 firstKeycode = xcb_get_setup(m_connection)->min_keycode;
-    const quint8 keycodeCount = quint8(255 - firstKeycode);
+    const quint8 keycodeCount = quint8(xcb_get_setup(m_connection)->max_keycode - firstKeycode + 1);
     xcb_get_keyboard_mapping_reply_t *mapping = xcb_get_keyboard_mapping_reply(
         m_connection, xcb_get_keyboard_mapping(m_connection, firstKeycode, keycodeCount), nullptr);
     if (!mapping) {
@@ -406,18 +408,10 @@ bool X11Backend::grabHotkey(const QKeySequence &sequence, QString *error)
             *error = QStringLiteral("拿不到键盘映射");
         return false;
     }
-    quint32 keycode = 0;
     const xcb_keysym_t *syms = xcb_get_keyboard_mapping_keysyms(mapping);
     const int keysymCount = xcb_get_keyboard_mapping_keysyms_length(mapping);
-    const int perKeycode = qMax(1, int(mapping->keysyms_per_keycode));
-    for (int i = 0; i < keysymCount && keycode == 0; ++i) {
-        for (int j = 0; j < perKeycode; ++j) {
-            if (syms[i * perKeycode + j] == keysym) {
-                keycode = quint32(firstKeycode) + quint32(i / perKeycode);
-                break;
-            }
-        }
-    }
+    const quint32 keycode = findKeycode(std::span(syms, size_t(keysymCount)),
+                                        mapping->keysyms_per_keycode, firstKeycode, keysym);
     std::free(mapping);
     if (keycode == 0) {
         if (error)
@@ -447,6 +441,18 @@ bool X11Backend::grabHotkey(const QKeySequence &sequence, QString *error)
     xcb_flush(m_connection);
     m_hotkeyGrabbed = true;
     return true;
+}
+
+quint32 X11Backend::findKeycode(std::span<const quint32> keysyms, int perKeycode,
+                               quint8 firstKeycode, quint32 keysym)
+{
+    if (perKeycode <= 0 || keysym == 0)
+        return 0;
+    for (size_t i = 0; i < keysyms.size(); ++i) {
+        if (keysyms[i] == keysym)
+            return quint32(firstKeycode) + quint32(i / size_t(perKeycode));
+    }
+    return 0;
 }
 
 bool X11Backend::setHotkey(const QKeySequence &sequence, QString *error)

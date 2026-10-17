@@ -1,1 +1,0 @@
-HOTKEY_SET Ctrl+Alt+A actual=Ctrl+Alt+A

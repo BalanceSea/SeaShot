@@ -62,6 +62,7 @@ signals:
     void failed(const QString &error);
 
 private:
+    friend class TestApplication;
     void tick();
     void onCaptured(const CaptureImage &image);
     void finish(bool ok, const QString &note);

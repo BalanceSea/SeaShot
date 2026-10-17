@@ -57,7 +57,8 @@ QStringList GifEncoder::rawInputArgs(const QSize &size, int fps, const QString &
         args << QStringLiteral("-c:v") << QStringLiteral("ffv1") << QStringLiteral("-level")
              << QStringLiteral("3") << QStringLiteral("-pix_fmt") << QStringLiteral("bgra");
     } else {
-        args << QStringLiteral("-c:v") << QStringLiteral("libx264") << QStringLiteral("-preset")
+        args << QStringLiteral("-vf") << QStringLiteral("pad=ceil(iw/2)*2:ceil(ih/2)*2")
+             << QStringLiteral("-c:v") << QStringLiteral("libx264") << QStringLiteral("-preset")
              << QStringLiteral("veryfast") << QStringLiteral("-crf") << QStringLiteral("18")
              << QStringLiteral("-pix_fmt") << QStringLiteral("yuv420p") << QStringLiteral("-movflags")
              << QStringLiteral("+faststart");
@@ -89,6 +90,7 @@ QStringList GifEncoder::mp4EncodeArgs(const QString &intermediatePath, const QSt
 {
     return {QStringLiteral("-hide_banner"), QStringLiteral("-loglevel"), QStringLiteral("error"),
             QStringLiteral("-i"), intermediatePath,
+            QStringLiteral("-vf"), QStringLiteral("pad=ceil(iw/2)*2:ceil(ih/2)*2"),
             QStringLiteral("-c:v"), QStringLiteral("libx264"),
             QStringLiteral("-preset"), QStringLiteral("veryfast"),
             QStringLiteral("-crf"), QStringLiteral("18"),

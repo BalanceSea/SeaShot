@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFile>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
 
@@ -136,6 +137,86 @@ private slots:
         QVERIFY(!recorder.start(&backend, QRectF(0, 0, 1, 1), 15, &error));
         QVERIFY(!error.isEmpty());
         QVERIFY(!recorder.isRecording());
+    }
+
+    void slowBackendPreservesPlaybackDuration()
+    {
+        if (!GifEncoder::ffmpegAvailable())
+            QSKIP("ffmpeg required");
+        QTemporaryDir output;
+        const QString path = output.filePath(QStringLiteral("slow.mp4"));
+        StubBackend backend(120);
+        GifRecorder recorder;
+        recorder.setOutputPath(path);
+        QString error;
+        QVERIFY2(recorder.start(&backend, QRectF(0, 0, 64, 48), 30, &error), qPrintable(error));
+        QSignalSpy finished(&recorder, &GifRecorder::finished);
+        QTest::qWait(1200);
+        recorder.stop();
+        QVERIFY(finished.wait(30000));
+        QVERIFY(recorder.stats().dropped > 0);
+        QCOMPARE(finished.first().at(2).toString(), QString());
+        QProcess probe;
+        probe.start(QStringLiteral("ffprobe"), {"-v", "error", "-show_entries", "format=duration",
+                    "-of", "default=noprint_wrappers=1:nokey=1", path});
+        QVERIFY(probe.waitForFinished(10000));
+        const double duration = probe.readAllStandardOutput().trimmed().toDouble();
+        const double expected = recorder.stats().elapsedMs / 1000.0;
+        QVERIFY2(qAbs(duration - expected) < 0.1,
+                  qPrintable(QStringLiteral("duration=%1 elapsed=%2").arg(duration).arg(expected)));
+    }
+
+    void pollingHonorsMp4IntermediateAndClearsExportState()
+    {
+        if (!GifEncoder::ffmpegAvailable())
+            QSKIP("ffmpeg required");
+        QTemporaryDir output;
+        StubBackend backend;
+        GifRecorder recorder;
+        recorder.setLossless(false);
+        recorder.setDeferExport(true);
+        QString error;
+        QVERIFY2(recorder.start(&backend, QRectF(0, 0, 64, 48), 15, &error), qPrintable(error));
+        QSignalSpy finished(&recorder, &GifRecorder::finished);
+        recorder.stop();
+        QVERIFY(finished.wait(30000));
+        QVERIFY(recorder.hasPendingExport());
+        const QString intermediate = GifEncoder::intermediateDirectory()
+            + QStringLiteral("/seashot-record-%1.mp4").arg(QCoreApplication::applicationPid());
+        QVERIFY(QFile::exists(intermediate));
+        QProcess probe;
+        probe.start(QStringLiteral("ffprobe"), {"-v", "error", "-show_entries", "stream=codec_name",
+                    "-of", "default=noprint_wrappers=1", intermediate});
+        QVERIFY(probe.waitForFinished(10000));
+        QVERIFY(probe.readAllStandardOutput().contains("codec_name=h264"));
+        QVERIFY2(recorder.exportTo(output.filePath(QStringLiteral("result.mp4")), &error),
+                  qPrintable(error));
+        QVERIFY(!recorder.hasPendingExport());
+        QVERIFY(!QFile::exists(intermediate));
+    }
+
+    void switchingFromProviderToPollingUsesNewSource()
+    {
+        if (!GifEncoder::ffmpegAvailable())
+            QSKIP("ffmpeg required");
+        QImage frame(64, 48, QImage::Format_ARGB32);
+        frame.fill(Qt::blue);
+        GifRecorder recorder;
+        recorder.setDeferExport(true);
+        QString error;
+        QVERIFY(recorder.startFromProvider([frame] { return frame; }, frame.size(),
+                                           QRectF(0, 0, 64, 48), 30, &error));
+        QSignalSpy finished(&recorder, &GifRecorder::finished);
+        recorder.stop();
+        QVERIFY(finished.wait(30000));
+        finished.clear();
+        StubBackend backend;
+        QVERIFY(recorder.start(&backend, QRectF(0, 0, 64, 48), 30, &error));
+        QTest::qWait(150);
+        recorder.stop();
+        QVERIFY(finished.wait(30000));
+        QVERIFY(backend.requests > 1);
+        QVERIFY(recorder.lastFrame().pixelColor(0, 0) != QColor(Qt::blue));
     }
 };
 
