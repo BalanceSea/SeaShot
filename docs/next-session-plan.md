@@ -285,6 +285,16 @@ cmake -S probes/cmake -B probes/build -G Ninja && cmake --build probes/build
 - 坑与 KDE 语义（共 5 个坑 + 2 条语义）见 `docs/known-issues.md` ISSUE-014；
   验收见 `docs/acceptance/phaseF.md`（8/8）与 `scripts/acceptance-phaseF.sh`。
 
+## 7.6 截图结果交付与统一窗口（2026-10-17 加，按用户要求）
+
+- **截图后不再弹结果浮层**：直接复制到剪贴板（按设置也可自动保存），屏幕不出现任何窗。
+- **新增「保存 / 导出」窗口**（`src/app/SaveExportDialog`，托盘菜单「保存 / 导出上一次结果…」）：
+  截图页 = 复制 / 保存到默认目录 / 另存为… / 在编辑器里打开；
+  录制页 = 导出 GIF / 导出 MP4 / 复制 GIF。**录制结束会自动打开录制页**让你选格式
+  （原来这是结果浮层上的按钮）。
+- `Toast`（结果浮层）**产品路径已退役**，只剩 `--toast-drag-bench`（ISSUE-001 诊断）还在用。
+- 长截图：结束条件改为**用户自己点「完成」/Esc**，不再"1 秒没滚动就收工"（见 ISSUE-015）。
+
 ## 8. 待用户决策的开放项
 
 0.5 ~~首次运行要不要自动发起 portal 授权~~ → **已做**（2026-10-17）：常驻第一次启动时，

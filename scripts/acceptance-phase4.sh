@@ -103,10 +103,11 @@ fi
 # 所以这里不能再用 "RECORD ok path= 非空" 当判据：
 #   1) 转发=1、停止=1、`RECORD ok` 出现；
 #   2) 确实是延迟导出（`path=` 为空 + 日志里有"等用户选导出格式"）；
-#   3) 浮层按钮真能把格式定下来 —— 用 SEASHOT_TOAST_AUTOCLICK=gif 让它自动点「导出 GIF」
+#   3) 「保存/导出」窗口里的按钮真能把格式定下来 —— 用 SEASHOT_EXPORT_AUTOCLICK=gif
+#      让它自动点「导出 GIF」（产品里结果浮层已退役，录制结束会自动打开这个窗口）
 #      （走 Toast::activate()，与真实鼠标点击同一条路径），最后验 GIF 落盘。
 pkill -x seashot 2>/dev/null; sleep 0.5
-SEASHOT_TOAST_AUTOCLICK=gif "$SEASHOT" > "$OUT/p4-resident.txt" 2>&1 &
+SEASHOT_EXPORT_AUTOCLICK=gif "$SEASHOT" > "$OUT/p4-resident.txt" 2>&1 &
 sleep 2.5
 FWD=$("$SEASHOT" --record --rect 300,200,256,192 2>&1 | grep -c '^RECORD_FORWARDED' || true)
 sleep 2

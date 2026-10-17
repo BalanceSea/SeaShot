@@ -22,6 +22,7 @@ namespace seashot {
 class Settings;
 class Overlay;
 class Toast;
+class SaveExportDialog;
 class Tray;
 class CaptureBackend;
 class GifRecorder;
@@ -101,6 +102,8 @@ private:
     QString defaultGifPath() const;
     /// 打开配置界面（托盘菜单与 --settings 共用）
     void openSettings();
+    /// 打开「保存 / 导出」统一窗口（截图另存为 + 录制导出都在这里）
+    void openSaveExport(bool recordingPage);
     /// 配置变化后重新应用（浮层超时/托盘/阴影/快捷键）
     void applySettings();
 
@@ -214,7 +217,10 @@ private:
     BackendChoice m_choice;
     std::unique_ptr<CaptureBackend> m_backend;
     std::unique_ptr<Overlay> m_overlay;
+    /// 结果浮层（Toast）：**产品路径已退役**（截图不弹窗），只剩 ISSUE-001 的拖动基准在用
     std::unique_ptr<Toast> m_toast;
+    /// 「保存 / 导出」统一窗口（懒创建）
+    std::unique_ptr<SaveExportDialog> m_saveExport;
     std::unique_ptr<Tray> m_tray;
     std::unique_ptr<GifRecorder> m_recorder;
     std::unique_ptr<RecordingIndicator> m_recordingIndicator;

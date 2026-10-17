@@ -14,9 +14,10 @@ SeaShot 自检（Phase 1）
 [OK  ] 输出与缩放
        DP-3 1920x1080+0+0 scale=1
 [OK  ] 窗口枚举
-       共 2 个窗口
+       共 3 个窗口
        4600041 appId=steam frame=283,147 1280x800 stack=0
-       1200011 appId=QQ frame=769,317 1280x690 stack=1
+       1e00004 appId=Chatgpt frame=260,325 1090x600 stack=1
+       1200011 appId=QQ frame=877,147 1280x690 stack=2
 [OK  ] 区域截图（32x32 探测）
        得到 32x32，scale=1
 [OK  ] 剪贴板（wl-copy）

@@ -33,6 +33,7 @@ signals:
     void settingsRequested();
     void shortcutSettingsRequested();
     void portalHotkeyRequested(); ///< Phase F：让 SeaShot 自己向系统申请注册（用户授权）
+    void saveExportRequested();   ///< 打开「保存 / 导出」统一窗口
     void quitRequested();
 
 private:

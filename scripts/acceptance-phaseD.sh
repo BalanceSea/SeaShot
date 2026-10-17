@@ -92,7 +92,7 @@ if [ -z "${GEO:-}" ]; then
 fi
 read -r GX GY GW GH < <(tr ',' ' ' <<<"$GEO")
 
-timeout 90 "$SEASHOT" --scroll-capture --rect "$GEO" --save "$RESULT" --scroll-ms 25000 \
+timeout 90 "$SEASHOT" --scroll-capture --rect "$GEO" --save "$RESULT" --scroll-ms 13000 \
     > "$OUT/d-scroll.txt" 2>&1
 SCROLL_CODE=$?
 pkill -x testwindow 2>/dev/null
@@ -172,20 +172,23 @@ else
     report "D. 滚动条列被自动裁掉" 0 "左右裁列=$CROP_LR（右侧应当 ≥10）"
 fi
 
-### C) 页面不滚时：很快收工，不无限跑 ------------------------------------------
+### C) 页面不滚时：不会"一秒就自己结束"，而是按 --scroll-ms 到点收工 --------------
+# （2026-10-17 按用户反馈改：长截图**不再**因为没检测到滚动就自动结束，
+#   否则用户还没开始滚就被收工了。这里验"它老老实实跑满指定时长、且尺寸正确"。）
 STATIC_RESULT="$OUT/d-scroll-static.png"
 START_MS=$(date +%s%3N)
 timeout 60 "$SEASHOT" --scroll-capture --rect "0,0,400,300" --save "$STATIC_RESULT" \
-    --scroll-ms 25000 > "$OUT/d-scroll-static.txt" 2>&1
+    --scroll-ms 3000 > "$OUT/d-scroll-static.txt" 2>&1
 STATIC_CODE=$?
 ELAPSED_MS=$(( $(date +%s%3N) - START_MS ))
 STATIC_SIZE=$(sed -nE 's/^SCROLL ok size=([0-9]+x[0-9]+).*/\1/p' "$OUT/d-scroll-static.txt")
-if [ "$ELAPSED_MS" -lt 6000 ] && [ "$STATIC_SIZE" = "400x300" ] && [ "$STATIC_CODE" = 0 ]; then
-    report "D. 不滚动的区域会很快收工" 1 \
-        "静区 400x300：${ELAPSED_MS}ms 内正常结束，结果尺寸 $STATIC_SIZE（未滚动帧被识别）"
+if [ "${ELAPSED_MS:-0}" -ge 2800 ] && [ "${ELAPSED_MS:-0}" -lt 12000 ] \
+    && [ "$STATIC_SIZE" = "400x300" ] && [ "$STATIC_CODE" = 0 ]; then
+    report "D. 静区不会被'一秒就结束'" 1 \
+        "静区 400x300：跑满 --scroll-ms 3000（实测 ${ELAPSED_MS}ms）才收工，结果尺寸 $STATIC_SIZE"
 else
-    report "D. 不滚动的区域会很快收工" 0 \
-        "耗时 ${ELAPSED_MS}ms 尺寸=${STATIC_SIZE:-?} 退出码=$STATIC_CODE；见 $OUT/d-scroll-static.txt"
+    report "D. 静区不会被'一秒就结束'" 0 \
+        "耗时 ${ELAPSED_MS}ms（应 ≈3000，不该是 ~1000）尺寸=${STATIC_SIZE:-?} 退出码=$STATIC_CODE；见 $OUT/d-scroll-static.txt"
 fi
 
 ### D) 交互入口：工具条「长截图」/ Ctrl+L --------------------------------------

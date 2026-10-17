@@ -39,7 +39,9 @@ void ScrollCapturer::start(const Config &config)
     m_elapsed.start();
 
     if (m_indicator)
-        m_indicator->showForScroll(m_config.region, QStringLiteral("自己滚动页面 · 完成/Esc 结束"));
+        m_indicator->showForScroll(
+            m_config.region,
+            QStringLiteral("自己滚动页面 · 滚完点「完成」或按 Esc 结束"));
     m_timer.start(qMax(80, m_config.intervalMs));
     SS_INFO() << "[scroll] 开始滚动截屏：区域" << m_config.region << "间隔" << m_config.intervalMs
               << "ms";
@@ -105,12 +107,14 @@ void ScrollCapturer::onCaptured(const CaptureImage &image)
         m_indicator->updateScrollStats(height, m_frames);
     emit progress(height, m_frames);
 
-    if (m_idle >= m_config.idleFramesToStop) {
-        finish(true, QStringLiteral("页面不再滚动"));
+    // 默认 idleFramesToStop / rejectedFramesToStop 都是 0 = 不自动结束：
+    // 由用户按「完成」/Esc 决定何时收工（用户明确要求"不要自动结束"）。
+    if (m_config.idleFramesToStop > 0 && m_idle >= m_config.idleFramesToStop) {
+        finish(true, QStringLiteral("连续 %1 帧没滚动（自动结束已启用）").arg(m_idle));
         return;
     }
-    if (m_rejected >= m_config.rejectedFramesToStop) {
-        finish(true, QStringLiteral("页面一直在动（有动画/视频？），只能拼到这里"));
+    if (m_config.rejectedFramesToStop > 0 && m_rejected >= m_config.rejectedFramesToStop) {
+        finish(true, QStringLiteral("连续 %1 帧对不上（自动结束已启用）").arg(m_rejected));
         return;
     }
 }

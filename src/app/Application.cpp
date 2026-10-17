@@ -3,6 +3,7 @@
 #include "app/SelfTest.h"
 #include "app/PinWindow.h"
 #include "app/Settings.h"
+#include "app/SaveExportDialog.h"
 #include "app/SettingsDialog.h"
 #include "app/Toast.h"
 #include "app/Tray.h"
@@ -195,16 +196,8 @@ Application::Application(const Options &options, QObject *parent)
             QCoreApplication::exit(0);
     });
 
-    m_toast = std::make_unique<Toast>();
-    m_toast->setAutoHideMs(m_settings->toastAutoHideMs());    m_toast->setEditEnabled(true);
-    connect(m_toast.get(), &Toast::saveAsRequested, this, &Application::saveAs);
-    connect(m_toast.get(), &Toast::saveRequested, this, &Application::saveToDefault);
-    connect(m_toast.get(), &Toast::exportGifRequested, this, &Application::exportRecordingGif);
-    connect(m_toast.get(), &Toast::exportMp4Requested, this, &Application::exportRecordingMp4);
-    connect(m_toast.get(), &Toast::copyGifRequested, this, &Application::copyRecordingGif);
-    connect(m_toast.get(), &Toast::copyRequested, this, &Application::copyLast);
-    connect(m_toast.get(), &Toast::editRequested, this,
-            [this]() { openEditor(m_lastImage, m_lastSavedPath); });
+    // 截图后的结果浮层（Toast）已退役：截图完只自动复制/保存，不弹任何窗；
+    // 截图与录制的保存/导出统一走 SaveExportDialog（见 openSaveExport）。
 
     // 录制（Phase 4）
     // 滚动截屏（Phase D）：复用录制指示器（区域外 + layer-shell + 自排除）
@@ -666,26 +659,19 @@ void Application::exportRecording(RecordingFormat format)
     const QString suffix = format == RecordingFormat::Mp4 ? QStringLiteral("mp4")
                                                           : QStringLiteral("gif");
     const QString path = m_settings->defaultSavePath(suffix);
-    if (m_toast)
-        m_toast->setExportBusy(true);
     QString error;
-    // 导出是同步的（ffmpeg 调色板量化可能几秒）：先让浮层把"正在导出"画出来
+    // 导出是同步的（ffmpeg 调色板量化可能几秒）：先把界面刷一下，别让人以为卡死
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     const bool ok = m_recorder->exportTo(path, &error);
     out << (ok ? "RECORD_EXPORT ok format=" : "RECORD_EXPORT_ERROR format=") << suffix
         << (ok ? QStringLiteral(" path=%1").arg(path) : QStringLiteral(" error=%1").arg(error))
         << "\n";
     out.flush();
-    if (m_toast) {
-        m_toast->setExportBusy(false);
-        if (ok) {
-            m_toast->setExportMode(false, QString());
-            m_toast->updateStatus(QStringLiteral("已导出 %1").arg(QFileInfo(path).fileName()),
-                                  path, QString());
-            m_toast->dismissAfter(1500);
-        } else {
-            m_toast->updateStatus(QStringLiteral("导出失败：%1").arg(error), QString(), QString());
-        }
+    if (m_saveExport) {
+        if (ok)
+            m_saveExport->setRecording(0, 0, QString(), false); // 中间文件已清，没有待导出的了
+        else
+            m_saveExport->setRecording(0, 0, QStringLiteral("导出失败：%1").arg(error), false);
     }
 }
 
@@ -699,33 +685,19 @@ void Application::copyRecordingGif()
     }
     // 先导出成文件（剪贴板要投递完整字节），再整体放进剪贴板 —— 动图不能只投一帧。
     const QString path = m_settings->defaultSavePath(QStringLiteral("gif"));
-    if (m_toast)
-        m_toast->setExportBusy(true);
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     QString error;
     if (!m_recorder->exportTo(path, &error)) {
         out << "RECORD_COPY_ERROR " << error << "\n";
         out.flush();
-        if (m_toast) {
-            m_toast->setExportBusy(false);
-            m_toast->updateStatus(QStringLiteral("导出失败：%1").arg(error), QString(), QString());
-        }
         return;
     }
     const bool copied = Clipboard::copyFile(path, QStringLiteral("image/gif"), &error);
     out << (copied ? "RECORD_COPY ok mime=image/gif path=" : "RECORD_COPY_ERROR ")
         << (copied ? path : error) << "\n";
     out.flush();
-    if (m_toast) {
-        m_toast->setExportBusy(false);
-        m_toast->setExportMode(false, QString());
-        if (copied) {
-            m_toast->updateStatus(QStringLiteral("GIF 已复制到剪贴板"), path, QString());
-            m_toast->dismissAfter(1500);
-        } else {
-            m_toast->updateStatus(QStringLiteral("复制失败：%1").arg(error), path, QString());
-        }
-    }
+    if (m_saveExport && copied)
+        m_saveExport->setRecording(0, 0, QString(), false);
 }
 
 void Application::exportRecordingGif()
@@ -762,41 +734,14 @@ void Application::onRecordingFinished(const QString &gifPath, int captured, int 
         << " fps=" << QString::number(effectiveFps, 'f', 2) << "\n";
     out.flush();
 
-    // 结果用既有的浮层展示（缩略图 = 最后一帧）
-    const QImage thumbnail = m_recorder ? m_recorder->lastFrame() : QImage();
-    if (m_toast && !thumbnail.isNull()) {
-        m_toast->setEditEnabled(false);
-        // 简洁优先：导出模式按钮多，留给文字的空间很小；
-        // "选导出格式"这层意思按钮本身就表达清楚了，不必占宽度。
-        const QString info = QStringLiteral("已录制 %1 帧 / %2 秒")
-                                 .arg(captured)
-                                 .arg(QString::number(seconds, 'f', 1));
-        if (m_recorder->deferExport()) {
-            // 工具栏直接给出两种格式，不替用户预设
-            m_toast->setExportMode(true, info);
-            m_toast->showResult(thumbnail, QString(),
-                                QStringLiteral("已录制：%1 帧 / %2 秒")
-                                    .arg(captured)
-                                    .arg(QString::number(seconds, 'f', 1)),
-                                QString(), QRectF(m_recorder->region()).toAlignedRect());
-            m_toast->setExportMode(true, info); // showResult 会重建缓存，这里再确认一次模式
-        } else {
-            m_toast->showResult(thumbnail, gifPath, info, QString(),
-                                QRectF(m_recorder->region()).toAlignedRect());
-        }
-        m_keepAliveForToast = true;
-    }
-
-    if (isOneShot()) {
-        if (m_options.saveTo.isEmpty()) {
-            // 手动收尾的一次性录制：等浮层关掉再退
-            if (m_toast)
-                connect(m_toast.get(), &Toast::dismissed, qApp, &QCoreApplication::quit,
-                        Qt::UniqueConnection);
-        } else {
-            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
-        }
-    }
+    // 录制结束：**自动打开**「保存/导出」窗口的录制页 —— 格式由用户在那里选。
+    // （原来是结果浮层上的两个按钮；用户要求把"保存录制"和"另存为"统一进一个界面。）
+    // 脚本式（--save）已经"一次到底"导出了，不弹窗、直接退出。
+    const bool scripted = isOneShot() && !m_options.saveTo.isEmpty();
+    if (!scripted)
+        openSaveExport(true);
+    if (scripted)
+        QTimer::singleShot(0, qApp, &QCoreApplication::quit);
 }
 
 void Application::startResident()
@@ -1064,8 +1009,6 @@ void Application::configureHotkeyPortal()
 
 void Application::applySettings()
 {
-    if (m_toast)
-        m_toast->setAutoHideMs(m_settings->toastAutoHideMs());
 
     if (auto *wayland = dynamic_cast<WaylandBackend *>(m_backend.get()))
         wayland->setKeepShadowMargin(m_settings->keepShadowMargin());
@@ -1091,6 +1034,8 @@ void Application::applySettings()
         });
         connect(m_tray.get(), &Tray::portalHotkeyRequested, this,
                 &Application::requestHotkeyPortal);
+        connect(m_tray.get(), &Tray::saveExportRequested, this,
+                [this]() { openSaveExport(false); });
         connect(m_tray.get(), &Tray::quitRequested, qApp, &QCoreApplication::quit);
         SS_INFO() << "[app] 托盘已创建";
     } else if (!m_settings->trayPersistent() && m_tray) {
@@ -1347,7 +1292,6 @@ void Application::finishCapture(const CaptureImage &image)
     }
     m_lastSavedPath = savedPath;
 
-    const QString message = QStringLiteral("已截图 %1").arg(sizeText(result));
     const bool wantsEditor = m_options.openEditor || m_settings->openEditorAfterCapture();
     // 带 --save 视为脚本化调用：不弹浮层、交付完就退出（验收/自动化靠它保持快）
     const bool scripted = !m_options.saveTo.isEmpty();
@@ -1359,8 +1303,15 @@ void Application::finishCapture(const CaptureImage &image)
         // 「截图后直接打开编辑器」：浮层就不弹了，编辑器里已有复制/保存/另存为
         openEditor(result, savedPath);
     } else if (!scripted && action != Overlay::ConfirmAction::Copy) {
-        // Ctrl+C 是"复制即走"，不弹浮层（QQ/PixPin 也是这样）；Ctrl+S 仍然弹（带保存路径）
-        m_toast->showResult(result, savedPath, message, copyError, m_lastAnchorRect);
+        // 截图后的结果浮层已按用户要求**去掉**：结果通过剪贴板/自动保存交付，不弹任何窗。
+        // （要看图/另存/编辑：托盘菜单「保存 / 导出上一次结果…」）
+        QTextStream(stdout) << "UI_SILENT 截图完成（不弹窗）："
+                            << (copied ? QStringLiteral("已复制到剪贴板")
+                                       : QStringLiteral("未复制"))
+                            << (savedPath.isEmpty() ? QString()
+                                                    : QStringLiteral("，已保存 ") + savedPath)
+                            << "\n";
+        QTextStream(stdout).flush();
     }
 
     out << "CAPTURE ok size=" << image.image.width() << "x" << image.image.height()
@@ -1388,6 +1339,41 @@ void Application::finishCapture(const CaptureImage &image)
     }
 }
 
+void Application::openSaveExport(bool recordingPage)
+{
+    if (!m_saveExport) {
+        m_saveExport = std::make_unique<SaveExportDialog>();
+        connect(m_saveExport.get(), &SaveExportDialog::copyScreenshotRequested, this,
+                &Application::copyLast);
+        connect(m_saveExport.get(), &SaveExportDialog::saveScreenshotRequested, this,
+                &Application::saveToDefault);
+        connect(m_saveExport.get(), &SaveExportDialog::saveScreenshotAsRequested, this,
+                &Application::saveAs);
+        connect(m_saveExport.get(), &SaveExportDialog::editScreenshotRequested, this,
+                [this]() { openEditor(m_lastImage, m_lastSavedPath); });
+        connect(m_saveExport.get(), &SaveExportDialog::exportGifRequested, this,
+                &Application::exportRecordingGif);
+        connect(m_saveExport.get(), &SaveExportDialog::exportMp4Requested, this,
+                &Application::exportRecordingMp4);
+        connect(m_saveExport.get(), &SaveExportDialog::copyGifRequested, this,
+                &Application::copyRecordingGif);
+    }
+    m_saveExport->setScreenshot(m_lastImage, m_lastSavedPath);
+    const bool hasRecording = m_recorder && m_recorder->deferExport()
+        && !m_recorder->isRecording() && m_recorder->stats().captured > 0;
+    if (m_recorder) {
+        const GifRecorder::Stats stats = m_recorder->stats();
+        m_saveExport->setRecording(stats.captured, stats.elapsedMs, QString(), hasRecording);
+    } else {
+        m_saveExport->setRecording(0, 0, QString(), false);
+    }
+    m_saveExport->showPage(recordingPage ? SaveExportDialog::Page::Recording
+                                        : SaveExportDialog::Page::Screenshot);
+    m_saveExport->show();
+    m_saveExport->raise();
+    m_saveExport->activateWindow();
+}
+
 void Application::saveAs()
 {
     QTextStream out(stdout);
@@ -1397,7 +1383,7 @@ void Application::saveAs()
     // 你的要求：另存为要弹对话框（不再默默落到默认目录）
     const QString suggested = m_lastSavedPath.isEmpty() ? m_settings->defaultSavePath()
                                                         : m_lastSavedPath;
-    const QString path = QFileDialog::getSaveFileName(m_toast.get(), QStringLiteral("另存为"),
+    const QString path = QFileDialog::getSaveFileName(m_saveExport.get(), QStringLiteral("另存为"),
                                                       suggested,
                                                       QStringLiteral("PNG 图片 (*.png)"));
     out << "SAVE_AS_DIALOG suggested=" << suggested << " chosen="
@@ -1409,20 +1395,10 @@ void Application::saveAs()
     QString error;
     if (Settings::saveImage(path, m_lastImage, &error)) {
         m_lastSavedPath = path;
-        const QString message = QStringLiteral("已保存 %1").arg(sizeText(m_lastImage));
-        if (m_toast->isVisible())
-            m_toast->updateStatus(message, path, QString());
-        else
-            m_toast->showResult(m_lastImage, path, message, QString(), m_lastAnchorRect);
-        // 保存完就让它退场：短价展示后消失（你的要求：操作后消失）
-        m_toast->dismissAfter(1200);
+        if (m_saveExport)
+            m_saveExport->setScreenshot(m_lastImage, path); // 统一窗口里刷新"已保存"
         out << "SAVED " << path << "\n";
     } else {
-        const QString message = QStringLiteral("保存失败");
-        if (m_toast->isVisible())
-            m_toast->updateStatus(message, QString(), error);
-        else
-            m_toast->showResult(m_lastImage, QString(), message, error, m_lastAnchorRect);
         out << "SAVE_ERROR " << error << "\n";
     }
     out.flush();
@@ -1439,19 +1415,10 @@ void Application::saveToDefault()
     QString error;
     if (Settings::saveImage(path, m_lastImage, &error)) {
         m_lastSavedPath = path;
-        const QString message = QStringLiteral("已保存 %1").arg(sizeText(m_lastImage));
-        if (m_toast->isVisible())
-            m_toast->updateStatus(message, path, QString());
-        else
-            m_toast->showResult(m_lastImage, path, message, QString(), m_lastAnchorRect);
-        m_toast->dismissAfter(1200);
+        if (m_saveExport)
+            m_saveExport->setScreenshot(m_lastImage, path);
         out << "SAVED " << path << "\n";
     } else {
-        const QString message = QStringLiteral("保存失败");
-        if (m_toast->isVisible())
-            m_toast->updateStatus(message, QString(), error);
-        else
-            m_toast->showResult(m_lastImage, QString(), message, error, m_lastAnchorRect);
         out << "SAVE_ERROR " << error << "\n";
     }
     out.flush();
@@ -1463,11 +1430,8 @@ void Application::copyLast()
         return;
     QString error;
     const bool ok = Clipboard::copyImage(m_lastImage, &error);
-    const QString message = ok ? QStringLiteral("已复制到剪贴板") : QStringLiteral("复制失败");
-    if (m_toast->isVisible())
-        m_toast->updateStatus(message, m_lastSavedPath, error);
-    else
-        m_toast->showResult(m_lastImage, m_lastSavedPath, message, error, m_lastAnchorRect);
+    if (ok && m_saveExport)
+        m_saveExport->setScreenshot(m_lastImage, m_lastSavedPath);
     QTextStream(stdout) << (ok ? "COPIED image/png\n" : "COPY_ERROR " + error + "\n");
 }
 
@@ -1662,10 +1626,17 @@ void Application::onScrollFinished(const QImage &image, const QString &report)
     }
     m_lastSavedPath = savedPath;
 
-    const QString message = QStringLiteral("长截图 %1x%2").arg(image.width()).arg(image.height());
     const bool scripted = !m_options.saveTo.isEmpty();
-    if (!scripted)
-        m_toast->showResult(image, savedPath, message, QString(), m_lastAnchorRect);
+    if (!scripted) {
+        // 截图类结果**不弹窗**（按用户要求）：这里只复制/保存；要看图从托盘里的统一窗口打开
+        QString copyError;
+        const bool copied = m_options.noCopy ? false : Clipboard::copyImage(image, &copyError);
+        QTextStream(stdout) << "UI_SILENT 长截图完成（不弹窗）："
+                            << (copied ? QStringLiteral("已复制到剪贴板")
+                                       : QStringLiteral("未复制（--no-copy）"))
+                            << "\n";
+        QTextStream(stdout).flush();
+    }
 
     out << "SCROLL ok size=" << image.width() << "x" << image.height() << "\n";
     out << "SCROLL_REPORT " << report << "\n";
@@ -2760,8 +2731,15 @@ int Application::runInplaceDemo(const QString &outPrefix)
                 postKey(Qt::Key_S, QString(), Qt::ControlModifier);
             else if (actionMode == QLatin1String("pin"))
                 postKey(Qt::Key_T, QString(), Qt::ControlModifier);
-            else if (actionMode == QLatin1String("scroll"))
+            else if (actionMode == QLatin1String("scroll")) {
                 postKey(Qt::Key_L, QString(), Qt::ControlModifier);
+                // 长截图现在**要用户自己结束**（按「完成」/Esc）。演示里没人点按钮，
+                // 所以 4 秒后替用户"按一下完成"，否则这条链路永远等不到 SCROLL ok。
+                QTimer::singleShot(4000, this, [this]() {
+                    if (m_scrollCapturer && m_scrollCapturer->isRunning())
+                        m_scrollCapturer->stop();
+                });
+            }
             else if (actionMode == QLatin1String("ocr"))
                 postKey(Qt::Key_O, QString(), Qt::ControlModifier);
             else

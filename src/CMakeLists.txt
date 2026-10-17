@@ -24,6 +24,7 @@ set(SEASHOT_CORE_SOURCES
     record/RecordingIndicator.cpp
     record/PortalScreencast.cpp
     app/Settings.cpp
+    app/SaveExportDialog.cpp
     app/SettingsDialog.cpp
     app/SelfTest.cpp
     app/PinWindow.cpp
@@ -60,6 +61,7 @@ set(SEASHOT_HEADERS
     record/RecordingIndicator.h
     record/PortalScreencast.h
     app/Settings.h
+    app/SaveExportDialog.h
     app/SettingsDialog.h
     app/SelfTest.h
     app/PinWindow.h

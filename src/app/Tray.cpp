@@ -26,6 +26,10 @@ Tray::Tray(QObject *parent)
     m_recordAction = m_menu->addAction(QStringLiteral("录制 GIF…"));
     connect(m_recordAction, &QAction::triggered, this, &Tray::recordToggleRequested);
     m_menu->addSeparator();
+    // 截图/录制的"保存、另存为、导出"都收进这一个窗口（截图后不再弹浮层）
+    QAction *saveExportAction = m_menu->addAction(QStringLiteral("保存 / 导出上一次结果…"));
+    connect(saveExportAction, &QAction::triggered, this, &Tray::saveExportRequested);
+    m_menu->addSeparator();
     QAction *settingsAction = m_menu->addAction(QStringLiteral("设置…"));
     connect(settingsAction, &QAction::triggered, this, &Tray::settingsRequested);
     QAction *keysAction = m_menu->addAction(QStringLiteral("KDE 快捷键设置…"));

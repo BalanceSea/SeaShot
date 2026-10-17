@@ -1,13 +1,21 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-182629" id= 1 run方式= Script<N>.run 
-HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_23404/seashot_748d018b args=1 signature=
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-204985" id= 1 run方式= Script<N>.run 
+HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_25472/seashot_262b5772 args=1 signature=
 [info] [app] 等门户状态确定后再决定是否注册 KGlobalAccel 
 SEASHOT_READY backend=wayland hotkey=Ctrl+Alt+A
-[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_23404/seashot_s_735ac97a" 
-HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_23404/seashot_a97e8f33 args=2 signature=
+[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_25472/seashot_s_27548c38" 
+HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_25472/seashot_d8017d3d args=2 signature=
+HOTKEY_PORTAL_BIND_SESSION id=screenshot trigger=CTRL+ALT+A（让门户在本会话里派发按键）
+[info] [hotkey-portal] Activated 信号订阅: 成功 
+[info] [hotkey-portal] ShortcutsChanged 信号订阅: 成功 
+HOTKEY_PORTAL_REQUEST BindShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_25472/seashot_ce8e4aa4 args=4 signature=
 [info] [hotkey] 当前绑定: "(未绑定)" 
 HOTKEY_PORTAL_WINS 停止注册 KGlobalAccel（避免两条快捷键）
 HOTKEY_PORTAL_STATE authorized id=screenshot trigger=Ctrl+Alt+A
+[info] [hotkey-portal] 已授权: "ok=1 denied=0 screenshot=Ctrl+Alt+A latencyMs=1" 
+HOTKEY_PORTAL_BOUND ok=1 denied=0 screenshot=Ctrl+Alt+A latencyMs=1
+[info] [app] 已由门户提供全局快捷键，跳过 KGlobalAccel 注册 "Ctrl+Alt+A" 
+HOTKEY_PORTAL_APPLIED trigger=Ctrl+Alt+A
 [info] [app] 收到退出信号，正在收尾（卸载 KWin 助手脚本） 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-182629" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-204985" 
