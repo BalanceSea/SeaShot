@@ -14,6 +14,7 @@ BINDIR="${BINDIR:-$HOME/.local/bin}"
 APPDIR="${APPDIR:-$HOME/.local/share/applications}"
 ICONDIR="${ICONDIR:-$HOME/.local/share/icons/hicolor}"
 BIN="$BINDIR/seashot"
+APPICON="$ICONDIR/512x512/apps/seashot.png"
 
 DO_BUILD=1
 DO_AUTOSTART=0
@@ -170,7 +171,7 @@ fi
 echo "   $BIN"
 
 echo "== 安装 SeaShot 应用图标 =="
-install -Dm644 "$ROOT/resources/icons/seashot.png" "$ICONDIR/512x512/apps/seashot.png"
+install -Dm644 "$ROOT/resources/icons/seashot.png" "$APPICON"
 if command -v gtk-update-icon-cache >/dev/null 2>&1; then
     gtk-update-icon-cache -f -t "$ICONDIR" >/dev/null 2>&1 || true
 fi
@@ -185,7 +186,7 @@ GenericName=截图工具
 Comment=KDE Plasma 6 (Wayland/X11) 截图工具
 Exec=$BIN
 TryExec=$BIN
-Icon=seashot
+Icon=$APPICON
 Terminal=false
 NoDisplay=false
 Categories=Graphics;Utility;Qt;KDE;

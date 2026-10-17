@@ -83,6 +83,7 @@ SettingsDialog::SettingsDialog(Settings *settings, CaptureBackend *backend, QWid
     , m_backend(backend)
 {
     setWindowTitle(QStringLiteral("SeaShot 设置"));
+    setWindowIcon(ui::appIcon());
     setMinimumSize(780, 620);
     buildUi();
     loadFromSettings();

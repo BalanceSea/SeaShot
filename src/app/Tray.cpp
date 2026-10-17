@@ -16,7 +16,7 @@ Tray::Tray(QObject *parent)
     m_item = new KStatusNotifierItem(this);
     m_item->setCategory(KStatusNotifierItem::ApplicationStatus);
     m_item->setStatus(KStatusNotifierItem::Active);
-    m_item->setIconByPixmap(ui::appIconPixmap(64)); // 应用自带的图标（内嵌资源）
+    m_item->setIconByPixmap(ui::appIcon()); // 与窗口和提示使用同一张透明图标
     m_item->setTitle(QStringLiteral("SeaShot"));
     m_item->setToolTip(ui::appIcon(), QStringLiteral("SeaShot"), QStringLiteral("截图工具"));
 

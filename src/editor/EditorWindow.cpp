@@ -62,6 +62,7 @@ EditorWindow::EditorWindow(const QImage &image, const QString &sourcePath, QWidg
 {
     setAttribute(Qt::WA_DeleteOnClose, true);
     setWindowTitle(QStringLiteral("SeaShot 编辑器"));
+    setWindowIcon(ui::appIcon());
     // 编辑器自己也在 KWin 的「排除出截图」名单里（appId 含 seashot）
 
     m_canvas = new AnnotationCanvas(this);

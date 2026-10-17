@@ -3,7 +3,7 @@
 // 设计原则：
 //  - 一切颜色都来自系统调色板（QPalette），所以 Breeze 亮/暗主题自动跟随，不写死色值；
 //  - 一切尺寸都来自下面的 spec 常量，改这里就能统一调整整套 UI；
-//  - 图标统一从系统图标主题取（Breeze），带候选回退；取不到就退回纯文字，不崩不空。
+//  - 应用图标使用内嵌透明 PNG；操作图标从系统主题取（Breeze），带候选回退。
 //
 // 规格表（对应用户可读的 docs/ui-spec.md）：
 //   卡片圆角 12px / 按钮圆角 8px / 卡片内边距 16px / 元素间距 10px
@@ -83,7 +83,8 @@ QIcon iconDelete();
 QIcon iconSave();
 QIcon iconRefresh();
 
-/// 应用图标（内嵌在资源里；取不到时回退到主题的 camera-photo）
+/// 统一应用图标：内嵌的透明圆角 PNG，保留原始分辨率和 alpha 通道。
+/// 资源不可用时回退到主题的 camera-photo。
 QPixmap appIconPixmap(int size);
 QIcon appIcon();
 

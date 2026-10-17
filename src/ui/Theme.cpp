@@ -62,25 +62,16 @@ CardColors cardColors(const QPalette &palette)
 
 QPixmap appIconPixmap(int size)
 {
-    static QPixmap source;
-    static bool loaded = false;
-    if (!loaded) {
-        loaded = true;
-        source.load(QStringLiteral(":/seashot/resources/icons/seashot.png"));
-    }
-    if (source.isNull()) {
-        const QIcon fallback = iconCapture();
-        return fallback.isNull() ? QPixmap() : fallback.pixmap(size, size);
-    }
-    return source.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    if (size <= 0)
+        return {};
+    return appIcon().pixmap(size, size);
 }
 
 QIcon appIcon()
 {
-    const QPixmap pixmap = appIconPixmap(256);
-    if (pixmap.isNull())
-        return iconCapture();
-    return QIcon(pixmap);
+    // Keep the full-resolution RGBA source for windows, tray and previews.
+    static const QIcon bundledIcon(QStringLiteral(":/seashot/resources/icons/seashot.png"));
+    return bundledIcon.isNull() ? iconCapture() : bundledIcon;
 }
 
 QIcon iconEdit()

@@ -203,6 +203,7 @@ int main(int argc, char **argv)
     qputenv("QT_QPA_PLATFORM", "offscreen");
     QApplication app(argc, argv);
     Q_INIT_RESOURCE(kwinscript);
+    QGuiApplication::setWindowIcon(ui::appIcon());
     QCoreApplication::setApplicationName(QStringLiteral("seashot-readme-demo"));
     QCoreApplication::setOrganizationName(QStringLiteral("seashot-demo"));
     QTemporaryDir config;

@@ -19,5 +19,5 @@ cmake --build build --target seashot_readme_demo -j 2
 - 配图源代码：`probes/readme-demo.cpp`。
 - 输出：四张 1440×1000 PNG，展示截图标注、保存导出、录制导出和设置。
 - 界面使用 Fusion 样式和示例调色板；安装 Noto Sans CJK SC 字体与 Breeze 图标主题，可得到与当前配图接近的效果。
-- 页首及窗口装饰使用 `resources/icons/seashot.png`。
+- 页首、窗口装饰及设置页头部统一使用 `resources/icons/seashot.png`，保留圆角透明背景。
 - 修改界面后重新生成图片，将配图与代码一起提交即可。

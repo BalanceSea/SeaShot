@@ -59,8 +59,12 @@ cmake --build build -j 2
 
 - 二进制：`~/.local/bin/seashot`
 - 应用菜单入口：`~/.local/share/applications/seashot.desktop`
-- 图标：`resources/icons/seashot.png` → 用户图标目录
+- 图标：`resources/icons/seashot.png` → `~/.local/share/icons/hicolor/512x512/apps/seashot.png`
+  （菜单和登录自启入口直接引用安装后的图片路径，使用同一张透明圆角图标）
 - 登录自启（仅 `--autostart`）：`~/.config/autostart/seashot.desktop`
+
+更新图标后，请运行 `./install.sh --skip-deps` 并重新启动 SeaShot；已有登录自启入口时可加上
+`--autostart` 一起更新。图标也内嵌在程序中，`--no-build` 不会更新旧二进制里的图标。
 
 ## ⚠️ Wayland 下必须用安装脚本装
 
