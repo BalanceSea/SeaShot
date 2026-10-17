@@ -1,14 +1,15 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-169614" id= 1 run方式= Script<N>.run 
-HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_22133/seashot_3b08e207 args=1 signature=
+[info] [kwin] 脚本已加载 pluginName= "seashot-176249" id= 1 run方式= Script<N>.run 
+HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_22834/seashot_625de7bf args=1 signature=
 [info] [tray] KStatusNotifierItem 已创建 
 [info] [app] 托盘已创建 
-[info] [hotkey] 当前绑定: "Ctrl+Alt+A" 
-[info] [app] 快捷键已更新: "Ctrl+Alt+A" 实际生效: "Ctrl+Alt+A" 
+[info] [app] 等门户状态确定后再决定是否注册 KGlobalAccel 
 SEASHOT_READY backend=wayland hotkey=Ctrl+Alt+A
-[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_22133/seashot_s_a6abb349" 
-HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_22133/seashot_ead31349 args=2 signature=
-HOTKEY_PORTAL_STATE authorized id=first-run-demo trigger=Ctrl+Alt+A
+[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_22834/seashot_s_6cebf0c5" 
+HOTKEY_PORTAL_REQUEST ListShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_22834/seashot_78e35478 args=2 signature=
+[info] [hotkey] 当前绑定: "(未绑定)" 
+HOTKEY_PORTAL_WINS 停止注册 KGlobalAccel（避免两条快捷键）
+HOTKEY_PORTAL_STATE authorized id=screenshot trigger=Ctrl+Alt+A
 [info] [app] 收到退出信号，正在收尾（卸载 KWin 助手脚本） 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-169614" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-176249" 

@@ -216,11 +216,12 @@ bool WaylandBackend::setHotkey(const QKeySequence &sequence, QString *error)
         KGlobalAccel::self()->setShortcut(m_hotkeyAction, {}, KGlobalAccel::NoAutoloading);
     }
 
-    if (!sequence.isEmpty()) {
-        const QList<QKeySequence> keys{sequence};
-        KGlobalAccel::self()->setDefaultShortcut(m_hotkeyAction, keys);
-        KGlobalAccel::self()->setShortcut(m_hotkeyAction, keys, KGlobalAccel::NoAutoloading);
-    }
+    // 空序列 = **明确解绑**。以前这里是"空就什么都不做"，于是 --set-hotkey none
+    // 实际上解不掉旧键（KGlobalAccel 仍按配置里的旧值生效），排查了很久。
+    const QList<QKeySequence> keys =
+        sequence.isEmpty() ? QList<QKeySequence>() : QList<QKeySequence>{sequence};
+    KGlobalAccel::self()->setDefaultShortcut(m_hotkeyAction, keys);
+    KGlobalAccel::self()->setShortcut(m_hotkeyAction, keys, KGlobalAccel::NoAutoloading);
 
     const QList<QKeySequence> current = KGlobalAccel::self()->shortcut(m_hotkeyAction);
     QStringList readable;

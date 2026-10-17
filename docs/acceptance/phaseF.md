@@ -102,6 +102,35 @@ HOTKEY_PORTAL_REQUEST BindShortcuts ... shortcuts: QList(std::pair("first-run-de
 有覆盖用户已有按键的风险（正是 ISSUE-014 第 5 条）。现在改成：只发**一次** list，
 同一个结果同时用于两件事；并且"已授权就绝不 bind"。
 
+## 同一时间只让**一条**机制生效（用户反馈"为什么会注册两个截图快捷键"）
+
+一开始两条路各自为政：门户那条注册了 `screenshot=Ctrl+Alt+A`，KGlobalAccel 那条也按配置注册了
+`capture=Ctrl+Alt+A` —— 系统设置里就出现**两条 SeaShot 快捷键绑在同一个键**。现在的规则：
+
+- **门户已授权 → KGlobalAccel 不注册**（并且启动时把 KGlobalAccel 那条**解绑**成 `none`），
+  托盘提示文字也标成「Ctrl+Alt+A（门户）」。系统设置里只剩一条有键的。
+- **门户没授权/不可用 → 走 KGlobalAccel**（用配置里的键）。
+- 用户显式 `--set-hotkey`（或界面里录键）→ 那是明确的"我要用 KGlobalAccel"，此时门户让位。
+- 启动瞬间也不会出现"两条都绑着"的抖动：**先等门户状态确定**（`m_portalStateKnown`）再决定注册谁。
+
+另外修了一个真 bug：**空序列原来是"什么都不做"**，所以 `--set-hotkey none` 其实解不掉旧键
+（KGlobalAccel 仍按配置里的旧值生效）。现在空序列 = **明确解绑**。
+
+实测：
+```
+[info] [app] 等门户状态确定后再决定是否注册 KGlobalAccel
+HOTKEY_PORTAL_WINS 停止注册 KGlobalAccel（避免两条快捷键）
+HOTKEY_PORTAL_STATE authorized id=screenshot trigger=Ctrl+Alt+A
+→ ~/.config/kglobalshortcutsrc:  capture=none   screenshot=Ctrl+Alt+A
+```
+
+## 退出 SeaShot 后快捷键为什么按不动
+
+不是 bug：快捷键按下后必须由**正在运行的 SeaShot** 接管（KGlobalAccel 与门户都是如此 ——
+它们只是把"按键事件"交给注册它的进程；进程不在就没人处理）。
+想让 `Ctrl+Alt+A` 一直可用，就让常驻实例一直在：托盘常驻即可，或者启用开机自启：
+`./install.sh --autostart`（写 `~/.config/autostart/seashot.desktop`）。
+
 ## 关于 kglobalshortcutsrc 里的测试残留条目
 
 开发/调试过程中留下过 `screenshot=(none)`、`seashot-test-new=(none)` 两个空条目。

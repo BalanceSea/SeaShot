@@ -191,6 +191,13 @@ private:
     std::unique_ptr<GlobalShortcutsPortal> m_shortcutPortal;
     bool m_portalRelistPending = false; ///< bind 应答没带按键 → 再 ListShortcuts 一次确认
     bool m_firstRunAskPending = false;  ///< 首次运行：等 ListShortcuts 结果再决定要不要发起
+    /// 门户那条路已经在用：此时**不再注册 KGlobalAccel**（否则系统设置里会出现两条
+    /// SeaShot 快捷键、还可能抢同一个键）。用户显式 --set-hotkey 时会把它置回 false。
+    bool m_portalHotkeyActive = false;
+    /// 门户状态是否已经问过。没问清之前**先不注册 KGlobalAccel** ——
+    /// 否则每次启动都会有一小段时间两条快捷键同时绑着（系统设置里能看到抖动），
+    /// 而且会把用户已经授权好的那条覆盖成同一个键。
+    bool m_portalStateKnown = false;
     QRect virtualGeometry() const;
     bool isOneShot() const;
 

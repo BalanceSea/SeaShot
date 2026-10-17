@@ -833,8 +833,10 @@ void Application::setupShortcutPortal()
     //     用户自己决定授权还是不授权。
     uint version = 0;
     QString error;
-    if (!GlobalShortcutsPortal::available(&version, &error))
+    if (!GlobalShortcutsPortal::available(&version, &error)) {
+        m_portalStateKnown = true; // 没有门户：直接走 KGlobalAccel
         return;
+    }
     ensureShortcutPortal()->listShortcuts();
 }
 
@@ -984,6 +986,24 @@ GlobalShortcutsPortal *Application::ensureShortcutPortal()
                     return;
                 }
                 // 常驻启动时的静默自检：只报状态，不弹任何窗
+                if (!m_portalStateKnown) {
+                    m_portalStateKnown = true;
+                    // 门户没给绑定 → 走 KGlobalAccel（按配置里的键）；给了 → 门户说了算
+                    if (trigger.isEmpty())
+                        applyHotkey(m_settings ? m_settings->hotkey() : QString());
+                }
+                if (!trigger.isEmpty() && !m_portalHotkeyActive) {
+                    m_portalHotkeyActive = true;
+                    // 解绑 KGlobalAccel 那条：同一个键只保留一条注册，系统设置里也只该有一条
+                    if (m_backend) {
+                        QString unbindError;
+                        m_backend->setHotkey(QKeySequence(), &unbindError);
+                    }
+                    if (m_tray)
+                        m_tray->setHotkeyLabel(trigger + QStringLiteral("（门户）"));
+                    out << "HOTKEY_PORTAL_WINS 停止注册 KGlobalAccel（避免两条快捷键）\n";
+                    out.flush();
+                }
                 out << (trigger.isEmpty()
                             ? QStringLiteral("HOTKEY_PORTAL_STATE not-authorized")
                             : QStringLiteral("HOTKEY_PORTAL_STATE authorized id=%1 trigger=%2")
@@ -1069,6 +1089,17 @@ void Application::applyHotkey(const QString &sequence)
 {
     if (!m_backend)
         return;
+    if (!m_portalStateKnown && m_shortcutPortal) {
+        // 门户状态还没回来：先别注册，等 listed 结果出来再决定（见 listed 处理）
+        SS_INFO() << "[app] 等门户状态确定后再决定是否注册 KGlobalAccel";
+        return;
+    }
+    if (m_portalHotkeyActive) {
+        // 门户那条路已经拿到绑定：这里再注册一次就会出现"两条 SeaShot 快捷键"，
+        // 而且可能抢同一个键 —— 交给门户处理（想改用 KGlobalAccel 就 --set-hotkey）。
+        SS_INFO() << "[app] 已由门户提供全局快捷键，跳过 KGlobalAccel 注册" << sequence;
+        return;
+    }
     if (m_hotkeyApplied && sequence == m_appliedHotkey)
         return; // 配置界面里敲字会频繁触发，避免反复改注册
     QString error;
@@ -3371,6 +3402,7 @@ int Application::run()
         const QString sequence = m_options.setHotkey == QLatin1String("none")
             ? QString()
             : m_options.setHotkey;
+        m_portalHotkeyActive = false; // 用户显式指定 → KGlobalAccel 那条路说了算
         m_settings->setHotkey(sequence);
         applyHotkey(sequence);
         out << "HOTKEY_SET " << (sequence.isEmpty() ? QStringLiteral("(none)") : sequence)
