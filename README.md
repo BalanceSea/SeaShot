@@ -73,6 +73,33 @@
 | 📋 Wayland 剪贴板 | 推荐安装 `wl-clipboard`，使用 `wl-copy` 持久化复制结果 |
 | 🔤 OCR（可选） | `tesseract` 及所需语言包，例如 `chi_sim`、`eng` |
 
+### 📦 Fedora 安装依赖（实测）
+
+下列命令在 Fedora 44 + KDE Plasma 6 上验证通过，给出上表「类型」对应的实际包名。
+
+> ⚠️ **KF6 框架与 LayerShellQt 必须装 `-devel` 包。** `find_package` 只认
+> `*Config.cmake`，而它只随 `-devel` 走；只装运行时包（`kf6-*` 无后缀）会报
+> `Could not find a package configuration file` 而配置失败。
+
+```bash
+# 构建必需
+sudo dnf install -y cmake ninja-build gcc-c++ pkgconf-pkg-config \
+  qt6-qtbase-devel \
+  kf6-kglobalaccel-devel kf6-kstatusnotifieritem-devel \
+  layer-shell-qt-devel \
+  libxcb-devel xcb-util-wm-devel
+
+# 可选：启用 PipeWire 直连取帧（不装也能编译，运行时回退截图轮询）
+sudo dnf install -y pipewire-devel
+
+# 运行时可选：录制导出 / 剪贴板 / OCR
+sudo dnf install -y ffmpeg wl-clipboard tesseract
+```
+
+> 💡 之前未装 `pipewire-devel` 会直接导致编译失败；现已修复——缺失时
+> `PipeWireFrameSource` 以「不可用」形态编译，`isAvailable()` 返回 false，
+> 录制回退到截图轮询，无需为了能编译而强制安装 PipeWire。
+
 ### 🔨 编译
 
 在项目根目录执行：

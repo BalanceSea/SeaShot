@@ -48,7 +48,9 @@ const char *spaFormatName(spa_video_format format)
 struct PipeWireFrameSourceAccess {
     static PipeWireFrameSource *self(void *data) { return static_cast<PipeWireFrameSource *>(data); }
     static void process(void *data) { self(data)->handleProcess(); }
+#ifdef SEASHOT_HAVE_PIPEWIRE
     static void paramChanged(void *data, uint32_t id, const spa_pod *param);
+#endif
     static void stateChanged(void *data, int state, const char *error)
     {
         self(data)->handleState(state, error);
