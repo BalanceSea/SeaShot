@@ -198,6 +198,10 @@ private:
     /// 否则每次启动都会有一小段时间两条快捷键同时绑着（系统设置里能看到抖动），
     /// 而且会把用户已经授权好的那条覆盖成同一个键。
     bool m_portalStateKnown = false;
+    /// 本次会话里是否已经把这条快捷键 bind 过。
+    /// ⚠️ 门户只对"在**本会话**里 BindShortcuts 过"的快捷键派发 Activated ——
+    ///    只 CreateSession + ListShortcuts 是收不到按键事件的（实测：按了没反应）。
+    bool m_portalBoundInSession = false;
     QRect virtualGeometry() const;
     bool isOneShot() const;
 

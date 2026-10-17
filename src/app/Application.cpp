@@ -994,6 +994,22 @@ GlobalShortcutsPortal *Application::ensureShortcutPortal()
                 }
                 if (!trigger.isEmpty() && !m_portalHotkeyActive) {
                     m_portalHotkeyActive = true;
+                    // 关键：把这条快捷键在**本会话**里 bind 一次，否则门户不会派发 Activated
+                    // （只建会话+查绑定是收不到按键的）。已经授权过 → 这一步是静默的；
+                    // preferred_trigger 直接用它**现在生效的键**，不会改动用户的选择。
+                    if (!m_portalBoundInSession) {
+                        m_portalBoundInSession = true;
+                        GlobalShortcutsPortal::Shortcut existing;
+                        existing.id = triggerId.isEmpty() ? GlobalShortcutsPortal::shortcutId()
+                                                          : triggerId;
+                        existing.description = QStringLiteral("截图（SeaShot 截图）");
+                        existing.preferredTrigger = GlobalShortcutsPortal::toXdgTrigger(trigger);
+                        out << "HOTKEY_PORTAL_BIND_SESSION id=" << existing.id
+                            << " trigger=" << existing.preferredTrigger
+                            << "（让门户在本会话里派发按键）\n";
+                        out.flush();
+                        ensureShortcutPortal()->requestBind({existing}, 30000);
+                    }
                     // 解绑 KGlobalAccel 那条：同一个键只保留一条注册，系统设置里也只该有一条
                     if (m_backend) {
                         QString unbindError;

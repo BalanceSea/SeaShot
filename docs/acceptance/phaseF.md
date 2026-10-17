@@ -130,6 +130,28 @@ HOTKEY_PORTAL_STATE authorized id=screenshot trigger=Ctrl+Alt+A
 → ~/.config/kglobalshortcutsrc:  capture=none   screenshot=Ctrl+Alt+A
 ```
 
+## 一个致命的实现坑：光"建会话 + 查绑定"收不到按键
+
+用户反馈"按了没反应"。根因：常驻启动时只做了 `CreateSession` + `ListShortcuts`，
+**从没在会话里 `BindShortcuts`** —— 而 portal 只对"在**本会话**里 bind 过"的快捷键派发
+`Activated`。只查列表的话：授权状态显示正常、键也看着绑着，但按键事件一个都不来。
+
+修法：启动时一旦从 `ListShortcuts` 看到"已授权且有 trigger"，就在本会话里
+`requestBind` 一次（已授权 → 静默，耗时 1ms），`preferred_trigger` 直接用**现在生效的键**
+（所以不会改动用户的选择 —— ISSUE-014 第 5 条的那个覆盖问题也避开了）。
+
+验证办法（不用手按）：KGlobalAccel 的 D-Bus 能直接"调用"某个快捷键：
+
+```bash
+gdbus call --session --dest org.kde.kglobalaccel --object-path /component/seashot \
+    --method org.kde.kglobalaccel.Component.invokeShortcut screenshot
+→ 常驻日志立刻出现： HOTKEY_PORTAL_ACTIVATED id=screenshot      # 链路通了
+```
+
+（`Component.allShortcutInfos` 还能看到每条快捷键的当前键值：
+`('screenshot', '截图（SeaShot 截图）', ..., [201326657], [201326657])` —— 有键；
+`('capture', 'SeaShot 截图', ..., [], [])` —— 没键，符合"只有一条生效"的预期。）
+
 ## 退出 SeaShot 后快捷键为什么按不动
 
 不是 bug：快捷键按下后必须由**正在运行的 SeaShot** 接管（KGlobalAccel 与门户都是如此 ——
