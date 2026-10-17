@@ -1,10 +1,10 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-484130" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-109726" id= 1 run方式= Script<N>.run 
 [info] [tray] KStatusNotifierItem 已创建 
 [info] [app] 托盘已创建 
 [info] [hotkey] 当前绑定: "(未绑定)" 
 [info] [app] 快捷键已更新: "(未绑定)" 实际生效: "(未绑定)" 
 SEASHOT_READY backend=wayland hotkey=(未绑定)
 [info] [app] 收到退出信号，正在收尾（卸载 KWin 助手脚本） 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-484130" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-109726" 

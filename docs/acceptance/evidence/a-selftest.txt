@@ -1,11 +1,11 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-558734" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-108087" id= 1 run方式= Script<N>.run 
 BACKEND_CHOICE Wayland 会话 + KDE 桌面（WAYLAND_DISPLAY=wayland-0）
 SeaShot 自检（Phase 1）
 ========================
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(0,0 32x32) 
-[info] [shot2] "CaptureArea" ok 3 ms 32 x 32 "" 
+[info] [shot2] "CaptureArea" ok 2 ms 32 x 32 "" 
 [info] [clipboard] 已通过 wl-copy 写入 99 字节 
 [OK  ] 后端选择
        Wayland 会话 + KDE 桌面（WAYLAND_DISPLAY=wayland-0）
@@ -16,13 +16,13 @@ SeaShot 自检（Phase 1）
 [OK  ] 输出与缩放
        DP-3 1920x1080+0+0 scale=1
 [OK  ] 窗口枚举
-       共 22 个窗口
-       {d43be7d4-87f8-4686-a0d5-3d282620bc21} appId=plasmashell frame=0,0 1920x1080 stack=0
-       {35d77d6e-0ee7-42a0-a2b1-4e5f6636d598} appId=clash-verge frame=884.653,697.963 940x700 stack=5
-       {01d4f58d-92ae-4e3e-b453-983a4abd547e} appId=open-orpheus frame=76.6074,940.706 1920x1007 stack=8
-       {7f79715c-b972-4716-bd31-1d3ac206842f} appId=cc-switch frame=151.589,448.131 1360x723 stack=2
-       {963dd8a0-78ac-41e1-bd25-4ab68b81b6cb} appId=dsh-tauri-app frame=347.167,800.908 1920x1080 stack=3
-       {1209843e-8ba9-4a1b-8e6b-39b5707ce4bd} appId=org.telegram.desktop frame=83.6525,372.583 801x594 stack=15
+       共 12 个窗口
+       {96590f02-9da5-4b10-846f-2fd90dbb6287} appId=plasmashell frame=0,0 1920x1080 stack=0
+       {de148d74-8081-4064-8365-43a675ef46ee} appId=quickshell frame=0,0 1920x1006 stack=11
+       {2cdf57f8-97cb-4377-aa68-4ece0a0ca64e} appId=quickshell frame=0,0 1920x1080 stack=1
+       {0245c7f7-340d-46fc-8c29-2f7c02453969} appId=quickshell frame=0,941 1920x139 stack=9
+       {ea8eade9-3e7d-4f8a-ad73-3071250f0e59} appId=quickshell frame=1552,48 350x984 stack=10
+       {870e720f-1d13-44e0-8cc8-13bc7adf4082} appId=org.kde.dolphin frame=638.04,200.807 1257x698 stack=5
 [OK  ] 区域截图（32x32 探测）
        得到 32x32，scale=1
 [OK  ] 剪贴板（wl-copy）
@@ -40,4 +40,4 @@ SeaShot 自检（Phase 1）
 
 
 结果: 9 项检查，0 项致命失败
-[info] [kwin] 脚本已卸载 pluginName= "seashot-558734" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-108087" 

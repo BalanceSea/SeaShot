@@ -1,13 +1,13 @@
 == Phase 1 验收 ==
-二进制: /home/balancesea/.local/bin/seashot (2026-10-17 07:52:29)
+二进制: /home/balancesea/.local/bin/seashot (2026-10-17 08:28:32)
 
 PASS  A. seashot --selftest                9 项检查全过，见 docs/acceptance/evidence/a-selftest.txt
 PASS  B. 覆盖层自排除(像素)        全屏白底参照（基线均值 255）两次截图 RMSE=0（<0.03；覆盖层入镜会到 0.4+）
 PASS  B. 覆盖层窗口标记             见 docs/acceptance/evidence/b2-list-windows.txt（appId=seashot … excluded=1）
-PASS  C. 窗口图与屏幕一致          frame定位 602x430+64+52 OFFSET=65,53 SIZES=600x428/600x428 RMSE=0.0187178 NEG=0.314193
+PASS  C. 窗口图与屏幕一致          frame定位 602x430+64+52 OFFSET=65,53 SIZES=600x428/600x428 RMSE=0.0187798 NEG=0.314192
 PASS  C. 窗口图含装饰/阴影         窗口图 730x558，frame=660,289 600x428，即含装饰与阴影边距
 PASS  D. 剪贴板退出后仍可粘贴    退出前/后 wl-paste --list-types 均为 image/png
-PASS  E. 连续 20 次区域截图         成功率 20/20，平均 72ms，最慢 76ms
+PASS  E. 连续 20 次区域截图         成功率 20/20，平均 73ms，最慢 80ms
 PASS  F. X11 后端 selftest               见 docs/acceptance/evidence/f-x11-selftest.txt（X11 会话未实测）
 PASS  F. X11 后端截图(XWayland)        CAPTURE ok size=200x150 scale=1
 

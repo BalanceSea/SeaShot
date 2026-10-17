@@ -50,6 +50,9 @@ SEASHOT_INPLACE_DEMO_ACTION=copy|save|pin seashot --inplace-demo /tmp/a1 [--save
 seashot --pin-demo /tmp/p              # 贴图（Phase C）自动验收：拖动/缩放/菜单/多张并存/关闭
                                        # 加 SEASHOT_PIN_DEMO_HOLD=<ms> 可延长保持时间（配合外部截屏）
 seashot --open-editor                # 本次截图后直接打开编辑器（覆盖配置）
+seashot --scroll-capture --rect 100,100,800,600 --save /tmp/long.png
+                                     # 滚动截屏（Phase D）：自己滚页面，SeaShot 定时抓帧拼成长图
+                                     # （--scroll-ms N 限制最长运行时间，默认 20000）
 seashot --pin /tmp/x.png             # 把一张图贴（钉）到屏幕上（Phase C；拖动/滚轮缩放/右键菜单）
 seashot --settings                   # 打开配置界面（托盘菜单「设置…」同此）
 seashot --print-config               # 打印生效中的配置（脚本/排查用）
@@ -91,12 +94,19 @@ PLAN 已定：**默认不注册任何键**（实测 `Ctrl+Alt+A` 已被本机 Sp
   - `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y` 撤销重做；`Delete` 删除选中；
     **方向键**微调选区位置 1px（`Shift` = 10px）；**`Ctrl+A`** 全选整屏
   - **`Ctrl+C`** = 完成并复制（不弹浮层，与 QQ 一致）；**`Ctrl+S`** = 完成并保存到默认目录；
-    **`Ctrl+T`** = 完成并**贴图**（把结果钉到屏幕上，工具条上也有 📌 格）
+    **`Ctrl+T`** = 完成并**贴图**（把结果钉到屏幕上，工具条上也有 📌 格）；
+    **`Ctrl+L`** = 完成并**长截图**（滚动截屏，工具条上也有对应格）
   - `Enter` / 双击 / ✓ = 完成（**标注会合成进结果**，之后按设置复制/保存/弹浮层）；
     `Esc` / 右键 / ✕ = 取消（`Esc` 逐级：关面板 → 中断选区拖动 → 丢文字草稿 → 取消选中 → 退出）
   - 颜色/粗细暂时**不持久化**（一次会话内有效，默认 `#ff4040` / 4px）
   - 脚本式调用（`--rect` / `--window` / `--save` / `--capture-screen`）**不走这条路**，行为与以前一致。
     临时退回旧行为：`SEASHOT_INPLACE_ANNOTATE=0`。
+- **长截图 / 滚动截屏（Phase D）**：选完区域后点工具条「长截图」（或 `Ctrl+L`），然后
+  **自己滚页面**（滚轮/触控板/拖滚动条都行，SeaShot 不注入滚动事件）——
+  它每 250ms 抓一帧、按重叠区对齐拼接，停下几帧或到底后自动收工（也可点指示器「完成」/按 `Esc`）。
+  长图会弹进结果浮层（可复制/保存/贴图/编辑）。自动裁掉**每帧都一样的页头/底栏**与
+  **每帧都在变的贴边滚动条列**；对不上的一帧（平滑滚动的中间帧）会被拒掉。
+  命令行 `seashot --scroll-capture --rect x,y,w,h --save out.png` 可脚本化。
 - **贴图 / 钉图（Phase C）**：把一张图钉在屏幕上的一块浮窗里（layer-shell `LayerOverlay` 层，
   会压在全屏应用之上）：**按住拖动**、**滚轮缩放**（0.2×–5×，以光标为锚点）、
   **右键菜单**（复制 / 保存到默认目录 / 关闭）、`Esc` 关闭（先点一下贴图拿焦点）；

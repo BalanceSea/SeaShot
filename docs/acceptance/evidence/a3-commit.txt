@@ -1,12 +1,12 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-49723" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-106638" id= 1 run方式= Script<N>.run 
 [info] [overlay] layer-shell role 已应用（LayerOverlay，四边锚定） 
-[info] [app] 选择模式已启动，窗口快照 9 个； "覆盖层: layer-shell=已应用, 快照窗口数=9, 虚拟几何=1920x1080+0+0" 
+[info] [app] 选择模式已启动，窗口快照 12 个； "覆盖层: layer-shell=已应用, 快照窗口数=12, 虚拟几何=1920x1080+0+0" 
 INPLACE_DEMO drag=220,180 -> 760,560
 [info] [app] 抓取冻结屏幕 QRect(0,0 1920x1080) 自排除= true 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(0,0 1920x1080) 
-[info] [shot2] "CaptureArea" ok 19 ms 1920 x 1080 "" 
+[info] [shot2] "CaptureArea" ok 23 ms 1920 x 1080 "" 
 [info] [overlay] 进入就地标注阶段：选区 QRectF(220,180 540x380) 冻结图 1920 x 1080 (scale= 1 ) 表面 1920 x 1080 选区图 540 x 380 
 [info] [overlay] 工具切换到 "矩形" 
 [info] [overlay] 工具切换到 "椭圆" 
@@ -53,14 +53,44 @@ INPLACE_DEMO drag=220,180 -> 760,560
 [info] [overlay] 工具切换到 "选择" 
 [info] [overlay] 移动/缩放标注 "矩形" 
 [info] [overlay] 删除标注 "矩形" 剩余 8 
-[info] [app] 就地标注确认，进入截图 QRectF(220,180 540x380) 
-INPLACE_DEMO annotating=1 stage=Annotating 冻结图=1920x1080 表面=1920x1080 选区本地=220,180 540x380 选区逻辑=220,180 540x380 工具条=220,568 502x40 当前工具=选择 标注=0 选中=-1 绘制中=0 拖动中=0 文字草稿=0 选区图=540x380
+[info] [overlay] 标注颜色 "#3daeff" 
+[info] [overlay] 工具切换到 "矩形" 
+[info] [overlay] 新增标注 "矩形" 共 9 
+[info] [overlay] 标注粗细 13 px 
+[info] [overlay] 标注粗细 14 px 
+[info] [overlay] 标注粗细 15 px 
+[info] [overlay] 标注粗细 16 px 
+[info] [overlay] 标注粗细 17 px 
+[info] [overlay] 工具切换到 "画笔" 
+[info] [overlay] 新增标注 "画笔" 共 10 
+[info] [overlay] 工具切换到 "矩形" 
+[info] [overlay] 新增标注 "矩形" 共 11 
+[info] [overlay] 选区调整为 QRectF(213,175 547x385) （标注已随屏内容平移 QPointF(7,5) ） 
+[info] [overlay] 选区调整为 QRectF(206,170 554x390) （标注已随屏内容平移 QPointF(7,5) ） 
+[info] [overlay] 选区调整为 QRectF(200,165 560x395) （标注已随屏内容平移 QPointF(6,5) ） 
+[info] [overlay] 选区调整为 QRectF(193,160 567x400) （标注已随屏内容平移 QPointF(7,5) ） 
+[info] [overlay] 选区调整为 QRectF(186,155 574x405) （标注已随屏内容平移 QPointF(7,5) ） 
+[info] [overlay] 选区调整为 QRectF(180,150 580x410) （标注已随屏内容平移 QPointF(6,5) ） 
+[info] [overlay] 选区调整为 QRectF(180,150 484x410) （标注已随屏内容平移 QPointF(0,0) ） 
+[info] [overlay] 选区调整为 QRectF(180,150 388x410) （标注已随屏内容平移 QPointF(0,0) ） 
+[info] [overlay] 选区调整为 QRectF(180,150 292x410) （标注已随屏内容平移 QPointF(0,0) ） 
+[info] [overlay] 选区调整为 QRectF(180,150 196x410) （标注已随屏内容平移 QPointF(0,0) ） 
+[info] [overlay] 选区调整为 QRectF(180,150 100x410) （标注已随屏内容平移 QPointF(0,0) ） 
+[info] [overlay] 选区调整为 QRectF(180,150 16x410) （标注已随屏内容平移 QPointF(0,0) ） 
+[info] [overlay] 选区调整为 QRectF(220,180 540x380) （标注已随屏内容平移 QPointF(-40,-30) ） 
+[info] [overlay] 选区调整为 QRectF(221,180 540x380) （标注已随屏内容平移 QPointF(-1,0) ） 
+[info] [overlay] 选区调整为 QRectF(222,180 540x380) （标注已随屏内容平移 QPointF(-1,0) ） 
+[info] [overlay] 选区调整为 QRectF(222,190 540x380) （标注已随屏内容平移 QPointF(0,-10) ） 
+[info] [overlay] 选区调整为 QRectF(0,0 1920x1080) （标注已随屏内容平移 QPointF(222,190) ） 
+[info] [overlay] 选区调整为 QRectF(220,180 540x380) （标注已随屏内容平移 QPointF(-220,-180) ） 
+[info] [app] 就地标注确认，进入截图 QRectF(220,180 540x380) 动作= 按设置 
+INPLACE_DEMO annotating=1 stage=Annotating 冻结图=1920x1080 表面=1920x1080 选区本地=220,180 540x380 选区逻辑=220,180 540x380 工具条=220,568 630x40 当前工具=选择 标注=0 选中=-1 绘制中=0 拖动中=0 文字草稿=0 选区图=540x380 颜色=#ff4040 粗细=4 面板=None
 INPLACE_DEMO grab=1920x1080 dpr=1
 INPLACE_DEMO saved=docs/acceptance/evidence/a3-commit-overlay.png,docs/acceptance/evidence/a3-commit-frozen.png
 INPLACE_DEMO visibleTops=seashot-overlay
 INPLACE_DEMO frozen=1920x1080 surface=1920x1080 exactMismatch=0 maxChannelDiff=0 handles=8/8 dimProbe=3/3 (跳过1)
 INPLACE_DEMO PASS
-INPLACE_DEMO toolbar=220,568 502x40 toolButtons=10 actionButtons=2
+INPLACE_DEMO toolbar=220,568 630x40 toolButtons=10 actionButtons=2
 INPLACE_DEMO tools=选择/矩形/椭圆/箭头/画笔/高亮/文字/序号/马赛克/模糊 keys=1/2/3/4/5/6/7/8/9/- 主题图标=10/10 缺=(none)
 INPLACE_DEMO toolHits=10/10 switched=选择/矩形/椭圆/箭头/画笔/高亮/文字/序号/马赛克/模糊
 INPLACE_DEMO keyHits=9/9
@@ -70,19 +100,26 @@ INPLACE_DEMO A3 undo=1 计数 9->8->9
 INPLACE_DEMO A3 move=1 bounds=71,54 178x98
 INPLACE_DEMO A3 delete=1 计数 9->8
 INPLACE_DEMO A3 previewMatchesExport=1 mismatch=0 toolbarDragQuiet=1
-INPLACE_DEMO A3 status 标注=8 选中=-1 绘制中=0 拖动中=0 文字草稿=0 选区图=540x380
+INPLACE_DEMO A3 status 标注=8 选中=-1 绘制中=0 拖动中=0 文字草稿=0 选区图=540x380 颜色=#ff4040 粗细=4 面板=None
 INPLACE_DEMO A3 PASS
+INPLACE_DEMO A31 cells=1 colorPanel=1 outsideSelection=1 swatchPick=1 color=#3daeff drawnColor=#3daeff
+INPLACE_DEMO A31 widthPanel=1 slider=1 width=17 (实测 17) drawnWidth=17
+INPLACE_DEMO A31 panelClickQuiet=1 escCloses=1 outsideQuiet=1
+INPLACE_DEMO A31 PASS
+INPLACE_DEMO B gripCorner=1 minWidth=1 anchored=1 annotationsKept=1 选区 220,180 540x380 -> 180,150 580x410
+INPLACE_DEMO B arrowNudge=1 selectAll=1 previewStillMatchesExport=1 mismatch=0
+INPLACE_DEMO B PASS
 INPLACE_DEMO exit=Enter(提交) ok=1
 INPLACE_DEMO barOutsideSelection=1 barInsideSurface=1 gapQuiet=1 hover=1 hoverCell=3 cancelButton=1
-INPLACE_DEMO barGoesAboveWhenNoRoom=1 barClampedAtRightEdge=1 edgeBar=1410,168 502x40
+INPLACE_DEMO barGoesAboveWhenNoRoom=1 barClampedAtRightEdge=1 edgeBar=1282,168 630x40
 INPLACE_DEMO A2 PASS
 INPLACE_DEMO ALL PASS
 [info] [app] 截取区域 QRectF(220,180 540x380) 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(220,180 540x380) 
 [info] [shot2] "CaptureArea" ok 5 ms 540 x 380 "" 
-[info] [app] 已把 8 个就地标注合成进结果 QSize(540, 380) -> QSize(540, 380) 
+[info] [app] 已把 11 个就地标注合成进结果 QSize(540, 380) -> QSize(540, 380) 
 [info] [settings] 已保存 "docs/acceptance/evidence/a3-commit-result.png" 
-ANNOTATED count=8 size=540x380
+ANNOTATED count=11 size=540x380
 CAPTURE ok size=540x380 scale=1
 SAVED docs/acceptance/evidence/a3-commit-result.png
-[info] [kwin] 脚本已卸载 pluginName= "seashot-49723" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-106638" 

@@ -1,6 +1,6 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-79106" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-107162" id= 1 run方式= Script<N>.run 
 [warn] [wayland] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：跳过自排除 
 [warn] [app] SEASHOT_DISABLE_SELF_EXCLUSION 已置位：本次不排除自己的窗口 
 [info] [pin] layer-shell role 已应用（LayerOverlay，四边锚定） 
@@ -10,8 +10,8 @@ PIN_DEMO drag=1 zoom=1 zoomValue=1.1 rect=395,333 264x176
 PIN_DEMO menuProbe point=228,76 itemAtPoint=1 menuOpenBefore=1
 [info] [clipboard] 已通过 wl-copy 写入 931 字节 
 PIN_COPY ok mime=image/png
-[info] [settings] 已保存 "/home/balancesea/Pictures/Screenshots/seashot_20261017_075416.png" 
-PIN_SAVE ok path=/home/balancesea/Pictures/Screenshots/seashot_20261017_075416.png
+[info] [settings] 已保存 "/home/balancesea/Pictures/Screenshots/seashot_20261017_083033.png" 
+PIN_SAVE ok path=/home/balancesea/Pictures/Screenshots/seashot_20261017_083033.png
 [info] [pin] layer-shell role 已应用（LayerOverlay，四边锚定） 
 [info] [pin] 已贴图 QSize(160, 120) at QPoint(620,300) layerShell= true 
 PIN_CREATED 贴图 160x120 zoom=1.000 矩形=620,300 160x120 layerShell=1 菜单=0 共2张
@@ -21,4 +21,4 @@ PIN_CLOSED 剩余=1
 PIN_CLOSED 剩余=0
 PIN_DEMO close oneLeft=1 noResidue=1
 PIN_DEMO PASS
-[info] [kwin] 脚本已卸载 pluginName= "seashot-79106" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-107162" 
