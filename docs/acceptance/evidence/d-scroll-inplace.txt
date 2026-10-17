@@ -1,12 +1,12 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-116869" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-125464" id= 1 run方式= Script<N>.run 
 [info] [overlay] layer-shell role 已应用（LayerOverlay，四边锚定） 
 [info] [app] 选择模式已启动，窗口快照 12 个； "覆盖层: layer-shell=已应用, 快照窗口数=12, 虚拟几何=1920x1080+0+0" 
 INPLACE_DEMO drag=220,180 -> 760,560
 [info] [app] 抓取冻结屏幕 QRect(0,0 1920x1080) 自排除= true 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(0,0 1920x1080) 
-[info] [shot2] "CaptureArea" ok 20 ms 1920 x 1080 "" 
+[info] [shot2] "CaptureArea" ok 21 ms 1920 x 1080 "" 
 [info] [overlay] 进入就地标注阶段：选区 QRectF(220,180 540x380) 冻结图 1920 x 1080 (scale= 1 ) 表面 1920 x 1080 选区图 540 x 380 
 [info] [overlay] 工具切换到 "矩形" 
 [info] [overlay] 工具切换到 "椭圆" 
@@ -119,20 +119,20 @@ INPLACE_DEMO barOutsideSelection=1 barInsideSurface=1 gapQuiet=1 hover=1 hoverCe
 INPLACE_DEMO barGoesAboveWhenNoRoom=1 barClampedAtRightEdge=1 edgeBar=1250,168 662x40
 INPLACE_DEMO A2 PASS
 INPLACE_DEMO ALL PASS
-[info] [shot2] "CaptureArea" ok 5 ms 540 x 380 "" 
+[info] [shot2] "CaptureArea" ok 6 ms 540 x 380 "" 
 [info] [scroll] 开始拼接：首帧 QSize(540, 380) maxDy= 340 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(220,180 540x380) 
 [info] [shot2] "CaptureArea" ok 3 ms 540 x 380 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(220,180 540x380) 
-[info] [shot2] "CaptureArea" ok 4 ms 540 x 380 "" 
+[info] [shot2] "CaptureArea" ok 3 ms 540 x 380 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(220,180 540x380) 
 [info] [shot2] "CaptureArea" ok 3 ms 540 x 380 "" 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(220,180 540x380) 
-[info] [shot2] "CaptureArea" ok 4 ms 540 x 380 "" 
-[info] [scroll] 结束： "帧数=1 累计位移=0 原始高=380 固定页头=0 固定底栏=0 左右裁列=0/0 拒绝帧=0 未滚动=4 回滚=0；耗时 1014 ms；页面不再滚动" 
+[info] [shot2] "CaptureArea" ok 3 ms 540 x 380 "" 
+[info] [scroll] 结束： "帧数=1 累计位移=0 原始高=380 固定页头=0 固定底栏=0 左右裁列=0/0 拒绝帧=0 未滚动=4 回滚=0；耗时 1042 ms；页面不再滚动" 
 [info] [toast] layer-shell role 已应用 （铺满输出的固定表面） 
 TOAST image=540x380 display=540x380 scaled=0 anchor=0,0 1920x1080 card=540x428 bar=48 buttons=5 cardTopLeft=8,651 fixedSurface=1 autoHide=0
 [info] [toast] visible= true layerShell= true cardTopLeft= QPoint(8,651) autoHideMs= 0 
 SCROLL ok size=540x380
-SCROLL_REPORT 帧数=1 累计位移=0 原始高=380 固定页头=0 固定底栏=0 左右裁列=0/0 拒绝帧=0 未滚动=4 回滚=0；耗时 1014 ms；页面不再滚动
-[info] [kwin] 脚本已卸载 pluginName= "seashot-116869" 
+SCROLL_REPORT 帧数=1 累计位移=0 原始高=380 固定页头=0 固定底栏=0 左右裁列=0/0 拒绝帧=0 未滚动=4 回滚=0；耗时 1042 ms；页面不再滚动
+[info] [kwin] 脚本已卸载 pluginName= "seashot-125464" 

@@ -53,6 +53,8 @@ seashot --open-editor                # 本次截图后直接打开编辑器（�
 seashot --scroll-capture --rect 100,100,800,600 --save /tmp/long.png
                                      # 滚动截屏（Phase D）：自己滚页面，SeaShot 定时抓帧拼成长图
                                      # （--scroll-ms N 限制最长运行时间，默认 20000）
+seashot --ocr /tmp/x.png             # OCR 文字识别（Phase E）：结果打到 stdout（含 OCR_TEXT_BEGIN/END 标记）
+                                     # --ocr-langs chi_sim+eng 可指定语言（默认自动）
 seashot --pin /tmp/x.png             # 把一张图贴（钉）到屏幕上（Phase C；拖动/滚轮缩放/右键菜单）
 seashot --settings                   # 打开配置界面（托盘菜单「设置…」同此）
 seashot --print-config               # 打印生效中的配置（脚本/排查用）
@@ -95,12 +97,17 @@ PLAN 已定：**默认不注册任何键**（实测 `Ctrl+Alt+A` 已被本机 Sp
     **方向键**微调选区位置 1px（`Shift` = 10px）；**`Ctrl+A`** 全选整屏
   - **`Ctrl+C`** = 完成并复制（不弹浮层，与 QQ 一致）；**`Ctrl+S`** = 完成并保存到默认目录；
     **`Ctrl+T`** = 完成并**贴图**（把结果钉到屏幕上，工具条上也有 📌 格）；
-    **`Ctrl+L`** = 完成并**长截图**（滚动截屏，工具条上也有对应格）
+    **`Ctrl+L`** = 完成并**长截图**（滚动截屏，工具条上也有对应格）；
+    **`Ctrl+O`** = 对选区做**文字识别**（OCR，工具条上也有「OCR」格）
   - `Enter` / 双击 / ✓ = 完成（**标注会合成进结果**，之后按设置复制/保存/弹浮层）；
     `Esc` / 右键 / ✕ = 取消（`Esc` 逐级：关面板 → 中断选区拖动 → 丢文字草稿 → 取消选中 → 退出）
   - 颜色/粗细暂时**不持久化**（一次会话内有效，默认 `#ff4040` / 4px）
   - 脚本式调用（`--rect` / `--window` / `--save` / `--capture-screen`）**不走这条路**，行为与以前一致。
     临时退回旧行为：`SEASHOT_INPLACE_ANNOTATE=0`。
+- **OCR 文字识别（Phase E）**：选完区域后点工具条「OCR」（或 `Ctrl+O`）→ 识别选区里的文字
+  （识别"屏幕上看到的那张图"，含你的标注）→ 弹出结果面板：可**复制全部**、**复制选中**
+  （没选中时复制光标所在行）、`Esc` 关闭。命令行 `seashot --ocr x.png` 可直接把文本打到 stdout。
+  依赖系统 `tesseract` + 语言包（缺了会明确告诉你装什么）。
 - **长截图 / 滚动截屏（Phase D）**：选完区域后点工具条「长截图」（或 `Ctrl+L`），然后
   **自己滚页面**（滚轮/触控板/拖滚动条都行，SeaShot 不注入滚动事件）——
   它每 250ms 抓一帧、按重叠区对齐拼接，停下几帧或到底后自动收工（也可点指示器「完成」/按 `Esc`）。

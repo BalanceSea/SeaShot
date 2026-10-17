@@ -1,6 +1,6 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-118659" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-126984" id= 1 run方式= Script<N>.run 
 [info] [settings] 已保存 "docs/acceptance/evidence/p2-annotated.png" 
 ANNOTATED docs/acceptance/evidence/p2-annotated.png size=400x300 annotations=5
-[info] [kwin] 脚本已卸载 pluginName= "seashot-118659" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-126984" 

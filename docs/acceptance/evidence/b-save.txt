@@ -1,6 +1,6 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-115984" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-124595" id= 1 run方式= Script<N>.run 
 [info] [overlay] layer-shell role 已应用（LayerOverlay，四边锚定） 
 [info] [app] 选择模式已启动，窗口快照 12 个； "覆盖层: layer-shell=已应用, 快照窗口数=12, 虚拟几何=1920x1080+0+0" 
 INPLACE_DEMO drag=220,180 -> 760,560
@@ -122,4 +122,4 @@ INPLACE_DEMO ALL PASS
 ANNOTATED count=11 size=540x380
 CAPTURE ok size=540x380 scale=1
 SAVED docs/acceptance/evidence/b-save-result.png
-[info] [kwin] 脚本已卸载 pluginName= "seashot-115984" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-124595" 

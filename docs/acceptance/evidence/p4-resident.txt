@@ -1,6 +1,6 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-120101" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-129778" id= 1 run方式= Script<N>.run 
 [info] [tray] KStatusNotifierItem 已创建 
 [info] [app] 托盘已创建 
 [info] [hotkey] 当前绑定: "(未绑定)" 
@@ -9,33 +9,33 @@ SEASHOT_READY backend=wayland hotkey=(未绑定)
 [info] [app] 收到实例间命令: "record-rect 300,200,256,192" 
 PORTAL_SCREENCAST_REGISTER appId=seashot ok=1
 PORTAL_SCREENCAST_BEGIN restoreToken=XakNXJWJS6RrhxlXRa7EvQ persistMode=2 portalVersion=5
-PORTAL_SCREENCAST_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_15717/seashot_d4afce05
-PORTAL_SCREENCAST_REQUEST_HANDLE CreateSession actualPath=/org/freedesktop/portal/desktop/request/1_15717/seashot_d4afce05
+PORTAL_SCREENCAST_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_17009/seashot_7737e07
+PORTAL_SCREENCAST_REQUEST_HANDLE CreateSession actualPath=/org/freedesktop/portal/desktop/request/1_17009/seashot_7737e07
 PORTAL_SCREENCAST_RESPONSE CreateSession code=0 keys=session_handle session_handleType=QString
-PORTAL_SCREENCAST_REQUEST SelectSources predictedPath=/org/freedesktop/portal/desktop/request/1_15717/seashot_12ad638d
-PORTAL_SCREENCAST_REQUEST_HANDLE SelectSources actualPath=/org/freedesktop/portal/desktop/request/1_15717/seashot_12ad638d
-PORTAL_SCREENCAST_REQUEST Start predictedPath=/org/freedesktop/portal/desktop/request/1_15717/seashot_e7e3b210
-PORTAL_SCREENCAST_REQUEST_HANDLE Start actualPath=/org/freedesktop/portal/desktop/request/1_15717/seashot_e7e3b210
-PORTAL_SCREENCAST_RESPONSE Start code=0 keys=restore_token,streams startLatencyMs=5
-[info] [portal] ScreenCast 会话建立: "ok=1 session=/org/freedesktop/portal/desktop/session/1_15717/seashot_s_c3af55fe streams=1 streamsPresent=1 node=91 usedRestoreToken=1 restoreToken=XakNXJWJS6RrhxlXRa7EvQ startLatencyMs=5" 
+PORTAL_SCREENCAST_REQUEST SelectSources predictedPath=/org/freedesktop/portal/desktop/request/1_17009/seashot_fb10f7f1
+PORTAL_SCREENCAST_REQUEST_HANDLE SelectSources actualPath=/org/freedesktop/portal/desktop/request/1_17009/seashot_fb10f7f1
+PORTAL_SCREENCAST_REQUEST Start predictedPath=/org/freedesktop/portal/desktop/request/1_17009/seashot_f12c51bc
+PORTAL_SCREENCAST_REQUEST_HANDLE Start actualPath=/org/freedesktop/portal/desktop/request/1_17009/seashot_f12c51bc
+PORTAL_SCREENCAST_RESPONSE Start code=0 keys=restore_token,streams startLatencyMs=7
+[info] [portal] ScreenCast 会话建立: "ok=1 session=/org/freedesktop/portal/desktop/session/1_17009/seashot_s_92645f27 streams=1 streamsPresent=1 node=90 usedRestoreToken=1 restoreToken=XakNXJWJS6RrhxlXRa7EvQ startLatencyMs=7" 
 [info] [pipewire] 开始出帧 
-[info] [record] 编码器已启动 QSize(256, 192) 15 fps → "/home/balancesea/.cache/seashot/recording/seashot-record-120101.mkv" 
+[info] [record] 编码器已启动 QSize(256, 192) 15 fps → "/home/balancesea/.cache/seashot/recording/seashot-record-129778.mkv" 
 [info] [record] 开始录制（PipeWire 帧源） QRectF(300,200 256x192) 15 fps 帧尺寸 QSize(256, 192) 
-RECORD_SOURCE pipewire node=91 format="BGRA 1920x1080" frameSize=256x192
+RECORD_SOURCE pipewire node=90 format="BGRA 1920x1080" frameSize=256x192
 [info] [app] 录制帧源 = PipeWire "BGRA 1920x1080" 
 [info] [record] 指示器已套 layer-shell 
 RECORDING_INDICATOR_GEOMETRY x=300 y=154 w=300 h=40 regionTop=200 regionBottom=392
-RECORDING_INDICATOR region=300,200 256x192 fps=15 output=/home/balancesea/Pictures/Screenshots/seashot_20261017_084234.gif
+RECORDING_INDICATOR region=300,200 256x192 fps=15 output=/home/balancesea/Pictures/Screenshots/seashot_20261017_085205.gif
 [info] [app] 收到实例间命令: "stop-record" 
 RECORD_STOP requested
-[info] [record] 停止采集：请求 31 帧 / 采到 31 / 丢 0 / 失败 0 用时 2038 ms 
+[info] [record] 停止采集：请求 32 帧 / 采到 32 / 丢 0 / 失败 0 用时 2047 ms 
 [info] [record] 已保留无损中间文件，等用户选导出格式 
-RECORD ok path= frames=31 dropped=0 failed=0 elapsedMs=2038 fps=15.21
+RECORD ok path= frames=32 dropped=0 failed=0 elapsedMs=2047 fps=15.63
 [info] [toast] layer-shell role 已应用 （铺满输出的固定表面） 
 TOAST image=256x192 display=256x192 scaled=0 anchor=300,200 256x192 card=502x240 bar=48 buttons=4 cardTopLeft=300,394 fixedSurface=1 autoHide=0
 [info] [toast] visible= true layerShell= true cardTopLeft= QPoint(300,394) autoHideMs= 0 
 [info] [toast] 诊断：将在 500ms 后自动触发按钮 "gif" 
-[info] [record] 已导出 "/home/balancesea/Pictures/Screenshots/seashot_20261017_084236.gif" 
-RECORD_EXPORT ok format=gif path=/home/balancesea/Pictures/Screenshots/seashot_20261017_084236.gif
+[info] [record] 已导出 "/home/balancesea/Pictures/Screenshots/seashot_20261017_085208.gif" 
+RECORD_EXPORT ok format=gif path=/home/balancesea/Pictures/Screenshots/seashot_20261017_085208.gif
 [info] [app] 收到退出信号，正在收尾（卸载 KWin 助手脚本） 
-[info] [kwin] 脚本已卸载 pluginName= "seashot-120101" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-129778" 

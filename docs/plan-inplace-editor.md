@@ -117,6 +117,9 @@ Idle → Selecting（拖框/悬停高亮窗口）
   取帧循环 `src/scroll/ScrollCapturer`（**不注入滚动**，用户自己滚）+ 两个入口
   （工具条「长截图」格 / `Ctrl+L` / `--scroll-capture`）。真实屏幕帧实测：选区 600x500 →
   长图 585x3000，与原件逐像素 RMSE=0.0044（错 1 行的负对照 0.065）。见 `docs/acceptance/phaseD.md`。
+- **Phase E（OCR）✅ 已完成并验收**（2026-10-17）：`src/ocr/OcrEngine`（tesseract 走 stdin/stdout）
+  + `src/ocr/OcrWindow`（结果面板：复制全部 / 复制选中 / Esc 关）+ 入口（工具条「OCR」格、`Ctrl+O`、
+  `--ocr`）。中文合成图 10/10 命中 390ms、英文完全一致 120ms。见 `docs/acceptance/phaseE.md`。
 - A4（工具条上的复制/保存按钮）待做（管道已在 Phase B 打通，只剩加两格）。
 - **Phase B（选区可调整 + 快捷键）✅ 已完成并验收**（2026-10-17）：
   - 8 手柄 / 4 边拖改选区（手柄优先于"开始画"），内部拖动移动整个选区；

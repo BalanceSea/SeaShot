@@ -1,6 +1,6 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-117238" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-125835" id= 1 run方式= Script<N>.run 
 BACKEND_CHOICE Wayland 会话 + KDE 桌面（WAYLAND_DISPLAY=wayland-0）
 SeaShot 自检（Phase 1）
 ========================
@@ -40,4 +40,4 @@ SeaShot 自检（Phase 1）
 
 
 结果: 9 项检查，0 项致命失败
-[info] [kwin] 脚本已卸载 pluginName= "seashot-117238" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-125835" 

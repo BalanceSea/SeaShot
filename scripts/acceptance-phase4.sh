@@ -76,7 +76,10 @@ else
     report "D. 帧率可调（10fps）" 0 "GIF r_frame_rate=$RATE10（期望 10/1）"
 fi
 
-### E) 无时长/体积上限（录 8 秒，帧数与体积都应明显更大） -------------------------
+### E) 无时长上限（录 8 秒：帧数应当约为 3 秒的 8/3 倍） ----------------------------
+# ⚠️ 判据只看**帧数/时长**，不比文件体积：GIF 体积取决于**画面内容**
+#    （录一段不动的画面能小到几十 KB，动起来就大得多）—— 拿体积比会在桌面动/不动之间假红，
+#    实测踩过：8 秒只有 53797B 而 3 秒有 136221B，纯粹因为那 8 秒画面更"静"。
 rm -f "$OUT/p4-long.gif"
 "$SEASHOT" --record --rect 300,200,320,240 --seconds 8 --save "$OUT/p4-long.gif" \
     > "$OUT/p4-long.txt" 2>&1
@@ -84,11 +87,14 @@ LONG_FRAMES=$(probe "$OUT/p4-long.gif" nb_frames)
 SHORT_FRAMES=$(probe "$OUT/p4-basic.gif" nb_frames)
 LONG_SIZE=$(stat -c%s "$OUT/p4-long.gif" 2>/dev/null || echo 0)
 SHORT_SIZE=$(stat -c%s "$OUT/p4-basic.gif" 2>/dev/null || echo 0)
-if [ "${LONG_FRAMES:-0}" -ge 100 ] && [ "$LONG_FRAMES" -gt "$SHORT_FRAMES" ] \
-    && [ "$LONG_SIZE" -gt "$SHORT_SIZE" ]; then
-    report "E. 无时长/体积上限（8 秒）" 1 "$(grep '^RECORD ok' "$OUT/p4-long.txt") · ${LONG_SIZE} 字节 vs 3 秒的 ${SHORT_SIZE} 字节"
+LONG_MS=$(sed -nE 's/^RECORD ok .*elapsedMs=([0-9]+).*/\1/p' "$OUT/p4-long.txt" | tail -1)
+if [ "${LONG_FRAMES:-0}" -ge 100 ] && [ "${SHORT_FRAMES:-0}" -gt 0 ] \
+    && [ "$LONG_FRAMES" -ge $((SHORT_FRAMES * 2)) ] && [ "${LONG_MS:-0}" -ge 7000 ]; then
+    report "E. 无时长上限（8 秒）" 1 \
+        "$(grep '^RECORD ok' "$OUT/p4-long.txt" | sed 's/ path=[^ ]*//') · 帧数 ${LONG_FRAMES} vs 3 秒的 ${SHORT_FRAMES}（体积仅供参考：${LONG_SIZE}B vs ${SHORT_SIZE}B）"
 else
-    report "E. 无时长/体积上限（8 秒）" 0 "8s=${LONG_FRAMES} 帧/${LONG_SIZE}B，3s=${SHORT_FRAMES} 帧/${SHORT_SIZE}B"
+    report "E. 无时长上限（8 秒）" 0 \
+        "8s=${LONG_FRAMES} 帧/${LONG_MS}ms，3s=${SHORT_FRAMES} 帧（要求 8s 帧数 ≥ 3s 的两倍且耗时 ≥7s）"
 fi
 
 ### F) 停止路径：常驻实例 + 实例间转发（托盘/快捷键走同一条 stopRecording） --------

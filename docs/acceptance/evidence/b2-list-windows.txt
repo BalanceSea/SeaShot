@@ -1,12 +1,12 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-117447" id= 2 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-126016" id= 2 run方式= Script<N>.run 
 BACKEND wayland (Wayland 会话 + KDE 桌面（WAYLAND_DISPLAY=wayland-0）)
 后端: wayland
 ScreenShot2 Version: 5
 授权: ScreenShot2 授权通过（8x8 探测截图成功）
 输出: DP-3 1920x1080+0+0 scale=1
-KWin 助手脚本: 运行中 (pluginName=seashot-117447)
+KWin 助手脚本: 运行中 (pluginName=seashot-126016)
 快照窗口数: 14（最近 1 次收到推送）
 最近快照: 1 ms 前
 WINDOWS 14
@@ -18,10 +18,10 @@ WINDOWS 14
 {870e720f-1d13-44e0-8cc8-13bc7adf4082} appId=org.kde.dolphin pid=14155 active=0 normal=1 min=0 visible=1 stack=4 frame=638.04,200.807 1257x698 excluded=0 title=docs — Dolphin
 {43e1076b-92be-4d35-b281-fbda60b298ba} appId=com.mitchellh.ghostty pid=14260 active=0 normal=1 min=0 visible=1 stack=6 frame=0,0 1920x1007 excluded=0 title=π - SeaShot
 {b7818c5a-b82d-40c7-b76f-4d7788d63fb2} appId=steam pid=71184 active=0 normal=1 min=1 visible=1 stack=2 frame=283,147 1280x800 excluded=0 title=Steam
-{ac91fd3a-4cd7-4cf7-8d3c-5556fe14d157} appId=open-orpheus pid=72905 active=0 normal=1 min=1 visible=1 stack=3 frame=0,0 1920x1007 excluded=0 title=出现又离开 (Live) - 梁博
+{ac91fd3a-4cd7-4cf7-8d3c-5556fe14d157} appId=open-orpheus pid=72905 active=0 normal=1 min=1 visible=1 stack=3 frame=0,0 1920x1007 excluded=0 title=我听见了，你的痛苦成立 - 供销社乐队
 {bc591038-ba9a-4224-933a-07601d336dc3} appId=com.microsoft.VSCode pid=99844 active=0 normal=1 min=0 visible=1 stack=5 frame=227,103 1466x800 excluded=0 title=next-session-plan.md - Visual Studio Code
-{45edb5c0-65be-4091-b9e8-6468bd5fe7db} appId=qq pid=6722 active=0 normal=1 min=0 visible=1 stack=7 frame=653,194 1280x690 excluded=0 title=QQ
-{d096baf0-2a0d-44e8-ba09-cbbcb34e3ec6} appId=microsoft-edge pid=102415 active=0 normal=1 min=0 visible=1 stack=8 frame=429.022,43.8855 1614x848 excluded=0 title=服务器列表 和另外 4 个页面 - 个人 - Microsoft​ Edge
-{811a26ea-b104-48f8-a9d8-1a526d84867a} appId=org.kde.gwenview pid=117288 active=0 normal=1 min=0 visible=1 stack=9 frame=0,0 1920x1080 excluded=0 title=seashot-white-mAH5.png - 1920x1080 - 100% — Gwenview
-{190f5255-65fa-4f06-b613-1d3bd6ac435f} appId=seashot pid=117380 active=1 normal=1 min=0 visible=1 stack=13 frame=0,0 1920x1080 excluded=1 title=
-[info] [kwin] 脚本已卸载 pluginName= "seashot-117447" 
+{45edb5c0-65be-4091-b9e8-6468bd5fe7db} appId=qq pid=6722 active=0 normal=1 min=0 visible=1 stack=8 frame=653,194 1280x690 excluded=0 title=QQ
+{d096baf0-2a0d-44e8-ba09-cbbcb34e3ec6} appId=microsoft-edge pid=102415 active=0 normal=1 min=0 visible=1 stack=7 frame=429.022,43.8855 1614x848 excluded=0 title=环境要求 - Youer 文档 和另外 3 个页面 - 个人 - Microsoft​ Edge
+{99ec7522-288f-44ac-b178-0c57df560bdb} appId=org.kde.gwenview pid=125900 active=0 normal=1 min=0 visible=1 stack=9 frame=0,0 1920x1080 excluded=0 title=seashot-white-otXR.png - 1920x1080 - 100% — Gwenview
+{8f46df91-d5d6-489f-8c73-6996572aa36c} appId=seashot pid=125992 active=1 normal=1 min=0 visible=1 stack=13 frame=0,0 1920x1080 excluded=1 title=
+[info] [kwin] 脚本已卸载 pluginName= "seashot-126016" 

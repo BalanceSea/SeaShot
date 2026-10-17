@@ -1,12 +1,12 @@
 == Phase C 验收（贴图 / 钉图）==
-二进制: /home/balancesea/.local/bin/seashot (2026-10-17 08:37:49)
+二进制: /home/balancesea/.local/bin/seashot (2026-10-17 08:47:10)
 
 PASS  C. 贴图窗口用 layer-shell 建起来了  贴图 240x160 zoom=1.000 矩形=300,260 240x160 layerShell=1 菜单=0 共1张（layerShell 命中 2 次）
 PASS  C. 拖动 + 滚轮缩放                     拖动 (+70,+50) 后矩形 395,333 264x176；滚轮后 zoom=1.1
 PASS  C. 贴图真的合成到屏幕上（另一进程截屏） 在 395,333 264x176 采到贴图 1 的 #ff2d55、在 620,300 160x120 采到贴图 2 的 #2dff88
 PASS  C. 全屏应用前面仍然可见            全屏白底参照已铺上（左上角采样 255 255 255），两个贴图位置仍采到自己的颜色
 PASS  C. 右键菜单「复制」                  PIN_COPY ok；另一进程 wl-paste 也看到 image/png
-PASS  C. 右键菜单「保存」                  PIN_SAVE ok → seashot_20261017_083937.png（240x160）；验完已删除
+PASS  C. 右键菜单「保存」                  PIN_SAVE ok → seashot_20261017_084824.png（240x160）；验完已删除
 PASS  C. 多张并存 + 关闭无残留            两张并存；关第一张后还剩 1 张；全关后进程内为空、窗口列表里也没有 appId=seashot 的窗口
 PASS  C. 汇总判定（贴图演示）            PIN_DEMO PASS（退出码 0）
 PASS  C. 就地编辑 Ctrl+T = 贴图              标注后的结果被钉到屏幕上：贴图 540x380 zoom=1.000 矩形=220,180 540x380 layerShell=1 菜单=0（退出码 0）

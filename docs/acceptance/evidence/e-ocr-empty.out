@@ -1,5 +1,5 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-117184" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-125777" id= 1 run方式= Script<N>.run 
 OCR_ERROR 无法读取 docs/acceptance/evidence/e-ocr-empty.txt
-[info] [kwin] 脚本已卸载 pluginName= "seashot-117184" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-125777" 

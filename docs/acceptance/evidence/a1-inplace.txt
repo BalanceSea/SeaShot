@@ -1,12 +1,12 @@
 [info] [wayland] ScreenShot2 Version = 5 
 [info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-115318" id= 1 run方式= Script<N>.run 
+[info] [kwin] 脚本已加载 pluginName= "seashot-124035" id= 1 run方式= Script<N>.run 
 [info] [overlay] layer-shell role 已应用（LayerOverlay，四边锚定） 
 [info] [app] 选择模式已启动，窗口快照 12 个； "覆盖层: layer-shell=已应用, 快照窗口数=12, 虚拟几何=1920x1080+0+0" 
 INPLACE_DEMO drag=220,180 -> 760,560
 [info] [app] 抓取冻结屏幕 QRect(0,0 1920x1080) 自排除= true 
 [info] [wayland] CaptureArea 请求矩形(逻辑坐标): QRect(0,0 1920x1080) 
-[info] [shot2] "CaptureArea" ok 23 ms 1920 x 1080 "" 
+[info] [shot2] "CaptureArea" ok 20 ms 1920 x 1080 "" 
 [info] [overlay] 进入就地标注阶段：选区 QRectF(220,180 540x380) 冻结图 1920 x 1080 (scale= 1 ) 表面 1920 x 1080 选区图 540 x 380 
 [info] [overlay] 工具切换到 "矩形" 
 [info] [overlay] 工具切换到 "椭圆" 
@@ -113,4 +113,4 @@ INPLACE_DEMO barOutsideSelection=1 barInsideSurface=1 gapQuiet=1 hover=1 hoverCe
 INPLACE_DEMO barGoesAboveWhenNoRoom=1 barClampedAtRightEdge=1 edgeBar=1250,168 662x40
 INPLACE_DEMO A2 PASS
 INPLACE_DEMO ALL PASS
-[info] [kwin] 脚本已卸载 pluginName= "seashot-115318" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-124035" 
