@@ -85,7 +85,16 @@ H1=$("$SEASHOT" --hotkey-status 2>/dev/null | tail -1)
 H2=$("$SEASHOT" --hotkey-status 2>/dev/null | tail -1)
 "$SEASHOT" --set-hotkey none > "$OUT/p3-hotkey-3.txt" 2>/dev/null
 H3=$("$SEASHOT" --hotkey-status 2>/dev/null | tail -1)   # 先采样"解绑后的状态"再恢复原值
-timeout 60 "$SEASHOT" --set-hotkey "$HOTKEY_BEFORE" > "$OUT/p3-restore-hotkey.txt" 2>/dev/null
+# 恢复原值。但如果**门户那条路已经在用**（授权过），就别再把 KGlobalAccel 绑回去 ——
+# 否则系统设置里又会出现两条 SeaShot 快捷键（用户反馈过这个）。
+PORTAL_AUTH=$(timeout 60 "$SEASHOT" --hotkey-portal-status 2>/dev/null \
+    | grep -c '^HOTKEY_PORTAL_STATE.*authorized=1' || true)
+if [ "${PORTAL_AUTH:-0}" -ge 1 ]; then
+    timeout 60 "$SEASHOT" --set-hotkey none > "$OUT/p3-restore-hotkey.txt" 2>/dev/null
+    echo "PORTAL_ACTIVE 恢复为 none（门户那条在生效，避免重复）" >> "$OUT/p3-restore-hotkey.txt"
+else
+    timeout 60 "$SEASHOT" --set-hotkey "$HOTKEY_BEFORE" > "$OUT/p3-restore-hotkey.txt" 2>/dev/null
+fi
 echo "$H1" > "$OUT/p3-hotkey-status.txt"
 echo "$H2" >> "$OUT/p3-hotkey-status.txt"
 echo "$H3" >> "$OUT/p3-hotkey-status.txt"

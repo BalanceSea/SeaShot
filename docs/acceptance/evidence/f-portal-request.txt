@@ -1,17 +1,17 @@
 [info] [wayland] ScreenShot2 Version = 5 
-[info] [shot2] "CaptureArea" ok 2 ms 8 x 8 "" 
-[info] [kwin] 脚本已加载 pluginName= "seashot-176458" id= 1 run方式= Script<N>.run 
+[info] [shot2] "CaptureArea" ok 3 ms 8 x 8 "" 
+[info] [kwin] 脚本已加载 pluginName= "seashot-182786" id= 1 run方式= Script<N>.run 
 HOTKEY_PORTAL_REQUESTING id=screenshot
 [info] [hotkey-portal] Activated 信号订阅: 成功 
 [info] [hotkey-portal] ShortcutsChanged 信号订阅: 成功 
-HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_22873/seashot_56609c4a args=1 signature=
-[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_22873/seashot_s_e1615b5a" 
-HOTKEY_PORTAL_REQUEST BindShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_22873/seashot_82dc3d7e args=4 signature=
-[info] [hotkey-portal] 已授权: "ok=1 denied=0 screenshot=Ctrl+Alt+A latencyMs=3" 
-HOTKEY_PORTAL_BOUND ok=1 denied=0 screenshot=Ctrl+Alt+A latencyMs=3
+HOTKEY_PORTAL_REQUEST CreateSession predictedPath=/org/freedesktop/portal/desktop/request/1_23431/seashot_9584bde6 args=1 signature=
+[info] [hotkey-portal] 会话已建立: "/org/freedesktop/portal/desktop/session/1_23431/seashot_s_29ebc36a" 
+HOTKEY_PORTAL_REQUEST BindShortcuts predictedPath=/org/freedesktop/portal/desktop/request/1_23431/seashot_e3fc9f3b args=4 signature=
+[info] [hotkey-portal] 已授权: "ok=1 denied=0 screenshot=Ctrl+Alt+A latencyMs=2" 
+HOTKEY_PORTAL_BOUND ok=1 denied=0 screenshot=Ctrl+Alt+A latencyMs=2
 [info] [tray] KStatusNotifierItem 已创建 
 [info] [app] 托盘已创建 
 [info] [app] 等门户状态确定后再决定是否注册 KGlobalAccel 
 HOTKEY_PORTAL_APPLIED trigger=Ctrl+Alt+A
 HOTKEY_PORTAL_FLOW ok=1 trigger=Ctrl+Alt+A
-[info] [kwin] 脚本已卸载 pluginName= "seashot-176458" 
+[info] [kwin] 脚本已卸载 pluginName= "seashot-182786" 

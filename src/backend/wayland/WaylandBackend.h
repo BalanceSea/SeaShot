@@ -43,6 +43,8 @@ public:
     int screenShotVersion() const { return m_shot2Version; }
 
 private:
+    /// 建出 KGlobalAccel 的 QAction（**只建，不改绑定**；查询/设置都用它）
+    void ensureHotkeyAction();
     bool probePermission(QString *detail);
     void collectOutputs();
     static QImage cropToOpaqueBounds(const QImage &image);

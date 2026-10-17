@@ -113,6 +113,12 @@ HOTKEY_PORTAL_REQUEST BindShortcuts ... shortcuts: QList(std::pair("first-run-de
 - 用户显式 `--set-hotkey`（或界面里录键）→ 那是明确的"我要用 KGlobalAccel"，此时门户让位。
 - 启动瞬间也不会出现"两条都绑着"的抖动：**先等门户状态确定**（`m_portalStateKnown`）再决定注册谁。
 
+还有两条"查询/验收别改全局状态"的修正：
+- **`--hotkey-status` / `--print-config` 原来会顺手 `applyHotkey()`** —— 查一次状态就把
+  KGlobalAccel 那条又绑回去（于是系统设置里又变两条，实测踩过）。现在查询是**纯读**：
+  后端的 `ensureHotkeyAction()` 只建 QAction、不碰绑定。
+- phase3 的 D 段测完恢复原值时，若**门户那条在生效**就恢复成 `none`（不再重复绑 KGlobalAccel）。
+
 另外修了一个真 bug：**空序列原来是"什么都不做"**，所以 `--set-hotkey none` 其实解不掉旧键
 （KGlobalAccel 仍按配置里的旧值生效）。现在空序列 = **明确解绑**。
 

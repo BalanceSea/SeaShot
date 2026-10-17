@@ -1154,8 +1154,7 @@ void Application::openSettings()
 
 int Application::runPrintConfig()
 {
-    // 先把快捷键注册上，hotkeyActual 才是真实生效值
-    applyHotkey(m_settings->hotkey());
+    // 只打印**当前真实生效值**，不在这里注册（打印配置不该改全局状态）
     QTextStream out(stdout);
     out << "CONFIG file=" << m_settings->configFilePath() << "\n";
     out << "CONFIG copyAfterCapture=" << (m_settings->copyAfterCapture() ? 1 : 0) << "\n";
@@ -3356,7 +3355,9 @@ int Application::run()
     if (m_options.printConfig)
         return runPrintConfig();
     if (m_options.hotkeyStatus) {
-        applyHotkey(m_settings->hotkey());
+        // ⚠️ 这里**不要** applyHotkey()：查询命令不该改全局状态。
+        //    之前它会顺手把 KGlobalAccel 那条注册回来，于是"查一下状态"就把
+        //    capture=Ctrl+Alt+A 又绑上了 —— 系统设置里又出现两条（实测踩过）。
         // Phase F：顺带静默报告门户那条路的状态（谁在真正生效，一眼就能看出来）
         {
             uint version = 0;

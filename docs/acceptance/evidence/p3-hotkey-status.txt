@@ -1,3 +1,3 @@
-HOTKEY configured=Ctrl+Alt+S actual=Ctrl+Alt+S
-HOTKEY configured=Ctrl+Shift+F9 actual=Ctrl+Shift+F9
+HOTKEY configured=Ctrl+Alt+S actual=(未绑定)
+HOTKEY configured=Ctrl+Shift+F9 actual=(未绑定)
 HOTKEY configured=(none) actual=(未绑定)

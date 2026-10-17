@@ -201,20 +201,24 @@ void WaylandBackend::captureRect(const QRectF &logicalRect, ImageCallback callba
     m_shot2.captureRect(request, {}, std::move(callback));
 }
 
+void WaylandBackend::ensureHotkeyAction()
+{
+    if (m_hotkeyAction)
+        return;
+    m_hotkeyAction = new QAction(this);
+    m_hotkeyAction->setObjectName(QStringLiteral("capture"));
+    m_hotkeyAction->setText(QStringLiteral("SeaShot 截图"));
+    connect(m_hotkeyAction, &QAction::triggered, this, [this]() {
+        if (m_hotkeyCallback)
+            m_hotkeyCallback();
+    });
+    // 注意：这里**不碰绑定**。以前在 setHotkey() 里建 action 时顺手 setShortcut({})，
+    // 而"空 = 解绑"之后，一次纯查询就会把用户的键解掉 —— 所以拆成两个函数。
+}
+
 bool WaylandBackend::setHotkey(const QKeySequence &sequence, QString *error)
 {
-    if (!m_hotkeyAction) {
-        m_hotkeyAction = new QAction(this);
-        m_hotkeyAction->setObjectName(QStringLiteral("capture"));
-        m_hotkeyAction->setText(QStringLiteral("SeaShot 截图"));
-        connect(m_hotkeyAction, &QAction::triggered, this, [this]() {
-            if (m_hotkeyCallback)
-                m_hotkeyCallback();
-        });
-        // 注册 action 但**不设默认键**（PLAN 已定：默认不注册，用户在系统设置里自行绑定）
-        KGlobalAccel::self()->setDefaultShortcut(m_hotkeyAction, {});
-        KGlobalAccel::self()->setShortcut(m_hotkeyAction, {}, KGlobalAccel::NoAutoloading);
-    }
+    ensureHotkeyAction();
 
     // 空序列 = **明确解绑**。以前这里是"空就什么都不做"，于是 --set-hotkey none
     // 实际上解不掉旧键（KGlobalAccel 仍按配置里的旧值生效），排查了很久。
@@ -236,6 +240,8 @@ bool WaylandBackend::setHotkey(const QKeySequence &sequence, QString *error)
 
 QString WaylandBackend::hotkeyStatus() const
 {
+    // 只读：按需把 action 建出来（不改变任何绑定），这样"查状态"不会顺手改注册表
+    const_cast<WaylandBackend *>(this)->ensureHotkeyAction();
     if (!m_hotkeyAction)
         return QStringLiteral("(未注册)");
     const QList<QKeySequence> keys = KGlobalAccel::self()->shortcut(m_hotkeyAction);

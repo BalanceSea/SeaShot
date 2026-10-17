@@ -1,12 +1,12 @@
 == Phase F 验收（全局快捷键自注册 + 用户授权）==
-二进制: /home/balancesea/.local/bin/seashot (2026-10-17 09:44:42)
+二进制: /home/balancesea/.local/bin/seashot (2026-10-17 09:48:18)
 
 PASS  F. 门户可用（GlobalShortcuts）         available=1 version=2（xdg-desktop-portal-kde）
 PASS  F. 静默查询不弹窗且有结果         count=2 shortcuts=screenshot=Ctrl+Alt+A,capture=Ctrl+Alt+A
-PASS  F. 请求注册不会挂死（有明确收尾） BindShortcuts 已发出；85ms 内收尾 → HOTKEY_PORTAL_FLOW ok=1 trigger=Ctrl+Alt+A
+PASS  F. 请求注册不会挂死（有明确收尾） BindShortcuts 已发出；93ms 内收尾 → HOTKEY_PORTAL_FLOW ok=1 trigger=Ctrl+Alt+A
 PASS  F. 常驻自检认出已授权的绑定      HOTKEY_PORTAL_STATE authorized id=screenshot trigger=Ctrl+Alt+A（按这个键就会截图）
-PASS  F. --hotkey-status 同时报两条路        HOTKEY_PORTAL_STATE available=1 version=2 authorized=1 shortcuts=screenshot=Ctrl+Alt+A,capture=Ctrl+Alt+A · HOTKEY configured=Ctrl+Alt+A actual=Ctrl+Alt+A
-PASS  F. 原有 KGlobalAccel 路径未受影响    写入→读回→解绑→恢复都正常（HOTKEY_SET Ctrl+Alt+F9 actual=Ctrl+Alt+F9；HOTKEY configured=Ctrl+Alt+F9 actual=Ctrl+Alt+F9；HOTKEY_SET (none) actual=(未绑定)；恢复回 'Ctrl+Alt+A'：HOTKEY_SET Ctrl+Alt+A actual=Ctrl+Alt+A）
+PASS  F. --hotkey-status 同时报两条路        HOTKEY_PORTAL_STATE available=1 version=2 authorized=1 shortcuts=screenshot=Ctrl+Alt+A,capture=(unbound) · HOTKEY configured=Ctrl+Alt+A actual=(未绑定)
+PASS  F. 原有 KGlobalAccel 路径未受影响    写入→读回→解绑→恢复都正常（HOTKEY_SET Ctrl+Alt+F9 actual=Ctrl+Alt+F9；HOTKEY configured=Ctrl+Alt+F9 actual=(未绑定)；HOTKEY_SET (none) actual=(未绑定)；恢复回 'Ctrl+Alt+A'：HOTKEY_SET Ctrl+Alt+A actual=Ctrl+Alt+A）
 PASS  F. 状态与实际绑定一致（不谎报） state 里的 trigger='Ctrl+Alt+A' 能在 LIST 里对上
 PASS  F. 证据落盘                              f-portal-status.txt / f-portal-request.txt / f-resident.txt / f-hotkey-status.txt
 
