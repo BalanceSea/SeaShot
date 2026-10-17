@@ -61,7 +61,19 @@
 
 ## 🚀 构建与安装
 
-### 🧩 准备依赖
+### 🧩 自动准备依赖
+
+直接运行 `./install.sh`，脚本会识别 Fedora、Arch Linux、Debian / Ubuntu 及声明兼容这些发行版的衍生系统，使用对应包管理器安装构建工具、Qt / KDE 开发库、PipeWire、X11、FFmpeg、Wayland 剪贴板和中英文 OCR 依赖，然后构建并安装。系统依赖步骤可能要求输入 sudo 密码；**请不要用 sudo 运行整个脚本**。
+
+```bash
+./install.sh                 # 安装依赖 → 构建 → 安装到当前用户
+./install.sh --deps-only     # 仅安装依赖
+./install.sh --yes           # 自动确认包管理器提示
+```
+
+软件源需要提供 Qt ≥ 6.5、KF6 和 LayerShellQt 6；旧版发行版若缺包，需要先升级系统或自行准备依赖。不可变 Fedora 系统请先通过系统对应的方式准备依赖。脚本使用已有软件源；Fedora 默认安装 `ffmpeg-free`（已有 `ffmpeg` 时保留），若检测到缺少 `libx264` 会提示 MP4 / H.264 不可用，GIF 与默认 FFV1 录制仍可使用。
+
+手动准备依赖或使用其他发行版时，可按下表安装，再传入 `--skip-deps`：
 
 | 类型 | 依赖 |
 | --- | --- |
@@ -85,14 +97,14 @@ cmake --build build -j 2
 ### 📦 安装到当前用户
 
 ```bash
-./install.sh --no-build    # 安装刚才构建的版本，无需 sudo
+./install.sh --skip-deps --no-build    # 依赖已就绪，安装刚才构建的版本，无需 sudo
 ```
 
 也可以让安装脚本完成构建：
 
 ```bash
-./install.sh              # 构建并安装
-./install.sh --autostart  # 构建、安装并添加登录自启
+./install.sh --skip-deps              # 依赖已就绪，构建并安装
+./install.sh --autostart              # 安装依赖、构建、安装并添加登录自启
 ```
 
 程序安装到 `~/.local/bin/seashot`，应用菜单入口安装到 `~/.local/share/applications/seashot.desktop`。
