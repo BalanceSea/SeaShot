@@ -118,6 +118,15 @@ int main(int argc, char **argv)
         QStringLiteral("bench-capture"),
         QStringLiteral("（诊断）抓一帧全屏存盘并打印帧时间戳，给拖动基准当观测者"),
         QStringLiteral("path"));
+    QCommandLineOption scrollCaptureOption(
+        QStringLiteral("scroll-capture"),
+        QStringLiteral("滚动截屏（Phase D）：自己滚页面，SeaShot 定时抓帧拼成一张长图；"
+                       "配合 --rect 可脚本化，配合 --scroll-ms 限制最长运行时间"),
+        QStringLiteral(""));
+    QCommandLineOption scrollMsOption(
+        QStringLiteral("scroll-ms"),
+        QStringLiteral("滚动截屏最多跑 N 毫秒（默认 20000）"),
+        QStringLiteral("ms"), QStringLiteral("20000"));
     QCommandLineOption pinOption(QStringLiteral("pin"),
                                  QStringLiteral("把一张 PNG 贴（钉）到屏幕上（Phase C）"),
                                  QStringLiteral("path"));
@@ -159,6 +168,8 @@ int main(int argc, char **argv)
     parser.addOption(probePipewireLibOption);
     parser.addOption(portalTokenOption);
     parser.addOption(benchCaptureOption);
+    parser.addOption(scrollCaptureOption);
+    parser.addOption(scrollMsOption);
     parser.addOption(pinOption);
     parser.addOption(pinDemoOption);
     parser.addOption(inplaceDemoOption);
@@ -188,6 +199,8 @@ int main(int argc, char **argv)
     options.toastDragBenchMs = parser.value(dragBenchOption).toInt();
     options.benchCapturePath = parser.value(benchCaptureOption);
     options.inplaceDemoOut = parser.value(inplaceDemoOption);
+    options.scrollCapture = parser.isSet(scrollCaptureOption);
+    options.scrollMs = parser.value(scrollMsOption).toInt();
     options.pinPath = parser.value(pinOption);
     options.pinDemoOut = parser.value(pinDemoOption);
     options.probePortal = parser.isSet(probePortalOption);

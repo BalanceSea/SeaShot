@@ -27,6 +27,7 @@ class CaptureBackend;
 class GifRecorder;
 class RecordingIndicator;
 class PinWindow;
+class ScrollCapturer;
 
 struct Options {
     QString backend = QStringLiteral("auto"); ///< auto|wayland|x11
@@ -53,6 +54,8 @@ struct Options {
     int seconds = 0; ///< --seconds N：录制 N 秒后自动停（0 = 手动停）
     int toastDragBenchMs = 0; ///< --toast-drag-bench MS：诊断拖动延迟（ISSUE-001）
     QString pinPath; ///< --pin PATH：把一张图贴（钉）到屏幕上（Phase C）
+    bool scrollCapture = false; ///< --scroll-capture：滚动截屏（Phase D）
+    int scrollMs = 0;           ///< --scroll-ms N：滚动截屏最多跑 N 毫秒（0 = 用默认值）
     QString pinDemoOut; ///< --pin-demo PREFIX：贴图的自动化验收（Phase C）
     QString inplaceDemoOut; ///< --inplace-demo PATH：就地标注（Phase A1）的自动化验收
     QString benchCapturePath; ///< --bench-capture PATH：截全屏存盘并打印帧时间戳（给基准测试当观测者）
@@ -141,6 +144,12 @@ private:
     int runPinFile(const QString &path);
     /// Phase C 验收：程序化验证拖动/缩放/右键菜单/多张并存/关闭无残留
     int runPinDemo(const QString &outPrefix);
+    /// Phase D：开始滚动截屏（选区已定）。用户自己滚页面，我们定时抓帧拼接。
+    void startScrollCapture(const SelectionResult &selection);
+    void onScrollFinished(const QImage &image, const QString &report);
+    void onScrollFailed(const QString &error);
+    /// Phase D：`--scroll-capture`（脚本式：给定矩形，跑到自己停/到时长上限就收工）
+    int runScrollCaptureCli();
     QRect virtualGeometry() const;
     bool isOneShot() const;
 
@@ -180,6 +189,7 @@ private:
     QVector<Annotation> m_pendingAnnotations;
     /// 「完成」时上层要做的交付动作（Phase B/C：Enter / Ctrl+C / Ctrl+S / 贴图）
     Overlay::ConfirmAction m_pendingAction = Overlay::ConfirmAction::Plain;
+    std::unique_ptr<ScrollCapturer> m_scrollCapturer;
     /// 屏幕上的贴图（Phase C）
     QVector<QPointer<PinWindow>> m_pins;
     bool m_quitWhenPinsClosed = false;

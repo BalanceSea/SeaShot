@@ -1114,9 +1114,19 @@ QVector<Overlay::BarCell> Overlay::buildBarCells() const
         x = cell.rect.right() + kGroupGap - kBtnGap;
     }
 
+    { // 长截图（滚动截屏）
+        BarCell cell;
+        cell.kind = BarCell::Kind::Scroll;
+        cell.separatorBefore = 1;
+        cell.rect = QRectF(x, top, kBtnSize, kBtnSize);
+        cells.append(cell);
+        x += kBtnSize + kBtnGap;
+    }
+
     { // 贴图（钉到屏幕上）
         BarCell cell;
         cell.kind = BarCell::Kind::Pin;
+        cell.separatorBefore = 0;
         cell.separatorBefore = 1;
         cell.rect = QRectF(x, top, kBtnSize, kBtnSize);
         cells.append(cell);
@@ -1233,6 +1243,9 @@ void Overlay::activateCell(int index)
         setCursor(cell.tool == ToolKind::Select ? Qt::ArrowCursor : Qt::CrossCursor);
         update();
         break;
+    case BarCell::Kind::Scroll:
+        emit annotationConfirmed(m_selection, ConfirmAction::Scroll);
+        break;
     case BarCell::Kind::Pin:
         emit annotationConfirmed(m_selection, ConfirmAction::Pin);
         break;
@@ -1334,6 +1347,15 @@ void Overlay::drawToolbar(QPainter &painter) const
             painter.setPen(kSizeTextColor);
             painter.drawText(cell.rect, Qt::AlignCenter, selectionSizeText());
             break;
+        case BarCell::Kind::Scroll: {
+            if (pressed || hovered) {
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(pressed ? kBtnPress : kBtnHover);
+                painter.drawRoundedRect(cell.rect, 6, 6);
+            }
+            drawScrollIcon(painter, box, kIconColor);
+            break;
+        }
         case BarCell::Kind::Pin: {
             if (pressed || hovered) {
                 painter.setPen(Qt::NoPen);
@@ -1382,6 +1404,9 @@ void Overlay::drawCellBubble(QPainter &painter, const BarCell &cell) const
         break;
     case BarCell::Kind::Pin:
         text = QStringLiteral("贴图（钉到屏幕上）");
+        break;
+    case BarCell::Kind::Scroll:
+        text = QStringLiteral("长截图（滚动截屏）");
         break;
     case BarCell::Kind::ColorSwatch:
         text = QStringLiteral("颜色  ") + m_annotationColor.name();
@@ -1586,6 +1611,30 @@ void Overlay::drawToolIcon(QPainter &painter, ToolKind kind, const QRectF &box, 
         break;
     }
     }
+    painter.restore();
+}
+
+void Overlay::drawScrollIcon(QPainter &painter, const QRectF &box, const QColor &color)
+{
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const double w = box.width();
+    const double h = box.height();
+    QPen pen(color, 1.6);
+    pen.setCapStyle(Qt::RoundCap);
+    painter.setPen(pen);
+    painter.setBrush(Qt::NoBrush);
+    // 上下两条"页"线 + 中间向下的箭头（滚动）
+    painter.drawLine(QPointF(box.left(), box.top() + h * 0.12),
+                     QPointF(box.right(), box.top() + h * 0.12));
+    painter.drawLine(QPointF(box.left(), box.bottom() - h * 0.12),
+                     QPointF(box.right(), box.bottom() - h * 0.12));
+    const double cx = box.center().x();
+    painter.drawLine(QPointF(cx, box.top() + h * 0.28), QPointF(cx, box.bottom() - h * 0.32));
+    painter.drawLine(QPointF(cx - w * 0.16, box.bottom() - h * 0.48),
+                     QPointF(cx, box.bottom() - h * 0.32));
+    painter.drawLine(QPointF(cx + w * 0.16, box.bottom() - h * 0.48),
+                     QPointF(cx, box.bottom() - h * 0.32));
     painter.restore();
 }
 
@@ -2041,6 +2090,10 @@ void Overlay::keyPressEvent(QKeyEvent *event)
             }
             if (key == Qt::Key_T) {
                 emit annotationConfirmed(m_selection, ConfirmAction::Pin); // 贴图（钉到屏幕上）
+                return;
+            }
+            if (key == Qt::Key_L) {
+                emit annotationConfirmed(m_selection, ConfirmAction::Scroll); // 长截图
                 return;
             }
         }

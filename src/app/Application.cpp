@@ -18,6 +18,7 @@
 #include "record/PipeWireFrameSource.h"
 #include "record/PortalScreencast.h"
 #include "record/RecordingIndicator.h"
+#include "scroll/ScrollCapturer.h"
 #include "util/Clipboard.h"
 #include "util/Log.h"
 #ifdef SEASHOT_WITH_X11
@@ -163,6 +164,13 @@ Application::Application(const Options &options, QObject *parent)
                                                                        : "按设置");
                 m_pendingSelection = result;
                 m_pendingAction = action; // Phase B：Ctrl+C / Ctrl+S / Enter 分别对应不同交付
+                if (action == Overlay::ConfirmAction::Scroll) {
+                    // 长截图不走"先截一张再交付"那条路：选区一定就直接开始拼
+                    m_overlay->stopSelection();
+                    m_pendingAction = Overlay::ConfirmAction::Plain;
+                    startScrollCapture(result);
+                    return;
+                }
                 finishSelectionPhase();
             });
     connect(m_overlay.get(), &Overlay::annotationCancelled, this, [this]() {
@@ -185,6 +193,12 @@ Application::Application(const Options &options, QObject *parent)
             [this]() { openEditor(m_lastImage, m_lastSavedPath); });
 
     // 录制（Phase 4）
+    // 滚动截屏（Phase D）：复用录制指示器（区域外 + layer-shell + 自排除）
+    m_scrollCapturer = std::make_unique<ScrollCapturer>(m_backend.get());
+    connect(m_scrollCapturer.get(), &ScrollCapturer::finished, this,
+            &Application::onScrollFinished);
+    connect(m_scrollCapturer.get(), &ScrollCapturer::failed, this, &Application::onScrollFailed);
+
     m_recorder = std::make_unique<GifRecorder>();
     m_recordingIndicator = std::make_unique<RecordingIndicator>();
     connect(m_recorder.get(), &GifRecorder::stoppedForSpace, this, [](qint64 available) {
@@ -201,8 +215,13 @@ Application::Application(const Options &options, QObject *parent)
                 onRecordingFinished(path, stats.captured, stats.dropped, stats.failed,
                                     stats.elapsedMs, error);
             });
-    connect(m_recordingIndicator.get(), &RecordingIndicator::stopRequested, this,
-            &Application::stopRecording);
+    connect(m_recordingIndicator.get(), &RecordingIndicator::stopRequested, this, [this]() {
+        // 同一块指示器两种用途：录制中 → 停止录制；滚动截屏中 → 结束拼接（交付已拼的部分）
+        if (m_scrollCapturer && m_scrollCapturer->isRunning())
+            m_scrollCapturer->stop();
+        else
+            stopRecording();
+    });
 
     // 配置变化即时生效（配置界面每次改动都会发这个信号）
     connect(m_settings.get(), &Settings::changed, this, &Application::applySettings);
@@ -296,7 +315,8 @@ bool Application::isOneShot() const
     return m_options.selftest || m_options.listWindows || m_options.captureScreen
         || m_options.hasRect || !m_options.windowHandle.isEmpty() || m_options.overlayHoldMs > 0
         || !m_options.editPath.isEmpty() || !m_options.annotateOut.isEmpty()
-        || m_options.hotkeyStatus || m_options.printConfig || m_options.record;
+        || m_options.hotkeyStatus || m_options.printConfig || m_options.record
+        || m_options.scrollCapture;
 }
 
 void Application::openEditor(const QImage &image, const QString &sourcePath)
@@ -1326,6 +1346,95 @@ void Application::pinImage(const QImage &image, const QPoint &anchorGlobal)
     out.flush();
 }
 
+void Application::startScrollCapture(const SelectionResult &selection)
+{
+    QTextStream out(stdout);
+    if (!m_backend || !m_backendError.isEmpty()) {
+        out << "SCROLL_ERROR 没有可用的截图后端：" << m_backendError << "\n";
+        out.flush();
+        return;
+    }
+    ScrollCapturer::Config config;
+    config.region = selection.mode == SelectionMode::Window ? selection.window.frameGeometry
+                                                            : selection.logicalRect;
+    if (m_options.scrollMs > 0)
+        config.maxDurationMs = m_options.scrollMs;
+    // 指示器放在选区外面（自排除保证它不会进帧）
+    if (m_recordingIndicator)
+        m_scrollCapturer->setIndicator(m_recordingIndicator.get());
+    // 指示器上的「完成」/Esc = 结束并交付已拼的部分
+    m_scrollCapturer->start(config);
+}
+
+void Application::onScrollFinished(const QImage &image, const QString &report)
+{
+    QTextStream out(stdout);
+    if (image.isNull() || image.height() <= 0) {
+        out << "SCROLL_ERROR 没拼出内容；" << report << "\n";
+        out.flush();
+        return;
+    }
+    m_lastImage = image;
+    m_lastAnchorRect = virtualGeometry();
+
+    QString savedPath = m_options.saveTo;
+    QString saveError;
+    if (savedPath.isEmpty() && m_settings->autoSaveAfterCapture())
+        savedPath = m_settings->defaultSavePath();
+    if (!savedPath.isEmpty() && !Settings::saveImage(savedPath, image, &saveError)) {
+        SS_WARN() << "[app] 长截图保存失败:" << saveError;
+        savedPath.clear();
+    }
+    m_lastSavedPath = savedPath;
+
+    const QString message = QStringLiteral("长截图 %1x%2").arg(image.width()).arg(image.height());
+    const bool scripted = !m_options.saveTo.isEmpty();
+    if (!scripted)
+        m_toast->showResult(image, savedPath, message, QString(), m_lastAnchorRect);
+
+    out << "SCROLL ok size=" << image.width() << "x" << image.height() << "\n";
+    out << "SCROLL_REPORT " << report << "\n";
+    if (!savedPath.isEmpty())
+        out << "SAVED " << savedPath << "\n";
+    out.flush();
+
+    if (isOneShot() && m_options.overlayHoldMs == 0) {
+        if (scripted)
+            QTimer::singleShot(0, qApp, &QCoreApplication::quit);
+        else
+            m_keepAliveForToast = true; // 让用户能在浮层上复制/保存/贴图
+    }
+}
+
+void Application::onScrollFailed(const QString &error)
+{
+    QTextStream out(stdout);
+    out << "SCROLL_ERROR " << error << "\n";
+    out.flush();
+    if (isOneShot())
+        QCoreApplication::exit(4);
+}
+
+int Application::runScrollCaptureCli()
+{
+    QTextStream out(stdout);
+    if (!m_backend || !m_backendError.isEmpty()) {
+        out << "SCROLL_ERROR 没有可用的截图后端：" << m_backendError << "\n";
+        return 2;
+    }
+    SelectionResult selection;
+    if (m_options.hasRect) {
+        selection.mode = SelectionMode::Rect;
+        selection.logicalRect = m_options.rect;
+    } else {
+        // 没给矩形就退回交互式选择（与 --record 一致）
+        startCapture();
+        return QCoreApplication::exec();
+    }
+    startScrollCapture(selection);
+    return QCoreApplication::exec();
+}
+
 int Application::runPinFile(const QString &path)
 {
     QTextStream out(stdout);
@@ -2157,6 +2266,8 @@ int Application::runInplaceDemo(const QString &outPrefix)
                 postKey(Qt::Key_S, QString(), Qt::ControlModifier);
             else if (actionMode == QLatin1String("pin"))
                 postKey(Qt::Key_T, QString(), Qt::ControlModifier);
+            else if (actionMode == QLatin1String("scroll"))
+                postKey(Qt::Key_L, QString(), Qt::ControlModifier);
             else
                 postKey(Qt::Key_Return, QStringLiteral("\r"));
             exitWorks = !m_overlay->isAnnotating();
@@ -2187,8 +2298,13 @@ int Application::runInplaceDemo(const QString &outPrefix)
         out << (allOk ? "INPLACE_DEMO ALL PASS" : "INPLACE_DEMO ALL FAIL") << "\n";
         out.flush();
         if (commitMode) {
-            // 合成 Enter 之后截图是异步的 + 要落盘：给它几秒再退，退出码仍是上面的判定
-            QTimer::singleShot(4000, this, [allOk]() { QCoreApplication::exit(allOk ? 0 : 1); });
+            // 合成 Enter/Ctrl+C/Ctrl+S/Ctrl+T/Ctrl+L 之后这些交付都是异步的：
+            // 给它几秒再退（滚动截屏要等它自己收工，所以给得更宽），退出码仍是上面的判定
+            const int waitMs = qEnvironmentVariable("SEASHOT_INPLACE_DEMO_ACTION")
+                    == QLatin1String("scroll")
+                ? 9000
+                : 4000;
+            QTimer::singleShot(waitMs, this, [allOk]() { QCoreApplication::exit(allOk ? 0 : 1); });
         } else {
             QCoreApplication::exit(allOk ? 0 : 1);
         }
@@ -2821,6 +2937,8 @@ int Application::run()
         }
         return QCoreApplication::exec();
     }
+    if (m_options.scrollCapture)
+        return runScrollCaptureCli();
     if (m_options.listWindows)
         return runListWindows();
     if (!m_options.annotateOut.isEmpty())

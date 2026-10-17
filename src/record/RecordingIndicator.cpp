@@ -73,6 +73,24 @@ void RecordingIndicator::showFor(const QRectF &region, int fps, const QString &o
     QTextStream(stdout).flush();
 }
 
+void RecordingIndicator::showForScroll(const QRectF &region, const QString &hint)
+{
+    m_scrollMode = true;
+    m_scrollHint = hint;
+    m_scrollHeight = 0;
+    m_scrollFrames = 0;
+    // 复用录制那套摆放（区域外、layer-shell），只是文案不同
+    showFor(region, 0, QString());
+}
+
+void RecordingIndicator::updateScrollStats(int heightPx, int frames)
+{
+    m_scrollHeight = heightPx;
+    m_scrollFrames = frames;
+    invalidateCache();
+    update();
+}
+
 void RecordingIndicator::updateStats(int captured, int dropped, qint64 elapsedMs)
 {
     const bool changed = captured != m_captured || dropped != m_dropped
@@ -192,13 +210,18 @@ void RecordingIndicator::rebuildCache()
     painter.setBrush(m_dotOn ? QColor(230, 60, 60) : QColor(230, 60, 60, 90));
     painter.drawEllipse(QPointF(kPadding + 6, height() / 2.0), 6, 6);
 
-    // 计时 + 帧数
+    // 计时 + 帧数（滚动截屏模式下换成"已拼高度"）
     painter.setPen(text);
-    const QString info = QStringLiteral("REC %1   已录 %2 帧%3")
-                             .arg(formatElapsed(m_elapsedMs))
-                             .arg(m_captured)
-                             .arg(m_dropped > 0 ? QStringLiteral("（丢 %1）").arg(m_dropped)
-                                                : QString());
+    const QString info = m_scrollMode
+        ? QStringLiteral("长截图   已拼 %1 px   %2 帧%3")
+              .arg(m_scrollHeight)
+              .arg(m_scrollFrames)
+              .arg(m_scrollHint.isEmpty() ? QString()
+                                          : QStringLiteral("   %1").arg(m_scrollHint))
+        : QStringLiteral("REC %1   已录 %2 帧%3")
+              .arg(formatElapsed(m_elapsedMs))
+              .arg(m_captured)
+              .arg(m_dropped > 0 ? QStringLiteral("（丢 %1）").arg(m_dropped) : QString());
     painter.drawText(QRect(kPadding + 18, 0, stopButtonRect().left() - kPadding - 24, height()),
                      Qt::AlignVCenter | Qt::AlignLeft, info);
 
@@ -209,7 +232,7 @@ void RecordingIndicator::rebuildCache()
     painter.drawRoundedRect(QRectF(stopRect).adjusted(0.5, 0.5, -0.5, -0.5), ui::spec::buttonRadius,
                             ui::spec::buttonRadius);
     const QIcon stopIcon = ui::iconStop();
-    const QString stopLabel = QStringLiteral("停止");
+    const QString stopLabel = m_scrollMode ? QStringLiteral("完成") : QStringLiteral("停止");
     const int stopTextWidth = painter.fontMetrics().horizontalAdvance(stopLabel);
     const int stopIconPart = stopIcon.isNull() ? 0 : ui::spec::iconSize + ui::spec::gap / 2;
     const int stopStartX = stopRect.left() + (stopRect.width() - stopTextWidth - stopIconPart) / 2;

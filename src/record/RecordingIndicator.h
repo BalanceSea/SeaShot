@@ -24,6 +24,11 @@ public:
     void updateStats(int captured, int dropped, qint64 elapsedMs);
     void hideIndicator();
 
+    /// 滚动截屏（Phase D）复用同一块指示器：标题换成"长截图"，副标题显示已拼高度，
+    /// 按钮文字换成"完成"。放在选区**外面**，加上自排除，所以不会进抓到的帧。
+    void showForScroll(const QRectF &region, const QString &hint);
+    void updateScrollStats(int heightPx, int frames);
+
 signals:
     void stopRequested();
 
@@ -49,6 +54,10 @@ private:
     int m_dropped = 0;
     qint64 m_elapsedMs = 0;
     bool m_dotOn = false;
+    bool m_scrollMode = false;
+    int m_scrollHeight = 0;
+    int m_scrollFrames = 0;
+    QString m_scrollHint;
     bool m_layerShellApplied = false;
     QPixmap m_cache;
     bool m_cacheDirty = true;
