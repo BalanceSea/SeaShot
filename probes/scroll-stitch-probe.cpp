@@ -659,7 +659,7 @@ int main(int argc, char **argv)
         // 扣掉"每帧都在变"的列/行/小块后，必须零差异
         const MaskStats mask = detectAlwaysMismatching(
             clean, page, scenario.offsets.first() + topBand, tolerance, cropped, offsets);
-        if (!outDir.isEmpty() && mask.residualMismatch > 0) {
+        if (!outDir.isEmpty() && cleanVsPage.mismatched > 0) {
             // 三色掩码：黑=稳定一致、灰=帧间不稳定（覆盖层）、白=残差（真的不该有）
             QImage map(clean.size(), QImage::Format_RGB32);
             map.fill(Qt::black);
