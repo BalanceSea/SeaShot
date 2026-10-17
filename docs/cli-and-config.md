@@ -27,7 +27,7 @@
 | `--selftest` | 逐项自检：授权 / KWin 脚本 / 窗口枚举 / 截图 / 剪贴板 |
 | `--print-config` | 打印生效中的配置（含实际生效的后端与快捷键） |
 | `--backend <name>` | `auto`（默认）/ `wayland` / `x11` |
-| `--overlay-hold <ms>` | 显示选择覆盖层 N 毫秒后退出（调试/验收用） |
+| `--overlay-hold <ms>` | 显示选择覆盖层 N 毫秒后退出（调试/演示用） |
 
 ## 录制
 
@@ -67,13 +67,13 @@
 说明：门户已授权时程序**不再注册 KGlobalAccel**（避免系统设置里出现两条同键快捷键）；
 快捷键需要应用**常驻**才能响应（推荐 `./install.sh --autostart`）。
 
-## 验收 / 诊断（不参与日常使用）
+## 诊断与回归演示（不参与日常使用）
 
 | 开关 | 说明 |
 | --- | --- |
-| `--inplace-demo <prefix>` | 就地标注（A1/A2/A3/A3.1/B）自动验收：合成拖框 → 判定 → 落盘证据 |
-| `--pin-demo <prefix>` | 贴图自动验收：拖动/缩放/右键菜单/多张并存/关闭 |
-| `--annotate-in` / `--annotate-out` | 标注渲染演示（输入图 → 输出图），供编辑器验收 |
+| `--inplace-demo <prefix>` | 就地标注（A1/A2/A3/A3.1/B）自动回归演示：合成拖框 → 判定 → 落盘截图 |
+| `--pin-demo <prefix>` | 贴图自动回归演示：拖动/缩放/右键菜单/多张并存/关闭 |
+| `--annotate-in` / `--annotate-out` | 标注渲染演示（输入图 → 输出图），供编辑器回归演示 |
 | `--toast-drag-bench <ms>` | 程序化拖动结果浮层，量显示位置与目标的偏差（ISSUE-001） |
 | `--bench-capture <path>` | 抓一帧全屏存盘，给上面的拖动基准当观测者 |
 | `--probe-portal-screencast` | 验证 portal ScreenCast 授权持久化（restore token） |
@@ -134,7 +134,7 @@
 | 贴图 | `PIN_CREATED …`、`PIN_CLOSED 剩余=N`、`PIN_COPY ok`、`PIN_SAVE ok path=…` |
 | 快捷键 | `HOTKEY_SET …`、`HOTKEY_PORTAL_STATE authorized=0\|1 …`、`HOTKEY_PORTAL_BOUND …` |
 | 进程 | `WINDOWS …`、`BACKEND …`、`SEASHOT_READY backend=… hotkey=…`、`FORWARDED_TO_RUNNING_INSTANCE` |
-| 验收 | `INPLACE_DEMO …`、`PIN_DEMO …`（各自以 `PASS` / `FAIL` 收尾） |
+| 回归演示 | `INPLACE_DEMO …`、`PIN_DEMO …`（各自以 `PASS` / `FAIL` 收尾） |
 
 ## 项目结构（速查）
 
@@ -155,8 +155,8 @@ SeaShot/
 │   └── util/       # 剪贴板、日志
 ├── resources/      # 应用图标 + 内嵌 KWin 助手脚本
 ├── tests/          # QtTest 单元测试（11 套）
-├── scripts/        # 验收与诊断脚本（13 个 acceptance-*.sh）
+├── scripts/        # 回归演示与诊断脚本（13 个 acceptance-*.sh）
 ├── probes/         # 可重复执行的能力探针（Phase 0 / 长截图拼接等）
-├── docs/           # 文档与验收证据
+├── docs/           # 对外文档（本地开发记录与产物不入库）
 └── install.sh      # 用户级安装脚本
 ```

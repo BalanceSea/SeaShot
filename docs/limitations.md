@@ -5,7 +5,7 @@
 ## 🖥️ 桌面与截图后端
 
 - **KDE Plasma 6 / KWin Wayland**：通过 KWin ScreenShot2 截图，KWin 助手脚本提供窗口列表与自排除。请使用安装脚本写入 desktop 授权声明。
-- **X11**：通过 XCB / MIT-SHM 截图。已有键盘映射测试与 XWayland 冒烟验证，完整 X11 桌面仍需验收。
+- **X11**：通过 XCB / MIT-SHM 截图。已有键盘映射测试与 XWayland 冒烟验证，完整 X11 桌面仍需真机验证。
 - **XWayland**：X11 后端只能枚举和抓取 X11 客户端窗口，不能替代 Wayland 后端抓取原生 Wayland 窗口。
 - **窗口遮挡**：X11 的屏幕区域截图可能包含遮挡物。Wayland 的交互式标注交付冻结屏幕中的选区内容；命令行直接窗口截图走 CaptureWindow。
 - **菜单与本应用窗口**：交互式截图先抓取画面，再显示选择层；选区、标注和导出共用这张冻结图。Wayland 区域截图保留调用者的普通窗口，只排除 SeaShot 的截图辅助层。设置、编辑器与菜单可以被截图。
@@ -66,4 +66,4 @@ cmake --build build -j 2
 QT_QPA_PLATFORM=offscreen ctest --test-dir build --output-on-failure
 ```
 
-自动化测试覆盖截图生命周期、迟到响应、冻结图一致性、键盘映射、实例转发、录制参数与编码时间轴，也验证打开 KDE 快捷键设置时不会把 SeaShot 的 layer-shell 环境传给子进程。模拟后端和 offscreen 测试不代替真实桌面验收。
+自动化测试覆盖截图生命周期、迟到响应、冻结图一致性、键盘映射、实例转发、录制参数与编码时间轴，也验证打开 KDE 快捷键设置时不会把 SeaShot 的 layer-shell 环境传给子进程。模拟后端和 offscreen 测试不代替真实桌面验证。
