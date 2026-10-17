@@ -20,3 +20,7 @@ target_link_libraries(overlayprobe PRIVATE Qt6::Widgets LayerShellQt::Interface)
 
 add_executable(inplace-probe ../inplace-probe.cpp)
 target_link_libraries(inplace-probe PRIVATE Qt6::Widgets LayerShellQt::Interface)
+
+# Phase D 可行性探针：滚动截屏的重叠区匹配拼接（纯 QImage 计算，不需要 layer-shell）
+add_executable(scroll-stitch-probe ../scroll-stitch-probe.cpp)
+target_link_libraries(scroll-stitch-probe PRIVATE Qt6::Gui)
